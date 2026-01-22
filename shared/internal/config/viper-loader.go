@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"log"
 	"os"
 	"path/filepath"
@@ -24,9 +25,9 @@ func NewViperLoader(cfgPtr interface{}, serviceName string) (*Loader, error) {
 		Viper:         viper.New(),
 	}
 
-	addYaml(l)
+	l.loadYamlFiles()
 
-	addEnv()
+	//loadEnvFiles()
 
 	if err := viper.Unmarshal(&l.ConfigService); err != nil {
 		return nil, err
@@ -35,21 +36,25 @@ func NewViperLoader(cfgPtr interface{}, serviceName string) (*Loader, error) {
 	return l, nil
 }
 
-func addYaml(l *Loader) {
+func(l *Loader) loadYamlFiles() {
 	yamlFiles := []string{
 		filepath.Join("..", "..", "shared", "internal", "config", "local.yaml"),
 		filepath.Join("..", "..", "shared", "internal", "config", "dev.yaml"),
 		filepath.Join(".", "local.yaml"),
 		filepath.Join(".", "dev.yaml"),
-		filepath.Join(".", "prod.yaml"), //TODO: 99% что убрать эту строчку, yaml не пишут же у прода?
 	}
 
 	for _, yamlFile := range yamlFiles {
 		_, err := os.Stat(yamlFile)
-		if os.IsNotExist(err) {
-			log.Println("Yaml file not found in directory:", yamlFile)
-			continue
+		if errors.Is()
+		if err != nil{
+			if os.IsNotExist(err) {
+				log.Println("Yaml file not found in directory:", yamlFile)
+				continue
+			}
+
 		}
+
 		l.Viper.SetConfigFile(yamlFile)
 
 	}
