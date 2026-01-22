@@ -37,8 +37,8 @@ func NewViperLoader(cfgPtr interface{}, serviceName string) (*Loader, error) {
 
 func addYaml(l *Loader) {
 	yamlFiles := []string{
-		filepath.Join("..", "..", "..", "shared", "internal", "config", "local.yaml"),
-		filepath.Join("..", "..", "..", "shared", "internal", "config", "dev.yaml"),
+		filepath.Join("..", "..", "shared", "internal", "config", "local.yaml"),
+		filepath.Join("..", "..", "shared", "internal", "config", "dev.yaml"),
 		filepath.Join(".", "local.yaml"),
 		filepath.Join(".", "dev.yaml"),
 		filepath.Join(".", "prod.yaml"), //TODO: 99% что убрать эту строчку, yaml не пишут же у прода?
@@ -51,5 +51,6 @@ func addYaml(l *Loader) {
 			continue
 		}
 		l.Viper.SetConfigFile(yamlFile)
+
 	}
 }

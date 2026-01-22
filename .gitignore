@@ -1,1 +1,9 @@
 .idea
+# папки
+go.mod
+
+# файлы
+shared/internal/config/dev.env
+shared/internal/config/local.env
+shared/internal/config/dev.yaml
+shared/internal/config/local.yaml
