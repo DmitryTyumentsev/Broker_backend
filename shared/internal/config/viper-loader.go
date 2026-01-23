@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -25,37 +26,50 @@ func NewViperLoader(cfgPtr interface{}, serviceName string) (*Loader, error) {
 		Viper:         viper.New(),
 	}
 
-	l.loadYamlFiles()
+	env := os.Getenv("ENVIRONMENT")
+	l.setDefault(env)
 
-	//loadEnvFiles()
+	l.loadYamlFiles(env)
+
+	l.loadEnvFiles(env)
 
 	if err := viper.Unmarshal(&l.ConfigService); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to decode into configService, %w", err)
 	}
 
 	return l, nil
 }
 
-func(l *Loader) loadYamlFiles() {
+func (l *Loader) loadYamlFiles(env string) {
 	yamlFiles := []string{
-		filepath.Join("..", "..", "shared", "internal", "config", "local.yaml"),
-		filepath.Join("..", "..", "shared", "internal", "config", "dev.yaml"),
-		filepath.Join(".", "local.yaml"),
-		filepath.Join(".", "dev.yaml"),
+		filepath.Join("..", "..", "shared", "internal", "config", env),
+		filepath.Join(".", env),
 	}
 
+	v := l.Viper
 	for _, yamlFile := range yamlFiles {
-		_, err := os.Stat(yamlFile)
-		if errors.Is()
-		if err != nil{
-			if os.IsNotExist(err) {
-				log.Println("Yaml file not found in directory:", yamlFile)
-				continue
-			}
-
+		v.SetConfigName(yamlFile)
+		v.SetConfigType("yaml")
+		if err := v.MergeInConfig(); err != nil {
+			log.Printf("loadYamlFiles, MergeInConfig is failed, err: %v", err)
 		}
-
-		l.Viper.SetConfigFile(yamlFile)
-
 	}
+	v.AutomaticEnv()
+}
+
+func (l *Loader) loadEnvFiles(env string) {
+	envFiles := []string{
+		filepath.Join("..", "..", "shared", "internal", "config", env),
+		filepath.Join(".", env),
+	}
+
+	v := l.Viper
+	for _, envFile := range envFiles {
+		v.SetConfigName(envFile)
+		v.SetConfigType("env")
+		if err := v.MergeInConfig(); err != nil {
+			log.Printf("loadEnvFiles, MergeInConfig is failed, err: %v", err)
+		}
+	}
+	v.AutomaticEnv()
 }
