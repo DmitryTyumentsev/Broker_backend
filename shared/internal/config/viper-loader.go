@@ -77,7 +77,6 @@ func (l *Loader) loadEnvFiles(env string) {
 }
 
 func (l *Loader) setupSettings() {
-	l.Viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_")) //TODO: зачем нужен реплэйсер? просто чтобы в env файле не было ключей с точкой?
+	l.Viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_")) //TODO: зачем нужен реплэйсер? просто чтобы в env файле не было ключей с точкой? и второй вопрос здесь же - где использовать strings.ToLower?
 	l.Viper.SetEnvPrefix(l.ServiceName)
-	l.Viper.RegisterAlias()
 }
