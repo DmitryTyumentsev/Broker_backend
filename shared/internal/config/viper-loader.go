@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -26,14 +25,17 @@ func NewViperLoader(cfgPtr interface{}, serviceName string) (*Loader, error) {
 		Viper:         viper.New(),
 	}
 
+	l.setupSettings()
+
 	env := os.Getenv("ENVIRONMENT")
-	l.setDefault(env)
 
 	l.loadYamlFiles(env)
 
 	l.loadEnvFiles(env)
 
-	if err := viper.Unmarshal(&l.ConfigService); err != nil {
+	l.Viper.AutomaticEnv()
+
+	if err := viper.Unmarshal(l.ConfigService); err != nil {
 		return nil, fmt.Errorf("unable to decode into configService, %w", err)
 	}
 
@@ -71,5 +73,8 @@ func (l *Loader) loadEnvFiles(env string) {
 			log.Printf("loadEnvFiles, MergeInConfig is failed, err: %v", err)
 		}
 	}
-	v.AutomaticEnv()
+}
+
+func (l *Loader) setupSettings() {
+
 }
