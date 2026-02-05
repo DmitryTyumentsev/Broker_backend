@@ -5,11 +5,11 @@ import (
 )
 
 const (
-	AuthServiceName = "auth"
+	authServiceName = "auth"
 )
 
 type Config struct {
-	Env      string `yaml:"env" env:"ENV"`
+	//TODO: верный ли подход задавать через переменные окружения environment?
 	Database `yaml:"database"` //TODO: правильно так или сделать Database *Database? как в памяти все это устроено чтобы было ниже потребление(сколько байт сейчас выделяется и сколько если *Database использовать? Как делать чтобы было удобнее использовать в дальнейшем в коде? Верно понимаю что только при запуске приложения один раз в текущей вариации каждый раз когда вызывается эта структура в любом файле проекта будет создаваться копия в памяти?
 	//Cache    `yaml:"cache"`
 	Server `yaml:"server"`
@@ -56,5 +56,6 @@ type Server struct {
 }
 
 func LoadConfig() (*Config, error) {
-
+	var cfg Config
+	return configs.NewViperLoader(cfg, authServiceName), nil
 }
