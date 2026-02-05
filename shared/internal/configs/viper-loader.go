@@ -1,4 +1,4 @@
-package config
+package configs
 
 import (
 	"fmt"
@@ -45,7 +45,7 @@ func NewViperLoader(cfgPtr interface{}, serviceName string) (*Loader, error) {
 
 func (l *Loader) loadYamlFiles(env string) {
 	yamlFiles := []string{
-		filepath.Join("..", "..", "shared", "internal", "config", env),
+		filepath.Join("..", "..", "shared", "internal", "configs", env),
 		filepath.Join(".", env),
 	}
 
@@ -62,7 +62,7 @@ func (l *Loader) loadYamlFiles(env string) {
 
 func (l *Loader) loadEnvFiles(env string) {
 	envFiles := []string{
-		filepath.Join("..", "..", "shared", "internal", "config", env),
+		filepath.Join("..", "..", "shared", "internal", "configs", env),
 		filepath.Join(".", env),
 	}
 

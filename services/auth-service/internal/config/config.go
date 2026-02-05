@@ -1,7 +1,12 @@
 package config
 
 import (
+	"Donate_backend/shared/internal/configs"
 	"time"
+)
+
+const (
+	AuthServiceName = "auth"
 )
 
 type Config struct {
@@ -42,7 +47,7 @@ type Postgres struct {
 }
 
 type Server struct {
-	Host              string        `yaml:"host" env:"SERVER_HOST"` //TODO: где и зачем указываем префиксы в viper.SetEnvPrefix ? в самом env или yaml добавляем префикс?
+	Host              string        `yaml:"host" env:"SERVER_HOST"`
 	Port              int           `yaml:"port" env:"PORT"`
 	MaxConnections    *int          `yaml:"max_connections" env:"MAX_CONNECTIONS" env-default:"10"`
 	MinConnections    *int          `yaml:"min_connections" env:"MIN_CONNECTIONS" env-default:"1"`
@@ -51,6 +56,6 @@ type Server struct {
 	HealthCheckPeriod time.Duration `yaml:"health_check_period" env:"HEALTH_CHECK_PERIOD" env-default:"5m"`
 }
 
-//func LoadConfig() (*Config, error) {
-//v := viper.New()
-//}
+func LoadConfig() (*Config, error) {
+	configs.NewViperLoader
+}

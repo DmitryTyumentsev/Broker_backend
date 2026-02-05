@@ -7,7 +7,7 @@ type Config struct {
 }
 
 func LoadConfig() *Config {
-	viper.SetConfigFile("config.yaml")
+	viper.SetConfigFile("configs.yaml")
 	viper.
 	return &Config{
 
