@@ -1,7 +1,6 @@
 package config
 
 import (
-	"Donate_backend/shared/internal/configs"
 	"time"
 )
 
@@ -10,11 +9,11 @@ const (
 )
 
 type Config struct {
-	Env      string            `yaml:"env" env:"ENV"`
+	Env      string `yaml:"env" env:"ENV"`
 	Database `yaml:"database"` //TODO: правильно так или сделать Database *Database? как в памяти все это устроено чтобы было ниже потребление(сколько байт сейчас выделяется и сколько если *Database использовать? Как делать чтобы было удобнее использовать в дальнейшем в коде? Верно понимаю что только при запуске приложения один раз в текущей вариации каждый раз когда вызывается эта структура в любом файле проекта будет создаваться копия в памяти?
 	//Cache    `yaml:"cache"`
 	Server `yaml:"server"`
-}
+} //TODO: должны ли быть go.mod в каждом отдельном микросервисе? зачем они вообще нужны?
 
 type Database struct {
 	Postgres `yaml:"postgres"`
@@ -57,5 +56,5 @@ type Server struct {
 }
 
 func LoadConfig() (*Config, error) {
-	configs.NewViperLoader
+
 }
