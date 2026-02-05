@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/spf13/viper"
@@ -76,5 +77,7 @@ func (l *Loader) loadEnvFiles(env string) {
 }
 
 func (l *Loader) setupSettings() {
-
+	l.Viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_")) //TODO: зачем нужен реплэйсер? просто чтобы в env файле не было ключей с точкой?
+	l.Viper.SetEnvPrefix(l.ServiceName)
+	l.Viper.RegisterAlias()
 }
