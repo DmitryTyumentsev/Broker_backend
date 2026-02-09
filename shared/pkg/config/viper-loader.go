@@ -36,7 +36,7 @@ func NewViperLoader(cfgPtr interface{}, serviceName string) (*Loader, error) {
 
 	l.Viper.AutomaticEnv()
 
-	if err := viper.Unmarshal(l.ConfigService); err != nil {
+	if err := l.Viper.Unmarshal(l.ConfigService); err != nil {
 		return nil, fmt.Errorf("unable to decode into configService, %w", err)
 	}
 

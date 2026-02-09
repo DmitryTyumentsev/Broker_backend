@@ -60,7 +60,7 @@ type Server struct {
 
 func LoadConfig() (*Config, error) {
 	const op = "config.LoadConfig"
-	var cfg *Config
+	cfg := new(Config)
 	loader, err := config.NewViperLoader(cfg, authServiceName)
 	log.Printf("cfg: %v, loader: %v", cfg, loader)
 	if err != nil {
