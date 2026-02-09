@@ -1,6 +1,7 @@
 package config
 
 import (
+	"Donate_backend/shared/pkg/config"
 	"time"
 )
 
@@ -57,5 +58,5 @@ type Server struct {
 
 func LoadConfig() (*Config, error) {
 	var cfg Config
-	return configs.NewViperLoader(cfg, authServiceName), nil
+	return config.NewViperLoader(cfg, authServiceName), nil
 }
