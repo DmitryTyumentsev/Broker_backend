@@ -2,6 +2,7 @@ package config
 
 import (
 	"Donate_backend/shared/pkg/config"
+	"fmt"
 	"time"
 )
 
@@ -57,6 +58,11 @@ type Server struct {
 }
 
 func LoadConfig() (*Config, error) {
+	const op = "config.LoadConfig"
 	var cfg Config
-	return config.NewViperLoader(cfg, authServiceName), nil
+	loader, err := config.NewViperLoader(cfg, authServiceName)
+	if err != nil {
+		return nil, fmt.Errorf("op: %s, err: %w", op, err)
+	}
+	return loader.ConfigService, nil
 }
