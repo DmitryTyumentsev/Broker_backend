@@ -62,9 +62,14 @@ func LoadConfig() (*Config, error) {
 	const op = "config.LoadConfig"
 	cfg := new(Config)
 	loader, err := config.NewViperLoader(cfg, authServiceName)
-	log.Printf("cfg: %v, loader: %v", cfg, loader)
+	log.Printf("cfg: %v, loader: %v", cfg, loader) //TODO: удалить после дебага
 	if err != nil {
 		return nil, fmt.Errorf("op: %s, err: %w", op, err)
 	}
-	return loader.ConfigService, nil
+
+	out, ok := loader.ConfigService.(*Config)
+	if !ok {
+		return nil, fmt.Errorf("op: %s, err: config is not of type *Config", op)
+	}
+	return out, nil
 }
