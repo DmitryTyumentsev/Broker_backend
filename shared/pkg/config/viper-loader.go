@@ -45,7 +45,7 @@ func NewViperLoader(cfgPtr interface{}, serviceName string) (*Loader, error) {
 
 func (l *Loader) loadYamlFiles(env string) {
 	yamlFiles := []string{
-		filepath.Join("..", "..", "shared", "internal", "configs", env),
+		filepath.Join(".", "..", "..", "shared", "internal", "configs", env),
 		filepath.Join(".", env),
 	}
 
@@ -54,7 +54,7 @@ func (l *Loader) loadYamlFiles(env string) {
 		v.SetConfigName(yamlFile)
 		v.SetConfigType("yaml")
 		if err := v.MergeInConfig(); err != nil {
-			log.Printf("loadYamlFiles, MergeInConfig is failed, err: %v", err)
+			log.Printf("loadYamlFiles, MergeInConfig is failed, yamlFile path: %s, err: %v", yamlFile, err)
 		}
 	}
 }
