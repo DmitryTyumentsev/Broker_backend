@@ -57,7 +57,6 @@ func (l *Loader) loadYamlFiles(env string) {
 			log.Printf("loadYamlFiles, MergeInConfig is failed, err: %v", err)
 		}
 	}
-	v.AutomaticEnv()
 }
 
 func (l *Loader) loadEnvFiles(env string) {
