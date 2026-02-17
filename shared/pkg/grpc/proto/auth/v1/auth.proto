@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package v1;
+
+service AuthService{
+  rpc Register(RegisterRequest) returns (AuthPair);
+  rpc Auth(AuthRequest) returns (AuthPair);
+}
+
+message RegisterRequest{
+  string email = 1;
+  string password = 2;
+  string username = 3;
+}
+
+message AuthRequest{
+  string username = 1;
+  string password = 2;
+}
+
+message AuthPair{
+  string access_token = 1;
+  string refresh_token = 2;
+  int64 expires_in_sec = 3;
+}
