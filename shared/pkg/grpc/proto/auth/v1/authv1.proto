@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package v1;
 
+option go_package = ".;authv1";
+
 service AuthService{
   rpc Register(RegisterRequest) returns(AuthPair);
   rpc Auth(AuthRequest) returns(AuthPair);
