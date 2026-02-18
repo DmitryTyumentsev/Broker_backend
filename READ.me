@@ -1,0 +1,78 @@
+===== Структура бэкенда =====
+
+donate-backend/
+├── .github/workflows/           # CI/CD для всех сервисов
+├── docker-compose.yml           # Локальная разработка всех сервисов
+├── k8s/                         # Production манифесты для всех
+├── scripts/                     # Общие скрипты
+│   ├── deploy.sh
+│   ├── test-all.sh
+│   └── generate-protos.sh
+├── shared/                      # ОБЩИЕ библиотеки (пакеты)
+│   ├── internal/               # Private пакеты
+│   │   ├── errors/
+│   │   ├── logging/
+│   │   ├── metrics/
+│   │   └── tracing/
+│   ├── pkg/                    # Public пакеты
+│   │   ├── config/            # Утилиты конфигурации
+│   │   ├── database/          # Обертки над БД
+│   │   ├── grpc/              # gRPC утилиты
+│   │   ├── kafka/             # Kafka producers/consumers
+│   │   └── cache/             # Redis/кеш утилиты
+│   └── protos/                 # gRPC/Protobuf определения
+│       ├── auth/
+│       ├── payment/
+│       └── notification/
+├── services/                    # МИКРОСЕРВИСЫ (каждый независим)
+│   ├── auth-service/           # Сервис 1
+│   │   ├── cmd/
+│   │   │   └── main.go        # Точка входа auth
+│   │   ├── internal/          # Private код auth
+│   │   │   ├── handler/
+│   │   │   ├── service/
+│   │   │   ├── repository/
+│   │   │   └── config/
+│   │   ├── configs/           # Конфиги auth
+│   │   │   ├── dev.yaml
+│   │   │   └── prod.yaml
+│   │   ├── migrations/        # Миграции auth БД
+│   │   ├── Dockerfile         # Свой Dockerfile
+│   │   ├── go.mod            # СВОИ зависимости!
+│   │   └── go.sum
+│   ├── payment-service/       # Сервис 2
+│   │   ├── cmd/
+│   │   │   └── main.go        # Точка входа payment
+│   │   ├── internal/          # Private код payment
+│   │   ├── configs/
+│   │   ├── migrations/
+│   │   ├── Dockerfile         # Свой Dockerfile
+│   │   ├── go.mod            # СВОИ зависимости!
+│   │   └── go.sum
+│   └── notification-service/  # Сервис 3
+│       ├── cmd/
+│       │   └── main.go        # Точка входа notification
+│       ├── internal/          # Private код notification
+│       ├── configs/
+│       ├── Dockerfile         # Свой Dockerfile
+│       ├── go.mod            # СВОИ зависимости!
+│       └── go.sum
+├── deployments/               # Развертывание
+│   ├── k8s/
+│   │   ├── base/             # Базовые Kustomize
+│   │   └── overlays/
+│   │       ├── dev/
+│   │       ├── staging/
+│   │       └── prod/
+│   └── terraform/            # Infrastructure as Code
+│       ├── modules/
+│       └── environments/
+└── tools/                    # Утилиты для разработки
+    ├── protoc-gen/          # Генераторы кода
+    ├── mock-gen/            # Генераторы моков
+    └── migration-gen/       # Генераторы миграций
+
+
+===== ЗАПУСК БЭКЕНДА =====
+
+===== ДОП ИНФО =====

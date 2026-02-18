@@ -1,1 +1,22 @@
 .idea
+# ===== общие =====
+# ----- папки -----
+go.mod
+
+# ----- файлы -----
+shared/internal/configs/dev.env
+shared/internal/configs/local.env
+shared/internal/configs/dev.yaml
+shared/internal/configs/local.yaml
+
+# ===== отдельно сервисы =====
+
+# ===== auth-service =====
+# ----- папки -----
+services/auth-service/go.mod
+
+# ----- файлы -----
+services/auth-service/configs/dev.env
+services/auth-service/configs/local.env
+services/auth-service/configs/dev.yaml
+services/auth-service/configs/local.yaml
