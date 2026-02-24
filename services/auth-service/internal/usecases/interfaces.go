@@ -6,25 +6,27 @@ import (
 )
 
 type UserRepository interface {
-	Create(ctx context.Context, u domain.User) error
+	Save(ctx context.Context, u domain.User) error
 	FindByEmail(ctx context.Context, email string) (domain.User, error)
-	FindByPasswordHash(ctx context.Context, passHash string) (domain.User, error)
+	FindByUsername(ctx context.Context, username string) (domain.User, error)
 }
 
-type RefreshTokenRepository interface {
-	Create(ctx context.Context, refreshHash string) error
-	Update(ctx context.Context, oldRefreshHash string) (RefreshHash string, err error)
+type SessionRepository interface {
+	Save(ctx context.Context, session domain.Session) error
+	Rotate(ctx context.Context, oldRefreshHash string) (newRefreshHash string, err error)
+	Revoke(ctx context.Context, refreshHash string) error
 }
 
-type AccessTokenManager interface {
+type AccessTokenService interface {
 	NewAccessToken(ctx context.Context, deviceID, userID, sessionID string) (accessToken string, err error)
 }
 
-type HasherPassword interface {
-	HashPassword(rawPassword string) (password string, err error)
+type PasswordService interface {
+	HashPassword(rawPassword string) (hashPassword string, err error)
+	Verify(rawPassword, hashPassword string) bool
 }
 
-type HasherToken interface {
-	HashRefreshToken(rawRefreshToken string) (refreshToken string, err error)
-	HashAccessToken(rawAccessToken string) (accessToken string, err error)
+type RefreshTokenService interface {
+	New() (rawRefresh string, err error)
+	Hash(rawRefreshToken string) (refreshToken string, err error)
 }
