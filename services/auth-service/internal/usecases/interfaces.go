@@ -11,17 +11,18 @@ type UserRepository interface {
 	FindByUsername(ctx context.Context, username string) (domain.User, error)
 }
 
-type SessionRepository interface {
+type RefreshSessionRepository interface {
 	Save(ctx context.Context, session domain.Session) error
+	FindByRefresh(ctx context.Context, refreshHash string) (domain.Session, error)
 	Rotate(ctx context.Context, oldRefreshHash string) (newRefreshHash string, err error)
 	Revoke(ctx context.Context, refreshHash string) error
 }
 
-type AccessTokenService interface {
-	NewAccessToken(ctx context.Context, deviceID, userID, sessionID string) (accessToken string, err error)
+type AccessTokenIssuer interface {
+	Issue(ctx context.Context, deviceID, userID, sessionID string) (accessToken string, err error)
 }
 
-type PasswordService interface {
+type PasswordHasher interface {
 	HashPassword(rawPassword string) (hashPassword string, err error)
 	Verify(rawPassword, hashPassword string) bool
 }
