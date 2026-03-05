@@ -5,9 +5,9 @@ package v1;
 option go_package = ".;authv1";
 
 service AuthService{
-  rpc Register(RegisterRequest) returns(AuthPair);
-  rpc Auth(AuthRequest) returns(AuthPair);
-  rpc Refresh(RefreshRequest) returns(AuthPair);
+  rpc Register(RegisterRequest) returns(TokenPairResponse);
+  rpc Auth(AuthRequest) returns(TokenPairResponse);
+  rpc Refresh(RefreshRequest) returns(TokenPairResponse);
   rpc Logout(RefreshRequest) returns(LogoutResponse);
 }
 
@@ -29,7 +29,7 @@ message RefreshRequest{
   string device_id = 2;
 }
 
-message AuthPair{
+message TokenPairResponse{
   string access_token = 1;
   string refresh_token = 2;
   int64 expires_in_sec = 3;

@@ -201,7 +201,7 @@ func (x *RefreshRequest) GetDeviceId() string {
 	return ""
 }
 
-type AuthPair struct {
+type TokenPairResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
 	RefreshToken  string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
@@ -210,20 +210,20 @@ type AuthPair struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AuthPair) Reset() {
-	*x = AuthPair{}
+func (x *TokenPairResponse) Reset() {
+	*x = TokenPairResponse{}
 	mi := &file_auth_v1_authv1_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AuthPair) String() string {
+func (x *TokenPairResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AuthPair) ProtoMessage() {}
+func (*TokenPairResponse) ProtoMessage() {}
 
-func (x *AuthPair) ProtoReflect() protoreflect.Message {
+func (x *TokenPairResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_auth_v1_authv1_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -235,26 +235,26 @@ func (x *AuthPair) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AuthPair.ProtoReflect.Descriptor instead.
-func (*AuthPair) Descriptor() ([]byte, []int) {
+// Deprecated: Use TokenPairResponse.ProtoReflect.Descriptor instead.
+func (*TokenPairResponse) Descriptor() ([]byte, []int) {
 	return file_auth_v1_authv1_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *AuthPair) GetAccessToken() string {
+func (x *TokenPairResponse) GetAccessToken() string {
 	if x != nil {
 		return x.AccessToken
 	}
 	return ""
 }
 
-func (x *AuthPair) GetRefreshToken() string {
+func (x *TokenPairResponse) GetRefreshToken() string {
 	if x != nil {
 		return x.RefreshToken
 	}
 	return ""
 }
 
-func (x *AuthPair) GetExpiresInSec() int64 {
+func (x *TokenPairResponse) GetExpiresInSec() int64 {
 	if x != nil {
 		return x.ExpiresInSec
 	}
@@ -329,19 +329,19 @@ const file_auth_v1_authv1_proto_rawDesc = "" +
 	"\tdevice_id\x18\x03 \x01(\tR\bdeviceId\"R\n" +
 	"\x0eRefreshRequest\x12#\n" +
 	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\x12\x1b\n" +
-	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\"x\n" +
-	"\bAuthPair\x12!\n" +
+	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\"\x81\x01\n" +
+	"\x11TokenPairResponse\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12$\n" +
 	"\x0eexpires_in_sec\x18\x03 \x01(\x03R\fexpiresInSec\"L\n" +
 	"\x0eLogoutResponse\x12\x1d\n" +
 	"\n" +
 	"all_device\x18\x01 \x01(\bR\tallDevice\x12\x1b\n" +
-	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId2\xc2\x01\n" +
-	"\vAuthService\x12-\n" +
-	"\bRegister\x12\x13.v1.RegisterRequest\x1a\f.v1.AuthPair\x12%\n" +
-	"\x04Auth\x12\x0f.v1.AuthRequest\x1a\f.v1.AuthPair\x12+\n" +
-	"\aRefresh\x12\x12.v1.RefreshRequest\x1a\f.v1.AuthPair\x120\n" +
+	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId2\xdd\x01\n" +
+	"\vAuthService\x126\n" +
+	"\bRegister\x12\x13.v1.RegisterRequest\x1a\x15.v1.TokenPairResponse\x12.\n" +
+	"\x04Auth\x12\x0f.v1.AuthRequest\x1a\x15.v1.TokenPairResponse\x124\n" +
+	"\aRefresh\x12\x12.v1.RefreshRequest\x1a\x15.v1.TokenPairResponse\x120\n" +
 	"\x06Logout\x12\x12.v1.RefreshRequest\x1a\x12.v1.LogoutResponseB\n" +
 	"Z\b.;authv1b\x06proto3"
 
@@ -359,20 +359,20 @@ func file_auth_v1_authv1_proto_rawDescGZIP() []byte {
 
 var file_auth_v1_authv1_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_auth_v1_authv1_proto_goTypes = []any{
-	(*RegisterRequest)(nil), // 0: v1.RegisterRequest
-	(*AuthRequest)(nil),     // 1: v1.AuthRequest
-	(*RefreshRequest)(nil),  // 2: v1.RefreshRequest
-	(*AuthPair)(nil),        // 3: v1.AuthPair
-	(*LogoutResponse)(nil),  // 4: v1.LogoutResponse
+	(*RegisterRequest)(nil),   // 0: v1.RegisterRequest
+	(*AuthRequest)(nil),       // 1: v1.AuthRequest
+	(*RefreshRequest)(nil),    // 2: v1.RefreshRequest
+	(*TokenPairResponse)(nil), // 3: v1.TokenPairResponse
+	(*LogoutResponse)(nil),    // 4: v1.LogoutResponse
 }
 var file_auth_v1_authv1_proto_depIdxs = []int32{
 	0, // 0: v1.AuthService.Register:input_type -> v1.RegisterRequest
 	1, // 1: v1.AuthService.Auth:input_type -> v1.AuthRequest
 	2, // 2: v1.AuthService.Refresh:input_type -> v1.RefreshRequest
 	2, // 3: v1.AuthService.Logout:input_type -> v1.RefreshRequest
-	3, // 4: v1.AuthService.Register:output_type -> v1.AuthPair
-	3, // 5: v1.AuthService.Auth:output_type -> v1.AuthPair
-	3, // 6: v1.AuthService.Refresh:output_type -> v1.AuthPair
+	3, // 4: v1.AuthService.Register:output_type -> v1.TokenPairResponse
+	3, // 5: v1.AuthService.Auth:output_type -> v1.TokenPairResponse
+	3, // 6: v1.AuthService.Refresh:output_type -> v1.TokenPairResponse
 	4, // 7: v1.AuthService.Logout:output_type -> v1.LogoutResponse
 	4, // [4:8] is the sub-list for method output_type
 	0, // [0:4] is the sub-list for method input_type

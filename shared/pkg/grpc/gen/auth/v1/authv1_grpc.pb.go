@@ -29,9 +29,9 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuthServiceClient interface {
-	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*AuthPair, error)
-	Auth(ctx context.Context, in *AuthRequest, opts ...grpc.CallOption) (*AuthPair, error)
-	Refresh(ctx context.Context, in *RefreshRequest, opts ...grpc.CallOption) (*AuthPair, error)
+	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*TokenPairResponse, error)
+	Auth(ctx context.Context, in *AuthRequest, opts ...grpc.CallOption) (*TokenPairResponse, error)
+	Refresh(ctx context.Context, in *RefreshRequest, opts ...grpc.CallOption) (*TokenPairResponse, error)
 	Logout(ctx context.Context, in *RefreshRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
 }
 
@@ -43,9 +43,9 @@ func NewAuthServiceClient(cc grpc.ClientConnInterface) AuthServiceClient {
 	return &authServiceClient{cc}
 }
 
-func (c *authServiceClient) Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*AuthPair, error) {
+func (c *authServiceClient) Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*TokenPairResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AuthPair)
+	out := new(TokenPairResponse)
 	err := c.cc.Invoke(ctx, AuthService_Register_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -53,9 +53,9 @@ func (c *authServiceClient) Register(ctx context.Context, in *RegisterRequest, o
 	return out, nil
 }
 
-func (c *authServiceClient) Auth(ctx context.Context, in *AuthRequest, opts ...grpc.CallOption) (*AuthPair, error) {
+func (c *authServiceClient) Auth(ctx context.Context, in *AuthRequest, opts ...grpc.CallOption) (*TokenPairResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AuthPair)
+	out := new(TokenPairResponse)
 	err := c.cc.Invoke(ctx, AuthService_Auth_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -63,9 +63,9 @@ func (c *authServiceClient) Auth(ctx context.Context, in *AuthRequest, opts ...g
 	return out, nil
 }
 
-func (c *authServiceClient) Refresh(ctx context.Context, in *RefreshRequest, opts ...grpc.CallOption) (*AuthPair, error) {
+func (c *authServiceClient) Refresh(ctx context.Context, in *RefreshRequest, opts ...grpc.CallOption) (*TokenPairResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AuthPair)
+	out := new(TokenPairResponse)
 	err := c.cc.Invoke(ctx, AuthService_Refresh_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -87,9 +87,9 @@ func (c *authServiceClient) Logout(ctx context.Context, in *RefreshRequest, opts
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
 type AuthServiceServer interface {
-	Register(context.Context, *RegisterRequest) (*AuthPair, error)
-	Auth(context.Context, *AuthRequest) (*AuthPair, error)
-	Refresh(context.Context, *RefreshRequest) (*AuthPair, error)
+	Register(context.Context, *RegisterRequest) (*TokenPairResponse, error)
+	Auth(context.Context, *AuthRequest) (*TokenPairResponse, error)
+	Refresh(context.Context, *RefreshRequest) (*TokenPairResponse, error)
 	Logout(context.Context, *RefreshRequest) (*LogoutResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
@@ -101,13 +101,13 @@ type AuthServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedAuthServiceServer struct{}
 
-func (UnimplementedAuthServiceServer) Register(context.Context, *RegisterRequest) (*AuthPair, error) {
+func (UnimplementedAuthServiceServer) Register(context.Context, *RegisterRequest) (*TokenPairResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Register not implemented")
 }
-func (UnimplementedAuthServiceServer) Auth(context.Context, *AuthRequest) (*AuthPair, error) {
+func (UnimplementedAuthServiceServer) Auth(context.Context, *AuthRequest) (*TokenPairResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Auth not implemented")
 }
-func (UnimplementedAuthServiceServer) Refresh(context.Context, *RefreshRequest) (*AuthPair, error) {
+func (UnimplementedAuthServiceServer) Refresh(context.Context, *RefreshRequest) (*TokenPairResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Refresh not implemented")
 }
 func (UnimplementedAuthServiceServer) Logout(context.Context, *RefreshRequest) (*LogoutResponse, error) {
