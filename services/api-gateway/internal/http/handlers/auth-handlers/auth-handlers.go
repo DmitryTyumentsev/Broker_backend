@@ -8,10 +8,14 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func (h *handlers.Handlers) Register(c *fiber.Ctx) error {
+type AuthHandler struct {
+	h *handlers.Handlers //TODO: почему я не могу указать в ресивере ниже только поле h, а не тянуть всю структуру?
+}
+
+func (h *AuthHandler) Register(c *fiber.Ctx) error { //TODO: почему я могу h *handlers.Handlers передать на вход, но если передаю как ресивер компилятор просит объявить в этом пакете структуру? не понимаю зачем это правило
 	var req dto.RegisterUserRequest
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString(errors.ErrWrongCredentials.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(errors.ErrWrongCredentials.Error())
 	}
 
 	return nil
