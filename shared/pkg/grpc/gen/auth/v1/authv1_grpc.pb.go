@@ -118,7 +118,7 @@ func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     
 
 // UnsafeAuthServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to AuthServiceServer will
-// result in compilation errors.
+// result in compilation httperr.
 type UnsafeAuthServiceServer interface {
 	mustEmbedUnimplementedAuthServiceServer()
 }

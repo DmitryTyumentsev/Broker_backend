@@ -3,7 +3,7 @@ package authhandlers
 import (
 	"Donate_backend/services/apigateway/internal/clients/authclient"
 	"Donate_backend/services/apigateway/internal/http/dto"
-	"Donate_backend/services/apigateway/internal/http/errors"
+	"Donate_backend/services/apigateway/internal/http/httperr"
 	"Donate_backend/services/authservice/internal/config"
 	authv1 "Donate_backend/shared/pkg/grpc/gen/auth/v1"
 
@@ -19,7 +19,7 @@ type AuthHandler struct {
 func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	var req dto.RegisterRequest
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(errors.ErrWrongCredentials.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(httperr.ErrWrongCredentials.Error())
 	}
 
 	ctx := c.UserContext()
