@@ -1,19 +1,19 @@
 package dto
 
-type RegisterUserRequest struct {
+type RegisterRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Username string `json:"username"`
+	DeviceID string `json:"device_id"`
 }
 
-type LoginUserRequest struct {
+type LoginRequest struct {
 	Identifier string `json:"Identifier"`
 	Password   string `json:"password"`
 }
 
 type TokenPairResponse struct {
-	Code         int32  `json:"code"`
-	Message      string `json:"message"` //TODO: я должен 2 json отдавать или один? допустим при регистрации, надо вернуть все 4 поля. А при refresh последние 2. А при logout первые 2
 	Access       string `json:"access"`
+	Refresh      string `json:"refresh"`
 	ExpiresInSec int64  `json:"expires_in_sec"`
 }
