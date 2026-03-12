@@ -12,11 +12,16 @@ const (
 )
 
 type Config struct {
+	Business `mapstructure:"database" yaml:"database"`
 	//TODO: верный ли подход задавать через переменные окружения environment?
 	Database `mapstructure:"database" yaml:"database"` //TODO: правильно так или сделать Database *Database? как в памяти все это устроено чтобы было ниже потребление(сколько байт сейчас выделяется и сколько если *Database использовать? Как делать чтобы было удобнее использовать в дальнейшем в коде? Верно понимаю что только при запуске приложения один раз в текущей вариации каждый раз когда вызывается эта структура в любом файле проекта будет создаваться копия в памяти?
 	//Cache    `yaml:"cache"`
 	Server `mapstructure:"server" yaml:"server"` //TODO: есть ли разница в порядке тегов тут? можно ставить вторым mapstructure или обязательным первым? есть ли приоритетность какая-то в этом?
 } //TODO: должны ли быть go.mod в каждом отдельном микросервисе? зачем они вообще нужны?
+
+type Business struct {
+	ContextTimeout time.Duration `mapstructure:"context_timeout" yaml:"context_timeout"`
+}
 
 type Database struct {
 	Postgres `mapstructure:"postgres" yaml:"postgres"` //TODO: почему mapstructure копирует yaml? зачем вообще нужен mapstructure? вот есть у нас внутренняя мапа вайпера в которую он собрал данные из yaml, env, переменных окружения. он ее парсит по этим тегам? соотносит что ключ во внутренней мапе и в mapstructure совпал, поэтому записывает значение?

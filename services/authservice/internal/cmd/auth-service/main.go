@@ -1,7 +1,7 @@
 package main
 
 import (
-	"Donate_backend/services/auth-service/internal/config"
+	"Donate_backend/services/authservice/internal/config"
 	"fmt"
 	"log"
 )

@@ -1,7 +1,7 @@
 package usecases
 
 import (
-	"Donate_backend/services/auth-service/internal/domain"
+	"Donate_backend/services/authservice/internal/domain"
 	"context"
 )
 

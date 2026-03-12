@@ -11,7 +11,7 @@ shared/internal/configs/local.yaml
 
 # ===== отдельно сервисы =====
 
-# ===== auth-service =====
+# ===== authclient =====
 # ----- папки -----
 services/auth-service/go.mod
 
