@@ -1,4 +1,4 @@
-package dto
+package authdto
 
 type RegisterRequest struct {
 	Email    string `json:"email"`
@@ -8,7 +8,7 @@ type RegisterRequest struct {
 }
 
 type LoginRequest struct {
-	Identifier string `json:"Identifier"`
+	Identifier string `json:"identifier"`
 	Password   string `json:"password"`
 }
 
