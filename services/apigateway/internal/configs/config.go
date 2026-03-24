@@ -1,4 +1,4 @@
-package config
+package configs
 
 import (
 	"Donate_backend/shared/pkg/config"
@@ -34,12 +34,12 @@ func LoadConfig() (*Config, error) {
 	const op = "config.LoadConfig"
 	cfg := new(Config)
 	loader, err := config.NewViperLoader(cfg, apigatewayServiceName)
-	log.Printf("cfg: %v, loader: %v", cfg, loader)
+	log.Printf("cfg: %v, loader: %v", *cfg, *loader)
 	if err != nil {
 		return nil, fmt.Errorf("op: %s, err: %w", op, err)
 	}
 
-	out, ok := loader.ConfigService.(*Config) //TODO: а как они вообще совпадут? зачем эта проверка?
+	out, ok := loader.ConfigService.(*Config) //TODO: а зачем эта проверка? как оно может не совпать? или это просто подстраховка?
 	if !ok {
 		return nil, fmt.Errorf("op: %s, err: config is not of type *Config", op)
 	}
