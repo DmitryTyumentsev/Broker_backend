@@ -6,16 +6,20 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func SetupRouter(app *fiber.App, h *handlers.Deps) {
+func SetupRouter(app *fiber.App, h *handlers.Deps) *fiber.App {
 	api := app.Group("/api")
 
 	//=====GLOBAL MIDDLEWARES=====
 
 	//=====api/v1=====
 	v1 := api.Group("/v1")
-	v1.Post("/register", h.Auth)
-	v1.Post("/login", h.Login)
-	v1.Post("/refresh", h.Refresh)
-	v1.Post("/logout", h.Logout)
 
+	//=====authservice=====
+	auth := v1.Group("/auth")
+	auth.Post("/register", h.Auth.Register)
+	auth.Post("/login", h.Auth.Login)
+	auth.Post("/refresh", h.Auth.Refresh)
+	auth.Post("/logout", h.Auth.Logout)
+
+	return app
 }

@@ -11,7 +11,7 @@ import (
 
 type AuthHandler struct {
 	logger     *zap.Logger
-	authclient authclient.Client
+	authclient *authclient.Client
 }
 
 func (h *AuthHandler) Register(c *fiber.Ctx) error {

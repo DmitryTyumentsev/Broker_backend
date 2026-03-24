@@ -1,7 +1,6 @@
 package authclient
 
 import (
-	"Donate_backend/services/authservice/internal/config"
 	authv1 "Donate_backend/shared/pkg/grpc/gen/auth/v1"
 	"context"
 )
