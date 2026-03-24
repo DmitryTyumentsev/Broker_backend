@@ -7,6 +7,6 @@ type ErrorResponse struct {
 }
 
 type field struct {
-	Field  string `json:"field"`
-	Reason string `json:"reason"`
+	Field   string `json:"field"`
+	Message string `json:"message"`
 }

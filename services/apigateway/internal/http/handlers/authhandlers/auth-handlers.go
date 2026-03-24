@@ -7,43 +7,56 @@ import (
 	authv1 "Donate_backend/shared/pkg/grpc/gen/auth/v1"
 
 	"github.com/gofiber/fiber/v2"
+	"google.golang.org/grpc"
 )
 
 type AuthHandler struct {
 	logger     *zap.Logger
 	authclient *authclient.Client
+	validator  *validate.Validator
+}
+
+func NewAuthHandler(lg *zap.Logger, client *authclient.Client, validator *validatate.Validator) *AuthHandler {
+	return &AuthHandler{
+		logger:     lg,
+		authclient: client,
+		validator:  validator}
 }
 
 func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	var req authdto.RegisterRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(httperr.ErrWrongCredentials.Error())
-	}
 
-	ctx := c.UserContext()
-	grpcReq := convertHTTPToGRPCRegister(&req)
-	grpcResp, err := h.authclient.Register(ctx, grpcReq)
+	err := c.BodyParser(&req)
 	if err != nil {
+		return WriteGRPCError(err)
+	}
+	if err = h.Validator.Struct(req); err != nil {
+		return WriteGRPCError(err)
+	}
+	ctx := c.UserContext()
+	grpcReq := httpToGRPCRegister(req)
+	grpcResp, err := h.Client.Register(ctx, grpcReq)
+	if err != nil {
+		return httperr.WriteGrpcError(ctx, err)
 	}
 
-	resp := convertGRPCToHTTPTokenPairs(grpcResp)
-	setCookie(resp)
-	return c.JSON(resp)
+	resp := grpcToHTTPRegister(grpcResp)
+	// —тут setRefreshCookie и дальше
+	return c.Status(fiber.StatusCreate).JSON(authdto.TokenPairResponse{Access: grpc.Resp, ExpiresInSec: grpc.ExpiresInSec})
 }
 
-func convertHTTPToGRPCRegister(req *authdto.RegisterRequest) *authv1.RegisterRequest {
+func httpToGRPCRegister(req authdto.RegisterRequest) *authv1.RegisterRequest {
 	return &authv1.RegisterRequest{
 		Email:    req.Email,
-		Password: req.Password,
+		Pass:     req.Pass,
 		Username: req.Username,
-		DeviceId: req.DeviceID,
+		DeviceID: req.DeviceID,
 	}
 }
 
-func convertGRPCToHTTPTokenPairs(resp *authv1.TokenPairResponse) *authdto.TokenPairResponse {
+func grpcToHTTPRegister(resp *authv1.TokenPairResponse) *authdto.TokenPairResponse {
 	return &authdto.TokenPairResponse{
-		Access:       resp.AccessToken,
-		Refresh:      resp.RefreshToken,
+		Access:       resp.Access,
 		ExpiresInSec: resp.ExpiresInSec,
 	}
 }

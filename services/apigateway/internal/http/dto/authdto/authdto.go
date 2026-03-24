@@ -1,15 +1,16 @@
 package authdto
 
 type RegisterRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Username string `json:"username"`
-	DeviceID string `json:"device_id"`
+	Email    string `json:"email" validate:"required,email,max=255"`
+	Password string `json:"password" validate:"required,min=8,max=72"`
+	Username string `json:"username" validate:"required,min=8,max=72"`
+	DeviceID string `json:"device_id" validate:"required,min=2,max=100"`
 }
 
 type LoginRequest struct {
-	Identifier string `json:"identifier"`
-	Password   string `json:"password"`
+	Identifier string `json:"identifier" validate:"required,min=2,max=255"`
+	Password   string `json:"password" validate:"required,min=2,max=255"`
+	DeviceID   string `json:"device_id" validate:"required"`
 }
 
 type TokenPairResponse struct {

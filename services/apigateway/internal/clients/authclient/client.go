@@ -1,16 +1,17 @@
 package authclient
 
 import (
+	"Donate_backend/services/apigateway/internal/configs"
 	authv1 "Donate_backend/shared/pkg/grpc/gen/auth/v1"
 	"context"
 )
 
 type Client struct {
 	auth   authv1.AuthServiceClient
-	config *config.Config
+	config *configs.Config
 }
 
-func NewClient(auth authv1.AuthServiceClient, cfg *config.Config) *Client {
+func NewClient(auth authv1.AuthServiceClient, cfg *configs.Config) *Client {
 	return &Client{auth: auth, config: cfg}
 }
 

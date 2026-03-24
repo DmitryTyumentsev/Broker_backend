@@ -34,7 +34,7 @@ func LoadConfig() (*Config, error) {
 	const op = "config.LoadConfig"
 	cfg := new(Config)
 	loader, err := config.NewViperLoader(cfg, apigatewayServiceName)
-	log.Printf("cfg: %v, loader: %v", *cfg, *loader)
+	log.Printf("cfg: %v, loader: %v", *cfg, *loader) //TODO: горит желтым *loader, что не так? я же хочу взять данные экземпляра структуры а не данные адреса(указателя). Почему cfg тогда не горит желтым?
 	if err != nil {
 		return nil, fmt.Errorf("op: %s, err: %w", op, err)
 	}
