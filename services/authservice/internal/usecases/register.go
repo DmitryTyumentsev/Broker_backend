@@ -12,7 +12,7 @@ import (
 
 func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPairResponse, error) {
 	const op = "usecase.Register"
-	if err := validateRegister(req); err != nil {
+	if err := validateRegisterInput(req); err != nil {
 		return nil, fmt.Errorf("validate error %w", err)
 	}
 
@@ -74,15 +74,26 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 	}, nil
 }
 
-func validateRegister(req *RegisterRequest) (err error) {
-	if !validators.IsEmail(req.Email) {
-		return err
+func validateRegisterInput(req *RegisterRequest) (err error) {
+	if req.Email == "" { //TODO: можно ли улучшить код или тут лучшее решение все через if писать?
+		return ErrEmailRequired
 	}
-	if !validators.IsPassword(req.Password) {
-		return err
+	if !validators.IsEmail(req.Email) {
+		return ErrEmailInvalid
+	}
+
+	if req.Password == "" {
+		return ErrPassRequired
+	}
+	if !validators.IsStrongPassword(req.Password) {
+		return ErrPassEasy
+	}
+
+	if req.Username == "" {
+		return ErrUsernameRequired
 	}
 	if !validators.IsUsername(req.Username) {
-		return err
+		return ErrUsernameInvalid
 	}
 	return nil
 }
