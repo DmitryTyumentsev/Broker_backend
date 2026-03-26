@@ -6,43 +6,10 @@ import (
 )
 
 func IsStrongPassword(password string) bool {
-
-}
-
-func isValidUsername(username string) bool {
-	// Для login/публичного имени лучше иметь узкие и понятные правила.
-	// Потом будет меньше боли в поиске, индексах, URL и UI.
-	if username == "" {
+	if len(password) > 72 {
 		return false
 	}
 
-	runes := utf8.RuneCountInString(username)
-	if runes < 3 || runes > 32 {
-		return false
-	}
-
-	for _, r := range username {
-		switch {
-		case r >= 'a' && r <= 'z':
-		case r >= '0' && r <= '9':
-		case r == '_' || r == '.':
-		default:
-			return false
-		}
-	}
-
-	return true
-}
-
-func isStrongEnoughPassword(password string) bool {
-	// bcrypt работает максимум с 72 байтами.
-	// Лучше отрезать слишком длинные значения сразу на валидации.
-	if len(password) == 0 || len(password) > 72 {
-		return false
-	}
-
-	// По rune, а не по byte — чтобы длина для пользователя
-	// считалась более ожидаемо.
 	if utf8.RuneCountInString(password) < 8 {
 		return false
 	}
@@ -51,7 +18,10 @@ func isStrongEnoughPassword(password string) bool {
 	var hasUpper bool
 	var hasDigit bool
 
-	for _, r := range password {
+	for _, r := range password { //TODO: почему password перевелся в руны? как работает uft8.RuneCountInString? расскажи структурно
+		// какие есть кодировки самые основные, чем отличаются, в какой из кодировок лежат руны, чем отличаются руны от байтов,
+		//почему руны это int32, сколько рун в английском, русском языках, символы типа _-=+.?/"';:,[]{}&%$#@!><   .
+		//Второй вопрос -как работает IsDigit? это и есть проверка на английкий язык?
 		switch {
 		case unicode.IsLower(r):
 			hasLower = true

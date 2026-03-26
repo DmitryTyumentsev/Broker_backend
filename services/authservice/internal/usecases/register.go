@@ -13,7 +13,12 @@ import (
 func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPairResponse, error) {
 	const op = "usecase.Register"
 	if err := validateRegisterInput(req); err != nil {
-		return nil, fmt.Errorf("validate error %w", err)
+		s.logger.Warning{ //TODO: как пишут в запе? как логируют? строкой или структурой и как?
+			op: op,
+			err: err,
+			reason: "register input is invalid",
+		}
+		return nil, fmt.Errorf("op: %s, validate error: %w", op, err)
 	}
 
 	passHash, err := s.passHasher.Hash(req.Password)
