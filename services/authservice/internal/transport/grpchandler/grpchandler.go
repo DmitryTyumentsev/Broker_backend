@@ -1,36 +1,36 @@
 package grpchandler
 
 import (
+	"Donate_backend/services/authservice/internal/usecases"
 	authv1 "Donate_backend/shared/pkg/grpc/gen/auth/v1"
 	"context"
 )
 
 type Handler struct {
 	authv1.UnimplementedAuthServiceServer
-	app *usecase.Service
+	service *usecases.Service
 }
 
-func NewHandler(app *usecase.Service) *Handler {
+func NewHandler(service *usecases.Service) *Handler {
 	return &Handler{
-		app: app}
+		service: service,
+	}
 }
 
 func (h *Handler) Register(ctx context.Context, req *authv1.RegisterRequest) (*authv1.TokenPairResponse, error) {
-	reqCMD := usecase.RegisterRequest{ //TODO: есть метод у которого есть ресивер. Допустим как в этой строчке я хочу его вызвать в каком-то
-		// другом методе. Вызывать нужно по пакету или по ресиверу? функции понятно что по пакетам а методы у которых есть ресивер?
-		//всегда по ресиверу или есть исключения когда надо по пакету?
+	reqCMD := &usecases.RegisterRequest{ //TODO: так и принято что cmd структуры лежат в usecase? я вообще не понимаю логику делать отдельно cmd структуры. Тебе что так что при dto надо менять код, не понимаю профит все равно. Пока выглядит как просто лишний кусок кода
 		Email:    req.Email,
-		Pass:     req.Pass,
+		Password: req.Password,
 		Username: req.Username,
-		DeviceID: req.DeviceID,
+		DeviceID: req.DeviceId,
 	}
-	res, err := h.app.Register(ctx, req)
+	res, err := h.service.Register(ctx, reqCMD)
 	if err != nil {
 		return nil, mapError(err)
 	}
 	return &authv1.TokenPairResponse{
-		Access:       res.Access,
-		Refresh:      res.Refresh,
+		AccessToken:  res.Access,
+		RefreshToken: res.Refresh,
 		ExpiresInSec: res.ExpiresInSec,
 	}, nil
 }

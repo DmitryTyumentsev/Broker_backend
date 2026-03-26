@@ -1,8 +1,6 @@
 package usecases
 
 import (
-	"Donate_backend/services/authservice/internal/config"
-	"Donate_backend/services/authservice/internal/domain"
 	"Donate_backend/services/authservice/internal/domain/entity"
 	"context"
 	"fmt"
@@ -10,33 +8,8 @@ import (
 	"github.com/google/uuid"
 )
 
-type Service struct {
-	userRepo     domain.UserRepository
-	refSessRepo  domain.RefreshSessionRepository
-	accessIssier domain.AccessTokenIssuer
-	passHasher   domain.PassHasher
-	refService   domain.RefreshTokenService
-	clock        domain.Clock
-	config       *config.Config
-	logger       *zap.Logger
-}
-
-func NewService(userRepo domain.UserRepository, refSessRepo domain.RefreshSessionRepository, accessIssier domain.AccessTokenIssuer,
-	passHasher domain.PassHasher, refService domain.RefreshTokenService, clock domain.Clock, config *config.Config, logger *zap.Logger) *Service {
-	return &Service{
-		userRepo:     userRepo,
-		refSessRepo:  refSessRepo,
-		accessIssier: accessIssier,
-		passHasher:   passHasher,
-		refService:   refService,
-		clock:        clock,
-		config:       config,
-		logger:       logger,
-	}
-}
-
 type RegisterRequest struct {
-	Email, Pass, Username string
+	Email, Password, Username, DeviceID string
 }
 
 type TokenPairResponse struct {
@@ -49,16 +22,18 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 	if err := validateRegister(req); err != nil {
 		return nil, fmt.Errorf("validate error %w", err)
 	}
-	passHash, err := s.passHasher.Hash(req.Pass)
+	passHash, err := s.passHasher.Hash(req.Password)
 	user := &entity.User{
 		ID:       uuid.NewString(),
 		Email:    req.Email,
 		PassHash: passHash,
 		Username: req.Username,
 	}
+
 	if err := s.userRepo.Save(ctx, user); err != nil {
 		return nil, fmt.Errorf("couldn’t save user, err: %w, op: %s %w", err, op)
 	} //TODO: хорошая ли практика в ошибки писать op всегда когда есть err в методе/функции? есть ли в этом смысл вообще?
+
 	rawRefresh, err := s.refService.New()
 	if err != nil {
 		return nil, mapError(err)
@@ -68,6 +43,7 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 	if err != nil {
 		return nil, mapError(err)
 	}
+
 	now := s.clock.Now()
 	session := entity.RefreshSession{
 		Hash:           hashRefresh,
@@ -82,6 +58,7 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 	if err := s.refSessRepo.Save(ctx, session); err != nil {
 		return nil, mapError(err)
 	}
+
 	accessToken, err := s.accessIssier.Issue(user.ID, req.DeviceID)
 	if err != nil {
 		return nil, mapError(err)
@@ -95,6 +72,7 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 		//и браузер клиента будет сохранять это себе в session storage например,
 		//так же принято на реальных проектах high load в рф?
 	}
+
 	return &TokenPairResponse{
 		Access:       tokenPair.access,
 		Refresh:      tokenPair.refresh,
@@ -112,7 +90,7 @@ func validateRegister(req *RegisterRequest) error {
 		//что нам бд вернула ошибку, и мы в доменном слое ее хотим преобразовать и вернуть. Надо ли вообще err передавать с уровня ниже
 		//(думаю что да, но тогда как верно это сделать?)
 	}
-	if res := validate.PassDefault(req.Pass, 8, 72); res == false {
+	if res := validate.PassDefault(req.Password, 8, 72); res == false {
 		return errorResponse{}
 	}
 	if res := validate.Username(req.Username, 2, 50); res == false {

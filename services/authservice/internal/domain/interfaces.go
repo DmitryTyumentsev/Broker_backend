@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"Donate_backend/services/authservice/internal/domain/entity"
 	"context"
 	"time"
 )
@@ -22,7 +23,7 @@ type AccessTokenIssuer interface {
 	Issue(userID, deviceID string) (accessToken string, err error)
 }
 
-type PassHasher interface {
+type PasswordHasher interface {
 	Hash(rawPass string) (hashPass string, err error)
 	Verify(hashPass, rawPass string) bool
 }

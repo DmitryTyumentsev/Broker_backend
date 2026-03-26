@@ -2,6 +2,7 @@ package users
 
 import (
 	"Donate_backend/services/authservice/internal/domain/entity"
+	postgres2 "Donate_backend/services/authservice/internal/infra/repositories/postgres"
 	"Donate_backend/services/authservice/internal/repositories/postgres"
 	"context"
 	"errors"
@@ -12,10 +13,10 @@ import (
 )
 
 type Database struct {
-	pg *postgres.Postgres
+	pg *postgres2.Postgres
 }
 
-func NewDatabase(pg *postgres.Postgres) *Database {
+func NewDatabase(pg *postgres2.Postgres) *Database {
 	return &Database{
 		pg: pg,
 	}

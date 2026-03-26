@@ -2,6 +2,7 @@ package main
 
 import (
 	"Donate_backend/services/authservice/internal/config"
+	"Donate_backend/services/authservice/internal/transport/grpchandler"
 	"fmt"
 	"log"
 )
@@ -11,7 +12,14 @@ func main() {
 	if err != nil {
 		log.Fatalln("config not setup err: %w", err)
 	}
-	fmt.Printf("config is setup, value: %v", cfg)
+	fmt.Printf("config is setup, value: %v", *cfg)
 
-	//ctx := context.Background()
+	//logger
+	//ctx
+	//postgres
+	//redis
+	//usecases
+	//domain
+	//transport
+	handler := grpchandler.NewHandler(service)
 }
