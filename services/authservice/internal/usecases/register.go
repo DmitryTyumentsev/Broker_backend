@@ -8,15 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type RegisterRequest struct {
-	Email, Password, Username, DeviceID string
-}
-
-type TokenPairResponse struct {
-	Access, Refresh string
-	ExpiresInSec    int64
-}
-
 func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPairResponse, error) {
 	const op = "usecase.Register"
 	if err := validateRegister(req); err != nil {

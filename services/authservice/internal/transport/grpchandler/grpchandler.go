@@ -29,8 +29,8 @@ func (h *Handler) Register(ctx context.Context, req *authv1.RegisterRequest) (*a
 		return nil, mapError(err)
 	}
 	return &authv1.TokenPairResponse{
-		AccessToken:  res.Access,
-		RefreshToken: res.Refresh,
+		AccessToken:  res.AccessToken,
+		RefreshToken: res.RefreshToken,
 		ExpiresInSec: res.ExpiresInSec,
 	}, nil
 }
