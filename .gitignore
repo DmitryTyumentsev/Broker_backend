@@ -4,10 +4,10 @@
 go.mod
 
 # ----- файлы -----
-shared/internal/configs/dev.env
-shared/internal/configs/local.env
-shared/internal/configs/dev.yaml
-shared/internal/configs/local.yaml
+shared/configs/dev.env
+shared/configs/local.env
+shared/configs/dev.yaml
+shared/configs/local.yaml
 
 # ===== отдельно сервисы =====
 
