@@ -6,6 +6,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type Database struct {
@@ -21,20 +24,18 @@ func NewDatabase(pg *postgres.Postgres) *Database {
 func (db *Database) Save(ctx context.Context, user entity.User) error {
 	const op = "users.Save()"
 	query := `insert into users(email, pass, username) VALUES ($1, $2, $3)`
-	//TODO: обязательно ли писать капсом запрос? и второй вопрос - чаще пользуются pg4admin,
-	//dbeaver или cmd чтобы посмотреть что там в базе по итогу? и третий вопрос - в базах есть инкременты.
-	err := db.pg.Pool.WriteWithTimeout(ctx, query)
+	err := db.pg.WriteWithTimeout(ctx, query)
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, pgErr) {
+		pgErr := new(pgconn.PgError)
+		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
-			case pgerror.NotNullViolation: //TODO: поправить пакет
+			case pgerrcode.NotNullViolation: //TODO: поправить пакет
 				return postgres.ErrNotNullViolation
-			case pgerror.ForeignKeyViolation:
+			case pgerrcode.ForeignKeyViolation:
 				return postgres.ErrForeignKeyViolation
-			case pgerror.ErrInvalidViolation:
+			case pgerrcode.ErrInvalidViolation:
 				return postgres.ErrInvalidViolation
-			case pgerror.ErrTypeViolation:
+			case pgerrcode.ErrTypeViolation:
 				return postgres.ErrTypeViolation
 			default:
 				return fmt.Errorf("pgxerror, err: %w, query: %s", err, query)
