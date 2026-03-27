@@ -19,13 +19,13 @@ type RefreshSessionRepository interface {
 	FindByHash(ctx context.Context, refreshHash string) (entity.RefreshSession, error)
 }
 
-type AccessTokenIssuer interface {
-	Issue(userID, deviceID string) (accessToken string, err error)
-}
-
 type PasswordHasher interface {
 	Hash(rawPass string) (hashPass string, err error)
 	Verify(hashPass, rawPass string) bool
+}
+
+type AccessTokenIssuer interface {
+	Issue(userID, deviceID string) (accessToken string, err error)
 }
 
 type RefreshTokenService interface {
