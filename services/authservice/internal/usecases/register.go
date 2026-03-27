@@ -11,7 +11,7 @@ import (
 )
 
 func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPairResponse, error) {
-	const op = "usecase.Register"
+	const op = "usecases.Register"
 	if err := validateRegisterInput(req); err != nil {
 		s.logger.Warning{ //TODO: как пишут в запе? как логируют? строкой или структурой и как?
 			op: op,
@@ -21,7 +21,7 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 		return nil, fmt.Errorf("op: %s, validate error: %w", op, err)
 	}
 
-	passHash, err := s.passHasher.Hash(req.Password)
+	passHash, err := s.passHasher.Hash(req.Password) //TODO: goland ide. Я хочу посмотреть как работает метод Hash - меня кидает на интерфейс в котором объявлен этот метод
 	user := &entity.User{
 		ID:       uuid.NewString(),
 		Email:    req.Email,
