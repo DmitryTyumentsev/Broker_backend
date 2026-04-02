@@ -22,9 +22,9 @@ func NewDatabase(pg *postgres2.Postgres) *Database {
 	}
 }
 
-func (db *Database) Save(ctx context.Context, user entity.User) error {
+func (db *Database) Save(ctx context.Context, user *entity.User) error {
 	const op = "users.Save()"
-	query := `insert into users(email, pass, username) VALUES ($1, $2, $3)`
+	query := `insert into users(email, password, username) VALUES ($1, $2, $3)`
 	err := db.pg.WriteWithTimeout(ctx, query)
 	if err != nil {
 		pgErr := new(pgconn.PgError)

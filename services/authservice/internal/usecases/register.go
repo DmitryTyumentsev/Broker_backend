@@ -30,7 +30,7 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 	}
 
 	if err := s.userRepo.Save(ctx, user); err != nil {
-		return nil, fmt.Errorf("couldn’t save user, err: %w, op: %s %w", err, op)
+		return nil, fmt.Errorf("couldn’t save user, err: %w, op: %s", err, op)
 	} //TODO: хорошая ли практика в ошибки писать op всегда когда есть err в методе/функции? есть ли в этом смысл вообще?
 
 	rawRefresh, err := s.refService.New()

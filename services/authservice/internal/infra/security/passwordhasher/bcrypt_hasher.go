@@ -1,8 +1,6 @@
 package passwordhasher
 
 import (
-	"Donate_backend/services/authservice/internal/domain"
-	"crypto"
 	"fmt"
 
 	"golang.org/x/crypto/bcrypt"
@@ -21,7 +19,8 @@ func NewPasswordHasher() *PasswordHasher {
 
 func (p *PasswordHasher) Hash(passRaw string) (passHash string, err error) {
 	const op = "usecases.Hash()"
-	if passHashByte, err := bcrypt.GenerateFromPassword([]byte(passRaw), len([]byte(passRaw))); err != nil {
+	passHashByte, err := bcrypt.GenerateFromPassword([]byte(passRaw), len([]byte(passRaw)))
+	if err != nil {
 		return "", fmt.Errorf("op: %s, couldn’t hash, err: %w, passRaw: %s, len: %v", op, err, passRaw, len(passRaw))
 	}
 	return string(passHashByte), nil
