@@ -1,0 +1,7 @@
+create table if not exists users(
+id bigint not null autoincrement primary key,
+email varchar(64) not null unique,
+username varchar(64) not null,
+created_at timestamp now()
+);
+create unique index by id;

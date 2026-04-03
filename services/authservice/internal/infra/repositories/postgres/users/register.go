@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -23,8 +24,9 @@ func NewDatabase(pg *postgres2.Postgres) *Database {
 }
 
 func (db *Database) Save(ctx context.Context, user *entity.User) error {
-	const op = "users.Save()"
+	const op = "users.Save"
 	query := `insert into users(email, password, username) VALUES ($1, $2, $3)`
+	ctx = db.pg.WriteWithTimeout(ctx)
 	_, err := db.pg.Pool.Exec(ctx, query, user.Email, user.PassHash, user.Username)
 	if err != nil {
 		pgErr := new(pgconn.PgError)
@@ -42,7 +44,7 @@ func (db *Database) Save(ctx context.Context, user *entity.User) error {
 				return fmt.Errorf("pgxerror, err: %w, query: %s", err, query)
 			}
 		}
-		return fmt.Errorf("postgres error, err: %w, query: %s", err, query)
+		return fmt.Errorf("postgres error, op: %s, err: %w", op, err)
 	}
-	return err //TODO: лучше ли в return просто указать err или лучше когда большой кусок кода в return?
+	return err
 }
