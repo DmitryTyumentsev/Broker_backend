@@ -2,22 +2,15 @@ package users
 
 import (
 	"Donate_backend/services/authservice/internal/domain/entity"
-	postgres2 "Donate_backend/services/authservice/internal/infra/repositories/postgres"
-	"Donate_backend/services/authservice/internal/repositories/postgres"
+	postgres "Donate_backend/services/authservice/internal/infra/repositories/postgres"
 	"context"
-	"errors"
-	"fmt"
-	"time"
-
-	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type Database struct {
-	pg *postgres2.Postgres
+	pg *postgres.Postgres
 }
 
-func NewDatabase(pg *postgres2.Postgres) *Database {
+func NewDatabase(pg *postgres.Postgres) *Database {
 	return &Database{
 		pg: pg,
 	}
@@ -29,22 +22,8 @@ func (db *Database) Save(ctx context.Context, user *entity.User) error {
 	ctx = db.pg.WriteWithTimeout(ctx)
 	_, err := db.pg.Pool.Exec(ctx, query, user.Email, user.PassHash, user.Username)
 	if err != nil {
-		pgErr := new(pgconn.PgError)
-		if errors.As(err, &pgErr) {
-			switch pgErr.Code {
-			case pgerrcode.NotNullViolation: //TODO: поправить пакет
-				return postgres.ErrNotNullViolation
-			case pgerrcode.ForeignKeyViolation:
-				return postgres.ErrForeignKeyViolation
-			case pgerrcode.ErrInvalidViolation:
-				return postgres.ErrInvalidViolation
-			case pgerrcode.ErrTypeViolation:
-				return postgres.ErrTypeViolation
-			default:
-				return fmt.Errorf("pgxerror, err: %w, query: %s", err, query)
-			}
-		}
-		return fmt.Errorf("postgres error, op: %s, err: %w", op, err)
+		return postgres.MapError(err, op)
 	}
-	return err
+
+	return nil
 }
