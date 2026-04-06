@@ -1,8 +1,8 @@
 create table if not exists users(
-id bigint not null autoincrement primary key,
+id bigint not null as identify primary key,
 email varchar(64) not null unique,
-password_hash varchar(64) not null unique,
+password_hash varchar(64) not null,
 username varchar(64) not null,
-created_at timestamp now()
+created_at timestamptz default now()
 );
-create unique index by id;
+create index index_email on users.email;

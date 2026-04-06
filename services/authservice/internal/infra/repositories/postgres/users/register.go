@@ -18,7 +18,7 @@ func NewDatabase(pg *postgres.Postgres) *Database {
 
 func (db *Database) Save(ctx context.Context, user *entity.User) error {
 	const op = "users.Save"
-	query := `insert into users(email, password_hash, username, created_at) VALUES ($1, $2, $3, $4) if exists update`
+	query := `insert into users(email, password_hash, username, created_at) VALUES ($1, $2, $3, $4) on coflict do nothing`
 	ctx = db.pg.WriteWithTimeout(ctx)
 
 	_, err := db.pg.Pool.Exec(ctx, query, user.Email, user.PassHash, user.Username, user.CreatedAt)
