@@ -34,7 +34,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	if err := goose.UpContext(ctx, db, "migrations"); err != nil {
+	if err := goose.UpContext(ctx, db, "services/authservice/migrations"); err != nil {
 		log.Fatalf("goose up: %v", err)
 	}
 
