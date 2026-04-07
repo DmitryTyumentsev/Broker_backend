@@ -49,11 +49,10 @@ func (l *Loader) loadYamlFiles(env string) {
 		filepath.Join(".", env),
 	}
 
-	v := l.Viper
 	for _, yamlFile := range yamlFiles {
-		v.SetConfigName(yamlFile)
-		v.SetConfigType("yaml")
-		if err := v.MergeInConfig(); err != nil {
+		l.Viper.SetConfigName(yamlFile)
+		l.Viper.SetConfigType("yaml")
+		if err := l.Viper.MergeInConfig(); err != nil {
 			log.Printf("loadYamlFiles, MergeInConfig is failed, yamlFile path: %s, err: %v", yamlFile, err)
 		}
 	}
@@ -65,11 +64,10 @@ func (l *Loader) loadEnvFiles(env string) {
 		filepath.Join(".", env),
 	}
 
-	v := l.Viper
 	for _, envFile := range envFiles {
-		v.SetConfigName(envFile)
-		v.SetConfigType("env")
-		if err := v.MergeInConfig(); err != nil {
+		l.Viper.SetConfigName(envFile)
+		l.Viper.SetConfigType("env")
+		if err := l.Viper.MergeInConfig(); err != nil {
 			log.Printf("loadEnvFiles, MergeInConfig is failed, err: %v", err)
 		}
 	}

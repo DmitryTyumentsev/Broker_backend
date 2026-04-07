@@ -1,5 +1,5 @@
 protoc \
--I ./../shared/pkg/grpc/proto \
---go_out=./../tools/protoc-gen --go_opt=paths=source_relative \
---go_grpc_out=./../tools/protoc-gen --go_opt=paths=source_relative \
-./../shared/pkg/grpc/proto/auth/v1/auth.proto
+-I ../shared/pkg/grpc/proto \
+--go_out=../shared/pkg/grpc/gen/auth/v1 \
+--go-grpc_out=../shared/pkg/grpc/gen/auth/v1 \
+../shared/pkg/grpc/proto/auth/v1/authv1.proto
