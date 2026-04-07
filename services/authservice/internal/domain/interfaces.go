@@ -7,7 +7,7 @@ import (
 )
 
 type UserRepository interface {
-	Save(ctx context.Context, user entity.User) error
+	Save(ctx context.Context, user *entity.User) error
 	FindByEmail(ctx context.Context, email string) (entity.User, error)
 	FindByUsername(ctx context.Context, username string) (entity.User, error)
 }
@@ -19,13 +19,13 @@ type RefreshSessionRepository interface {
 	FindByHash(ctx context.Context, refreshHash string) (entity.RefreshSession, error)
 }
 
-type AccessTokenIssuer interface {
-	Issue(userID, deviceID string) (accessToken string, err error)
-}
-
 type PasswordHasher interface {
 	Hash(rawPass string) (hashPass string, err error)
 	Verify(hashPass, rawPass string) bool
+}
+
+type AccessTokenIssuer interface {
+	Issue(userID, deviceID string) (accessToken string, err error)
 }
 
 type RefreshTokenService interface {

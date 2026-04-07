@@ -11,12 +11,17 @@ import (
 )
 
 func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPairResponse, error) {
-	const op = "usecase.Register"
-	if err := validateRegister(req); err != nil {
-		return nil, fmt.Errorf("validate error %w", err)
+	const op = "usecases.Register"
+	if err := validateRegisterInput(req); err != nil {
+		s.logger.Warning{ //TODO: как пишут в запе? как логируют? строкой или структурой и как?
+			op: op,
+			err: err,
+			reason: "register input is invalid",
+		}
+		return nil, fmt.Errorf("op: %s, validate error: %w", op, err)
 	}
 
-	passHash, err := s.passHasher.Hash(req.Password)
+	passHash, err := s.passHasher.Hash(req.Password) //TODO: goland ide. Я хочу посмотреть как работает метод Hash - меня кидает на интерфейс в котором объявлен этот метод
 	user := &entity.User{
 		ID:       uuid.NewString(),
 		Email:    req.Email,
@@ -25,7 +30,7 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 	}
 
 	if err := s.userRepo.Save(ctx, user); err != nil {
-		return nil, fmt.Errorf("couldn’t save user, err: %w, op: %s %w", err, op)
+		return nil, fmt.Errorf("couldn’t save user, err: %w, op: %s", err, op)
 	} //TODO: хорошая ли практика в ошибки писать op всегда когда есть err в методе/функции? есть ли в этом смысл вообще?
 
 	rawRefresh, err := s.refService.New()
@@ -74,15 +79,26 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 	}, nil
 }
 
-func validateRegister(req *RegisterRequest) (err error) {
-	if !validators.IsEmail(req.Email) {
-		return err
+func validateRegisterInput(req *RegisterRequest) (err error) {
+	if req.Email == "" { //TODO: можно ли улучшить код или тут лучшее решение все через if писать?
+		return ErrEmailRequired
 	}
-	if !validators.IsPassword(req.Password) {
-		return err
+	if !validators.IsEmail(req.Email) {
+		return ErrEmailInvalid
+	}
+
+	if req.Password == "" {
+		return ErrPassRequired
+	}
+	if !validators.IsStrongPassword(req.Password) {
+		return ErrPassEasy
+	}
+
+	if req.Username == "" {
+		return ErrUsernameRequired
 	}
 	if !validators.IsUsername(req.Username) {
-		return err
+		return ErrUsernameInvalid
 	}
 	return nil
 }
