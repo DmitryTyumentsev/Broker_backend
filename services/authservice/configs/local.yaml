@@ -1,23 +1,27 @@
 server:
   host: donate.ru
-  port: 8080
+  port: 50051
+
+business:
+  context_timeout: 5s
 
 database:
   postgres:
-    dsn: https://postgres
-    host: https://postgres
-    port: 8081
+    dsn: ""
+    host: localhost
+    port: 5432
     database_name: auth_pg
     username: dima
-    password:
+    password: ""
     ssl_mode: disable
-
-cache:
-  redis:
-    dsn: https://redis
-    host: https://redis
-    port: 8082
-    database_name: auth_rs
-    username: dima
-    password:
-    ssl_mode: disable
+    migrations_path: services/authservice/migrations
+    migrations_table: goose_db_version
+    schema_name: public
+    max_connections: 10
+    min_connections: 1
+    max_idle_time: 30m
+    max_lifetime: 60m
+    health_check_period: 5m
+    write_timeout: 30s
+    read_timeout: 15s
+    connect_timeout: 5s
