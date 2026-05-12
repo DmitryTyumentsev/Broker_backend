@@ -11,78 +11,71 @@ import (
 const serviceName = "authservice"
 
 type Config struct {
-	Business Business `mapstructure:"business"`
-	Database Database `mapstructure:"database"`
-	Server   Server   `mapstructure:"server"`
+	Server   ServerConfig   `mapstructure:"server"`
+	Business BusinessConfig `mapstructure:"business"`
+	Database DatabaseConfig `mapstructure:"database"`
 }
 
-type Business struct {
-	ContextTimeout time.Duration `mapstructure:"context_timeout"`
+type ServerConfig struct {
+	Host         string        `mapstructure:"host"`
+	Port         int           `mapstructure:"port"`
+	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout time.Duration `mapstructure:"write_timeout"`
+	IdleTimeout  time.Duration `mapstructure:"idle_timeout"`
 }
 
-type Database struct {
-	Postgres Postgres `mapstructure:"postgres"`
+type BusinessConfig struct {
+	ContextTimeout       time.Duration `mapstructure:"context_timeout"`
+	LifetimeAccessToken  time.Duration `mapstructure:"lifetime_access_token"`
+	LifetimeRefreshToken time.Duration `mapstructure:"lifetime_refresh_token"`
 }
 
-type Postgres struct {
-	Dsn               string        `mapstructure:"dsn"`
-	Host              string        `mapstructure:"host"`
-	Port              int           `mapstructure:"port"`
-	Username          string        `mapstructure:"username"`
-	Password          string        `mapstructure:"password"`
-	DatabaseName      string        `mapstructure:"database_name"`
-	SSLMode           string        `mapstructure:"ssl_mode"`
-	MigrationsPath    string        `mapstructure:"migrations_path"`
-	MigrationsTable   string        `mapstructure:"migrations_table"`
-	SchemaName        string        `mapstructure:"schema_name"`
-	MaxConnections    int           `mapstructure:"max_connections"`
-	MinConnections    int           `mapstructure:"min_connections"`
-	MaxIdleTime       time.Duration `mapstructure:"max_idle_time"`
-	MaxLifetime       time.Duration `mapstructure:"max_lifetime"`
-	HealthCheckPeriod time.Duration `mapstructure:"health_check_period"`
-	WriteTimeout      time.Duration `mapstructure:"write_timeout"`
-	ReadTimeout       time.Duration `mapstructure:"read_timeout"`
-	ConnectTimeout    time.Duration `mapstructure:"connect_timeout"`
+type DatabaseConfig struct {
+	Postgres PostgresConfig `mapstructure:"postgres"`
 }
 
-type Server struct {
-	Host string `mapstructure:"host"`
-	Port int    `mapstructure:"port"`
+type PostgresConfig struct {
+	DSN            string        `mapstructure:"dsn"`
+	Host           string        `mapstructure:"host"`
+	Port           int           `mapstructure:"port"`
+	User           string        `mapstructure:"user"`
+	Password       string        `mapstructure:"password"`
+	Name           string        `mapstructure:"name"`
+	SSLMode        string        `mapstructure:"ssl_mode"`
+	MaxConnections int           `mapstructure:"max_connections"`
+	ReadTimeout    time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout   time.Duration `mapstructure:"write_timeout"`
 }
 
 func LoadConfig() (*Config, error) {
-	cfg := new(Config)
+	cfg := &Config{}
 
 	if err := sharedconfig.Load(serviceName, cfg); err != nil {
-		return nil, fmt.Errorf("load authservice config: %w", err)
+		return nil, fmt.Errorf("load %s config: %w", serviceName, err)
+	}
+
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("validate %s config: %w", serviceName, err)
 	}
 
 	return cfg, nil
 }
 
 func (c *Config) Validate() error {
-	if c.Server.Host == "" {
-		return errors.New("server.host is required")
-	}
 	if c.Server.Port <= 0 {
-		return errors.New("server.port must be > 0")
-	}
-	if c.Business.ContextTimeout <= 0 {
-		return errors.New("business.context_timeout must be > 0")
+		return errors.New("server.port must be positive")
 	}
 
-	pg := c.Database.Postgres
-	if pg.Host == "" && pg.Dsn == "" {
-		return errors.New("database.postgres.host or database.postgres.dsn is required")
+	if c.Business.ContextTimeout <= 0 {
+		return errors.New("business.context_timeout must be positive")
 	}
-	if pg.Port < 0 {
-		return errors.New("database.postgres.port must be >= 0")
+
+	if c.Business.LifetimeAccessToken <= 0 {
+		return errors.New("business.lifetime_access_token must be positive")
 	}
-	if pg.MaxConnections <= 0 {
-		return errors.New("database.postgres.max_connections must be > 0")
-	}
-	if pg.MinConnections < 0 {
-		return errors.New("database.postgres.min_connections must be >= 0")
+
+	if c.Business.LifetimeRefreshToken <= 0 {
+		return errors.New("business.lifetime_refresh_token must be positive")
 	}
 
 	return nil

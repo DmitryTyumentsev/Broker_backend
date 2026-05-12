@@ -1,23 +1,47 @@
 package grpchandler
 
 import (
+	"errors"
+
 	"Donate_backend/services/authservice/internal/domain"
+	"Donate_backend/services/authservice/internal/usecases"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 func mapError(err error) error {
-	st := status.New(err) //TODO: зачем нужен status.New вообще?
-	switch err {          //TODO: я же могу так написать? или нам нужно по типу сравнить? немного путаница - switch type, switch err и switch
-	// и в case errors.Is. Видимо разница в том что где-то по значению а где-то по типу сравнение идет(предполагаю).
-	//Разбери пж подробнее
-	case domain.ErrUsernameExist:
-		return st.Error(codes.BadRequest, "username already exist")
-	case domain.ErrEmailExist:
-		return st.Error(codes.BadRequest, "email already exist")
-	case domain.ErrGeneral:
-		return st.Error(codes.BadRequest, "something went wrong")
+	if err == nil {
+		return nil
 	}
-	return err
+
+	switch {
+	case errors.Is(err, usecases.ErrEmailRequired),
+		errors.Is(err, usecases.ErrEmailInvalid),
+		errors.Is(err, usecases.ErrPasswordRequired),
+		errors.Is(err, usecases.ErrPasswordWeak),
+		errors.Is(err, usecases.ErrUsernameRequired),
+		errors.Is(err, usecases.ErrUsernameInvalid),
+		errors.Is(err, usecases.ErrDeviceIDRequired),
+		errors.Is(err, domain.ErrBadRequest),
+		errors.Is(err, domain.ErrMustBeNotNull):
+		return status.Error(codes.InvalidArgument, err.Error())
+
+	case errors.Is(err, domain.ErrEmailExist),
+		errors.Is(err, domain.ErrUsernameExist),
+		errors.Is(err, domain.ErrNotUnique):
+		return status.Error(codes.AlreadyExists, err.Error())
+
+	case errors.Is(err, domain.ErrNotFound):
+		return status.Error(codes.NotFound, err.Error())
+
+	case errors.Is(err, domain.ErrUnauthenticated):
+		return status.Error(codes.Unauthenticated, err.Error())
+
+	case errors.Is(err, domain.ErrForbidden):
+		return status.Error(codes.PermissionDenied, err.Error())
+
+	default:
+		return status.Error(codes.Internal, "internal server error")
+	}
 }

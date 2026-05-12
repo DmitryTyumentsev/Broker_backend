@@ -3,7 +3,13 @@ package domain
 import "errors"
 
 var (
-	ErrUsernameExist = errors.New("username already exist")
-	ErrEmailExist    = errors.New("email already exist")
-	ErrGeneral       = errors.New("something went wrong")
+	ErrUsernameExist   = errors.New("username already exists")
+	ErrEmailExist      = errors.New("email already exists")
+	ErrNotUnique       = errors.New("not unique")
+	ErrMustBeNotNull   = errors.New("must be not null")
+	ErrBadRequest      = errors.New("bad request")
+	ErrNotFound        = errors.New("not found")
+	ErrUnauthenticated = errors.New("unauthenticated")
+	ErrForbidden       = errors.New("forbidden")
+	ErrGeneral         = errors.New("internal error")
 )

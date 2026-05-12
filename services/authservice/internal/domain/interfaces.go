@@ -1,36 +1,37 @@
 package domain
 
 import (
-	"Donate_backend/services/authservice/internal/domain/entity"
 	"context"
 	"time"
+
+	"Donate_backend/services/authservice/internal/domain/entity"
 )
 
 type UserRepository interface {
-	Save(ctx context.Context, user *entity.User) error
+	Save(ctx context.Context, user entity.User) error
 	FindByEmail(ctx context.Context, email string) (entity.User, error)
 	FindByUsername(ctx context.Context, username string) (entity.User, error)
 }
 
 type RefreshSessionRepository interface {
-	Save(ctx context.Context, session entity.Session) error
-	Rotate(ctx context.Context, oldRefresh string, newSess entity.RefreshSession, now time.Time) error
-	RevokeByHash(ctx context.Context, refresh string, now time.Time) error
-	FindByHash(ctx context.Context, refreshHash string) (entity.RefreshSession, error)
+	Save(ctx context.Context, session entity.RefreshSession) error
+	Rotate(ctx context.Context, oldHash string, newSession entity.RefreshSession) error
+	Revoke(ctx context.Context, hash string) error
+	FindByHash(ctx context.Context, hash string) (entity.RefreshSession, error)
 }
 
 type PasswordHasher interface {
-	Hash(rawPass string) (hashPass string, err error)
-	Verify(hashPass, rawPass string) bool
+	Hash(password string) (string, error)
+	Verify(hashPass string, rawPass string) bool
 }
 
 type AccessTokenIssuer interface {
-	Issue(userID, deviceID string) (accessToken string, err error)
+	Issue(userID string, deviceID string, role string, now time.Time) (string, error)
 }
 
 type RefreshTokenService interface {
-	New() (rawRefresh string, err error)
-	Hash(rawRefresh string) (hashRefresh string, err error)
+	New() (string, error)
+	Hash(token string) string
 }
 
 type Clock interface {

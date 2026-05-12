@@ -1,70 +1,123 @@
 package users
 
 import (
+	"context"
+
 	"Donate_backend/services/authservice/internal/domain/entity"
 	"Donate_backend/services/authservice/internal/infra/repositories/postgres"
-	"context"
 )
 
-type Database struct {
+type Repository struct {
 	pg *postgres.Postgres
 }
 
-func NewDatabase(pg *postgres.Postgres) *Database {
-	return &Database{
+func NewRepository(pg *postgres.Postgres) *Repository {
+	return &Repository{
 		pg: pg,
 	}
 }
 
-func (db *Database) Save(ctx context.Context, user *entity.User) error {
-	const op = "users.Save"
-	query := `insert into users(email, password_hash, username, created_at) VALUES ($1, $2, $3, $4) on coflict do nothing`
-	ctx = db.pg.WriteWithTimeout(ctx)
+func (r *Repository) Save(ctx context.Context, user entity.User) error {
+	const op = "postgres.users.Save"
 
-	_, err := db.pg.Pool.Exec(ctx, query, user.Email, user.PassHash, user.Username, user.CreatedAt)
+	ctx, cancel := r.pg.WriteWithTimeout(ctx)
+	defer cancel()
+
+	query := `
+		insert into users (
+			id,
+			email,
+			password_hash,
+			username,
+			role,
+			created_at
+		)
+		values ($1, $2, $3, $4, $5, $6)
+	`
+
+	_, err := r.pg.DB().Exec(
+		ctx,
+		query,
+		user.ID,
+		user.Email,
+		user.PassHash,
+		user.Username,
+		user.Role,
+		user.CreatedAt,
+	)
 	if err != nil {
-		return postgres.MapError(err, op)
+		return postgres.MapError(op, err)
 	}
 
 	return nil
 }
 
-func (db *Database) GetUserByID(ctx context.Context, uuid string) (*entity.User, error) {
-	const op = "users.GetUserByID"
-	query := `select * from users where uuid = $1 returnning email, password_hash, username, created_at`
-	ctx = db.pg.ReadWithTimeout(ctx)
-	var user *entity.User
+func (r *Repository) FindByEmail(ctx context.Context, email string) (entity.User, error) {
+	const op = "postgres.users.FindByEmail"
 
-	err := db.pg.Pool.QueryRow(ctx, query, uuid).Scan(&user)
+	ctx, cancel := r.pg.ReadWithTimeout(ctx)
+	defer cancel()
+
+	query := `
+		select
+			id,
+			email,
+			password_hash,
+			username,
+			role,
+			created_at
+		from users
+		where email = $1
+	`
+
+	var user entity.User
+
+	err := r.pg.DB().QueryRow(ctx, query, email).Scan(
+		&user.ID,
+		&user.Email,
+		&user.PassHash,
+		&user.Username,
+		&user.Role,
+		&user.CreatedAt,
+	)
 	if err != nil {
-		return nil, postgres.MapError(err, op)
+		return entity.User{}, postgres.MapError(op, err)
 	}
 
 	return user, nil
 }
 
-func (db *Database) UpdateUsername(ctx context.Context, oldUsername, newUsername string) error {
-	const op = "users.UpdateUsername"
-	query := `update users set username = $1 where username = $2`
-	ctx = db.pg.WriteWithTimeout(ctx)
+func (r *Repository) FindByUsername(ctx context.Context, username string) (entity.User, error) {
+	const op = "postgres.users.FindByUsername"
 
-	_, err := db.pg.Pool.Exec(ctx, query, newUsername, oldUsername)
+	ctx, cancel := r.pg.ReadWithTimeout(ctx)
+	defer cancel()
+
+	query := `
+		select
+			id,
+			email,
+			password_hash,
+			username,
+			role,
+			created_at
+		from users
+		where username = $1
+	`
+
+	var user entity.User
+
+	err := r.pg.DB().QueryRow(ctx, query, username).Scan(
+		&user.ID,
+		&user.Email,
+		&user.PassHash,
+		&user.Username,
+		&user.Role,
+		&user.CreatedAt,
+	)
 	if err != nil {
-		return postgres.MapError(err, op)
+		return entity.User{}, postgres.MapError(op, err)
 	}
 
-	return nil
-}
-
-func (db *Database) DeleteUserByID(ctx context.Context, uuid string) error {
-	const op = "users.DeleteUserByID"
-	query := `delete * from users where uuid = $1`
-	ctx = db.pg.WriteWithTimeout(ctx)
-
-	_, err := db.pg.Pool.Exec(ctx, query, uuid)
-	if err != nil {
-		return postgres.MapError(err, op)
-	}
-
-	return nil
+	return user, nil
 }

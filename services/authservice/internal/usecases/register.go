@@ -1,104 +1,143 @@
 package usecases
 
 import (
-	"Donate_backend/services/authservice/internal/domain/entity"
-	"Donate_backend/services/authservice/internal/pkg/validators"
 	"context"
 	"fmt"
-	"net/mail"
+	"strings"
+
+	"Donate_backend/services/authservice/internal/domain/entity"
+	"Donate_backend/services/authservice/internal/pkg/validators"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPairResponse, error) {
 	const op = "usecases.Register"
+
+	if s == nil {
+		return nil, fmt.Errorf("%s: service is nil", op)
+	}
+
 	if err := validateRegisterInput(req); err != nil {
-		s.logger.Warning{ //TODO: как пишут в запе? как логируют? строкой или структурой и как?
-			op: op,
-			err: err,
-			reason: "register input is invalid",
-		}
-		return nil, fmt.Errorf("op: %s, validate error: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	passHash, err := s.passHasher.Hash(req.Password) //TODO: goland ide. Я хочу посмотреть как работает метод Hash - меня кидает на интерфейс в котором объявлен этот метод
-	user := &entity.User{
-		ID:       uuid.NewString(),
-		Email:    req.Email,
-		PassHash: passHash,
-		Username: req.Username,
+	if err := s.ensureRegisterDeps(); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	if err := s.userRepo.Save(ctx, user); err != nil {
-		return nil, fmt.Errorf("couldn’t save user, err: %w, op: %s", err, op)
-	} //TODO: хорошая ли практика в ошибки писать op всегда когда есть err в методе/функции? есть ли в этом смысл вообще?
-
-	rawRefresh, err := s.refService.New()
+	passwordHash, err := s.passHasher.Hash(req.Password)
 	if err != nil {
-		return nil, mapError(err)
-	}
-
-	hashRefresh, err := s.refService.Hash(rawRefresh)
-	if err != nil {
-		return nil, mapError(err)
+		return nil, fmt.Errorf("%s: hash password: %w", op, err)
 	}
 
 	now := s.clock.Now()
-	session := entity.RefreshSession{
-		Hash:           hashRefresh,
-		UserID:         user.ID,
-		DeviceID:       req.DeviceID,
-		CreatedAt:      now,
-		ExpiresAt:      now.Add(s.config.Business.LifetimeRefreshToken),
-		RevokedAt:      nil,
-		ReplacedByHash: nil,
+
+	user := entity.User{
+		ID:        uuid.NewString(),
+		Email:     strings.TrimSpace(req.Email),
+		Username:  strings.TrimSpace(req.Username),
+		PassHash:  passwordHash,
+		Role:      "user",
+		CreatedAt: now,
 	}
 
-	if err := s.refSessRepo.Save(ctx, session); err != nil {
-		return nil, mapError(err)
+	if err := s.users.Save(ctx, user); err != nil {
+		return nil, fmt.Errorf("%s: save user: %w", op, err)
 	}
 
-	accessToken, err := s.accessIssier.Issue(user.ID, req.DeviceID)
+	rawRefreshToken, err := s.refreshToken.New()
 	if err != nil {
-		return nil, mapError(err)
+		return nil, fmt.Errorf("%s: create refresh token: %w", op, err)
 	}
 
-	tokenPair := entity.TokenPairResponse{
-		access:       accessToken,
-		refresh:      rawRefresh,
-		expiresInSec: int64(s.config.Business.LifetimeRefreshToken), //TODO: ты написал что тут указывают access а не refresh, а где тогда указываем refresh?
-		// и вообще мы должны же передавать expires_in_sec и access и refresh, так же принято?
-		//и браузер клиента будет сохранять это себе в session storage например,
-		//так же принято на реальных проектах high load в рф?
+	refreshHash := s.refreshToken.Hash(rawRefreshToken)
+
+	session := entity.RefreshSession{
+		Hash:      refreshHash,
+		UserID:    user.ID,
+		DeviceID:  req.DeviceID,
+		CreatedAt: now,
+		ExpiresAt: now.Add(s.config.Business.LifetimeRefreshToken),
+	}
+
+	if err := s.sessions.Save(ctx, session); err != nil {
+		return nil, fmt.Errorf("%s: save refresh session: %w", op, err)
+	}
+
+	accessToken, err := s.accessIssuer.Issue(user.ID, req.DeviceID, user.Role, now)
+	if err != nil {
+		return nil, fmt.Errorf("%s: issue access token: %w", op, err)
+	}
+
+	if s.logger != nil {
+		s.logger.Info("user registered", zap.String("user_id", user.ID))
 	}
 
 	return &TokenPairResponse{
-		Access:       tokenPair.access,
-		Refresh:      tokenPair.refresh,
-		ExpiresInSec: tokenPair.ExpiresInSec,
+		AccessToken:  accessToken,
+		RefreshToken: rawRefreshToken,
+		ExpiresInSec: int64(s.config.Business.LifetimeAccessToken.Seconds()),
 	}, nil
 }
 
-func validateRegisterInput(req *RegisterRequest) (err error) {
-	if req.Email == "" { //TODO: можно ли улучшить код или тут лучшее решение все через if писать?
+func validateRegisterInput(req *RegisterRequest) error {
+	if req == nil {
 		return ErrEmailRequired
 	}
-	if !validators.IsEmail(req.Email) {
+
+	req.Email = strings.TrimSpace(req.Email)
+	req.Username = strings.TrimSpace(req.Username)
+
+	if req.Email == "" {
+		return ErrEmailRequired
+	}
+
+	if !validators.IsValidEmail(req.Email) {
 		return ErrEmailInvalid
 	}
 
 	if req.Password == "" {
-		return ErrPassRequired
+		return ErrPasswordRequired
 	}
+
 	if !validators.IsStrongPassword(req.Password) {
-		return ErrPassEasy
+		return ErrPasswordWeak
 	}
 
 	if req.Username == "" {
 		return ErrUsernameRequired
 	}
-	if !validators.IsUsername(req.Username) {
+
+	if !validators.IsValidUsername(req.Username) {
 		return ErrUsernameInvalid
 	}
+
+	if req.DeviceID == "" {
+		return ErrDeviceIDRequired
+	}
+
 	return nil
+}
+
+func (s *Service) ensureRegisterDeps() error {
+	switch {
+	case s.config == nil:
+		return fmt.Errorf("config is nil")
+	case s.users == nil:
+		return fmt.Errorf("users repository is nil")
+	case s.sessions == nil:
+		return fmt.Errorf("sessions repository is nil")
+	case s.passHasher == nil:
+		return fmt.Errorf("password hasher is nil")
+	case s.accessIssuer == nil:
+		return fmt.Errorf("access token issuer is nil")
+	case s.refreshToken == nil:
+		return fmt.Errorf("refresh token service is nil")
+	case s.clock == nil:
+		return fmt.Errorf("clock is nil")
+	default:
+		return nil
+	}
 }

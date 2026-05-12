@@ -1,5 +1,5 @@
 server:
-  host: donate.ru
+  host: 0.0.0.0
   port: 50051
 
 business:
@@ -11,8 +11,8 @@ database:
     host: localhost
     port: 5432
     database_name: auth_pg
-    username: dima
-    password: ""
+    username: postgres
+    password: 2409
     ssl_mode: disable
     migrations_path: services/authservice/migrations
     migrations_table: goose_db_version
