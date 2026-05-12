@@ -6,17 +6,19 @@ import (
 	"Donate_backend/services/apigateway/internal/http/httperr"
 	authv1 "Donate_backend/shared/pkg/grpc/gen/auth/v1"
 
+	validate "github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
 type AuthHandler struct {
 	logger     *zap.Logger
 	authclient *authclient.Client
-	validator  *validate.Validator
+	validator  *validate.Validate
 }
 
-func NewAuthHandler(lg *zap.Logger, client *authclient.Client, validator *validatate.Validator) *AuthHandler {
+func NewAuthHandler(lg *zap.Logger, client *authclient.Client, validator *validate.Validate) *AuthHandler {
 	return &AuthHandler{
 		logger:     lg,
 		authclient: client,

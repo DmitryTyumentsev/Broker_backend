@@ -9,10 +9,9 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-package httperr
-
 func WriteGRPCError(c context.Context, err error) error {
-	resp := convertGRPCError(err) return c.Status(resp.Code).JSON(resp)
+	resp := convertGRPCError(err)
+	return c.Status(resp.Code).JSON(resp)
 }
 
 func convertGRPCError(err error) *dto.ErrorResponse{
