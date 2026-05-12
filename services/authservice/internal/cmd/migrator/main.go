@@ -1,42 +1,36 @@
 package main
 
 import (
-	"context"
 	"database/sql"
-	"log"
+	"fmt"
 	"os"
-	"time"
+
+	"github.com/pressly/goose/v3"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/pressly/goose/v3"
 )
 
 func main() {
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		log.Fatal("DATABASE_URL is empty")
+	if len(os.Args) < 3 {
+		panic("usage: migrator <postgres_dsn> <migrations_dir>")
 	}
+
+	dsn := os.Args[1]
+	migrationsDir := os.Args[2]
 
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
-		log.Fatalf("open db: %v", err)
+		panic(fmt.Errorf("open db: %w", err))
 	}
-	defer db.Close()
-
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
-	db.SetConnMaxLifetime(30 * time.Second)
+	defer func() {
+		_ = db.Close()
+	}()
 
 	if err := goose.SetDialect("postgres"); err != nil {
-		log.Fatalf("goose set dialect: %v", err)
+		panic(fmt.Errorf("set goose dialect: %w", err))
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	if err := goose.UpContext(ctx, db, "services/authservice/migrations"); err != nil {
-		log.Fatalf("goose up: %v", err)
+	if err := goose.Up(db, migrationsDir); err != nil {
+		panic(fmt.Errorf("run migrations: %w", err))
 	}
-
-	log.Println("migrations applied")
 }

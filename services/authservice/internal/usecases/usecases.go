@@ -3,29 +3,39 @@ package usecases
 import (
 	"Donate_backend/services/authservice/internal/config"
 	"Donate_backend/services/authservice/internal/domain"
+
+	"go.uber.org/zap"
 )
 
 type Service struct {
-	userRepo     domain.UserRepository
-	refSessRepo  domain.RefreshSessionRepository
-	accessIssier domain.AccessTokenIssuer
-	passHasher   domain.PasswordHasher
-	refService   domain.RefreshTokenService
-	clock        domain.Clock
 	config       *config.Config
 	logger       *zap.Logger
+	users        domain.UserRepository
+	sessions     domain.RefreshSessionRepository
+	passHasher   domain.PasswordHasher
+	accessIssuer domain.AccessTokenIssuer
+	refreshToken domain.RefreshTokenService
+	clock        domain.Clock
 }
 
-func NewService(userRepo domain.UserRepository, refSessRepo domain.RefreshSessionRepository, accessIssier domain.AccessTokenIssuer,
-	passHasher domain.PasswordHasher, refService domain.RefreshTokenService, clock domain.Clock, config *config.Config, logger *zap.Logger) *Service {
+func NewService(
+	cfg *config.Config,
+	logger *zap.Logger,
+	users domain.UserRepository,
+	sessions domain.RefreshSessionRepository,
+	passHasher domain.PasswordHasher,
+	accessIssuer domain.AccessTokenIssuer,
+	refreshToken domain.RefreshTokenService,
+	clock domain.Clock,
+) *Service {
 	return &Service{
-		userRepo:     userRepo,
-		refSessRepo:  refSessRepo,
-		accessIssier: accessIssier,
-		passHasher:   passHasher,
-		refService:   refService,
-		clock:        clock,
-		config:       config,
+		config:       cfg,
 		logger:       logger,
+		users:        users,
+		sessions:     sessions,
+		passHasher:   passHasher,
+		accessIssuer: accessIssuer,
+		refreshToken: refreshToken,
+		clock:        clock,
 	}
 }

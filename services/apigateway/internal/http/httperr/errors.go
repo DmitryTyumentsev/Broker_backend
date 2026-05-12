@@ -2,56 +2,65 @@ package httperr
 
 import (
 	"Donate_backend/services/apigateway/internal/http/dto"
-	"context"
 
 	"github.com/gofiber/fiber/v2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-func WriteGRPCError(c context.Context, err error) error {
-	resp := convertGRPCError(err)
-	return c.Status(resp.Code).JSON(resp)
+func WriteBadRequest(c *fiber.Ctx, message string) error {
+	return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{
+		Code:    fiber.StatusBadRequest,
+		Message: message,
+	})
 }
 
-func convertGRPCError(err error) *dto.ErrorResponse{
-	st := status.Convert(err) //TODO: еще раз как эта функция работает? и зачем она. Мы же и так передаем status.Error ?
-	// почему status.Error мы не можем использовать дальше и его надо преобразовать? code := toHTTPCode(st.Code() )
-	//TODO: какие есть основные grpc коды? какие номера у них? field := toHTTPField(code, st.Details() )
-	//TODO: лучше целиком класть st или code и st.Details() ? message := toHTTPMessage(code, field, st.Message() )
-	//TODO: хорошо ли для частоты кода в этом кейсе вынести message как переменную, а не написать в структуре?
-	return &dto.ErrorResponse{
-		Code: code,
-		Field: field,
-		Message: message
-	},
+func WriteInternal(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{
+		Code:    fiber.StatusInternalServerError,
+		Message: "internal server error",
+	})
 }
-func toHTTPCode(code codes.Code) int {
+
+func WriteGRPCError(c *fiber.Ctx, err error) error {
+	if err == nil {
+		return nil
+	}
+
+	st, ok := status.FromError(err)
+	if !ok {
+		return WriteInternal(c)
+	}
+
+	httpStatus := grpcCodeToHTTPStatus(st.Code())
+
+	return c.Status(httpStatus).JSON(dto.ErrorResponse{
+		Code:    httpStatus,
+		Message: st.Message(),
+	})
+}
+
+func grpcCodeToHTTPStatus(code codes.Code) int {
 	switch code {
 	case codes.InvalidArgument:
 		return fiber.StatusBadRequest
+	case codes.NotFound:
+		return fiber.StatusNotFound
 	case codes.AlreadyExists:
 		return fiber.StatusConflict
-	default: // дописать коды default:
+	case codes.Unauthenticated:
+		return fiber.StatusUnauthorized
+	case codes.PermissionDenied:
+		return fiber.StatusForbidden
+	case codes.Unimplemented:
+		return fiber.StatusNotImplemented
+	case codes.Unavailable:
+		return fiber.StatusServiceUnavailable
+	case codes.DeadlineExceeded:
+		return fiber.StatusGatewayTimeout
+	case codes.Canceled:
+		return fiber.StatusRequestTimeout
+	default:
 		return fiber.StatusInternalServerError
 	}
-}
-
-func toHTTPField(code codes.Code, det st.Details() ) string{ // TODO: st.Details() перевести тут на входе в то что возвращает
-	switch code {
-	case code.StatusInternalServerError, code.Status502, code.Status504
-	return "" //TODO: если у нас 500ые, нам нужно просто вернуть код и message. Нужно ли возвращать в field "" ?
-	}
-	return det.GetField()
-}
-
-func toHTTPMessage(code codes.Code, field, message string) string{
-	switch code {
-	case fiber.StatusInternalServerError, fiber.Status502, fiber.Status504:
-		return "Что-то пошло не так, попробуйте позже"
-	case codes.InvalidArgument:
-		return "Поле"
-	case codes.AlreadyExists:
-	}
-	return det.GetField()
 }

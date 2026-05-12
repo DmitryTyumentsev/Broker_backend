@@ -7,21 +7,30 @@ import (
 )
 
 type PasswordHasher struct {
-	//TODO: я верно присоединил интерфейс? моя логика такая:
-	// мы завели интерфейс в доменном уровне, который в дальнейшем будет подменять для структуры с тестами например.
-	//Для того что метод Hash из passwordHasher пакета работал с этим интерфейсом, достаточно просто создать пустую структуру, которую позже заполним
-	//тестовой структурой какой-то
+	cost int
 }
 
 func NewPasswordHasher() *PasswordHasher {
-	return &PasswordHasher{}
+	return &PasswordHasher{
+		cost: bcrypt.DefaultCost,
+	}
 }
 
-func (p *PasswordHasher) Hash(passRaw string) (passHash string, err error) {
-	const op = "usecases.Hash()"
-	passHashByte, err := bcrypt.GenerateFromPassword([]byte(passRaw), len([]byte(passRaw)))
-	if err != nil {
-		return "", fmt.Errorf("op: %s, couldn’t hash, err: %w, passRaw: %s, len: %v", op, err, passRaw, len(passRaw))
+func NewPasswordHasherWithCost(cost int) *PasswordHasher {
+	return &PasswordHasher{
+		cost: cost,
 	}
-	return string(passHashByte), nil
+}
+
+func (p *PasswordHasher) Hash(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), p.cost)
+	if err != nil {
+		return "", fmt.Errorf("generate bcrypt hash: %w", err)
+	}
+
+	return string(hash), nil
+}
+
+func (p *PasswordHasher) Verify(hashPass string, rawPass string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(hashPass), []byte(rawPass)) == nil
 }

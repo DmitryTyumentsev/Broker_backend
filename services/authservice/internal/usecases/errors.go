@@ -3,10 +3,11 @@ package usecases
 import "errors"
 
 var (
-	ErrEmailRequired    = errors.New("email is empty")
-	ErrEmailInvalid     = errors.New("email invalid")
-	ErrPassRequired     = errors.New("pass is empty")
-	ErrPassEasy         = errors.New("pass too much easy")
-	ErrUsernameRequired = errors.New("username is empty")
-	ErrUsernameInvalid  = errors.New("username invalid")
+	ErrEmailRequired    = errors.New("email is required")
+	ErrEmailInvalid     = errors.New("email is invalid")
+	ErrPasswordRequired = errors.New("password is required")
+	ErrPasswordWeak     = errors.New("password is weak")
+	ErrUsernameRequired = errors.New("username is required")
+	ErrUsernameInvalid  = errors.New("username is invalid")
+	ErrDeviceIDRequired = errors.New("device_id is required")
 )

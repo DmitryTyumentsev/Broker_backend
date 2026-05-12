@@ -3,10 +3,10 @@ package dto
 type ErrorResponse struct {
 	Code    int     `json:"code"`
 	Message string  `json:"message"`
-	Fields  []field `json:"fields"`
+	Fields  []Field `json:"fields,omitempty"`
 }
 
-type field struct {
+type Field struct {
 	Field   string `json:"field"`
 	Message string `json:"message"`
 }

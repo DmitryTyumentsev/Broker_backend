@@ -1,10 +1,14 @@
 package usecases
 
 type RegisterRequest struct {
-	Email, Password, Username, DeviceID string
+	Email    string
+	Password string
+	Username string
+	DeviceID string
 }
 
 type TokenPairResponse struct {
-	AccessToken, RefreshToken string
-	ExpiresInSec              int64
+	AccessToken  string
+	RefreshToken string
+	ExpiresInSec int64
 }

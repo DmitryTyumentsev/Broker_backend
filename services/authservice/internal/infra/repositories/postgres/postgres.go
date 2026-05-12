@@ -1,32 +1,33 @@
 package postgres
 
 import (
-	"Donate_backend/services/authservice/internal/config"
 	"context"
+
+	"Donate_backend/services/authservice/internal/config"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Postgres struct {
-	Pool *pgxpool.Pool
-	Cfg  *config.Config
+	db  *pgxpool.Pool
+	cfg *config.Config
 }
 
-func NewPostgres(pool *pgxpool.Pool, cfg *config.Config) *Postgres {
+func NewPostgres(db *pgxpool.Pool, cfg *config.Config) *Postgres {
 	return &Postgres{
-		Pool: pool,
-		Cfg:  cfg,
+		db:  db,
+		cfg: cfg,
 	}
 }
 
-func (pg *Postgres) WriteWithTimeout(ctx context.Context) context.Context {
-	ctx, cancel := context.WithTimeout(ctx, pg.Cfg.Database.Postgres.WriteTimeout)
-	defer cancel()
-	return ctx
+func (p *Postgres) DB() *pgxpool.Pool {
+	return p.db
 }
 
-func (pg *Postgres) ReadWithTimeout(ctx context.Context) context.Context {
-	ctx, cancel := context.WithTimeout(ctx, pg.Cfg.Database.Postgres.ReadTimeout)
-	defer cancel()
-	return ctx
+func (p *Postgres) WriteWithTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, p.cfg.Database.Postgres.WriteTimeout)
+}
+
+func (p *Postgres) ReadWithTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, p.cfg.Database.Postgres.ReadTimeout)
 }

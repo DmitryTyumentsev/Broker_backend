@@ -9,56 +9,144 @@ import (
 	validate "github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
 )
 
 type AuthHandler struct {
 	logger     *zap.Logger
-	authclient *authclient.Client
+	authClient *authclient.Client
 	validator  *validate.Validate
 }
 
-func NewAuthHandler(lg *zap.Logger, client *authclient.Client, validator *validate.Validate) *AuthHandler {
+func NewAuthHandler(
+	lg *zap.Logger,
+	client *authclient.Client,
+	vld *validate.Validate,
+) *AuthHandler {
 	return &AuthHandler{
 		logger:     lg,
-		authclient: client,
-		validator:  validator}
+		authClient: client,
+		validator:  vld,
+	}
 }
 
-func (h *AuthHandler) Register(c *fiber.Ctx) error {
+func (h *AuthHandler) Register(ctx *fiber.Ctx) error {
 	var req authdto.RegisterRequest
 
-	err := c.BodyParser(&req)
-	if err != nil {
-		return WriteGRPCError(err)
-	}
-	if err = h.Validator.Struct(req); err != nil {
-		return WriteGRPCError(err)
-	}
-	ctx := c.UserContext()
-	grpcReq := httpToGRPCRegister(req)
-	grpcResp, err := h.Client.Register(ctx, grpcReq)
-	if err != nil {
-		return httperr.WriteGrpcError(ctx, err)
+	if err := ctx.BodyParser(&req); err != nil {
+		return httperr.WriteBadRequest(ctx, "invalid request body")
 	}
 
-	resp := grpcToHTTPRegister(grpcResp)
-	// —тут setRefreshCookie и дальше
-	return c.Status(fiber.StatusCreate).JSON(authdto.TokenPairResponse{Access: grpc.Resp, ExpiresInSec: grpc.ExpiresInSec})
+	if h.validator != nil {
+		if err := h.validator.Struct(req); err != nil {
+			return httperr.WriteBadRequest(ctx, "validation failed")
+		}
+	}
+
+	grpcReq := httpToGRPCRegister(req)
+
+	resp, err := h.authClient.Register(ctx.Context(), grpcReq)
+	if err != nil {
+		return httperr.WriteGRPCError(ctx, err)
+	}
+
+	return ctx.Status(fiber.StatusCreated).JSON(grpcToHTTPTokenPair(resp))
+}
+
+func (h *AuthHandler) Login(ctx *fiber.Ctx) error {
+	var req authdto.LoginRequest
+
+	if err := ctx.BodyParser(&req); err != nil {
+		return httperr.WriteBadRequest(ctx, "invalid request body")
+	}
+
+	if h.validator != nil {
+		if err := h.validator.Struct(req); err != nil {
+			return httperr.WriteBadRequest(ctx, "validation failed")
+		}
+	}
+
+	grpcReq := &authv1.AuthRequest{
+		Username: req.Username,
+		Password: req.Password,
+		DeviceId: req.DeviceID,
+	}
+
+	resp, err := h.authClient.Auth(ctx.Context(), grpcReq)
+	if err != nil {
+		return httperr.WriteGRPCError(ctx, err)
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(grpcToHTTPTokenPair(resp))
+}
+
+func (h *AuthHandler) Refresh(ctx *fiber.Ctx) error {
+	var req authdto.RefreshRequest
+
+	if err := ctx.BodyParser(&req); err != nil {
+		return httperr.WriteBadRequest(ctx, "invalid request body")
+	}
+
+	if h.validator != nil {
+		if err := h.validator.Struct(req); err != nil {
+			return httperr.WriteBadRequest(ctx, "validation failed")
+		}
+	}
+
+	grpcReq := &authv1.RefreshRequest{
+		RefreshToken: req.RefreshToken,
+		DeviceId:     req.DeviceID,
+	}
+
+	resp, err := h.authClient.Refresh(ctx.Context(), grpcReq)
+	if err != nil {
+		return httperr.WriteGRPCError(ctx, err)
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(grpcToHTTPTokenPair(resp))
+}
+
+func (h *AuthHandler) Logout(ctx *fiber.Ctx) error {
+	var req authdto.LogoutRequest
+
+	if err := ctx.BodyParser(&req); err != nil {
+		return httperr.WriteBadRequest(ctx, "invalid request body")
+	}
+
+	if h.validator != nil {
+		if err := h.validator.Struct(req); err != nil {
+			return httperr.WriteBadRequest(ctx, "validation failed")
+		}
+	}
+
+	grpcReq := &authv1.RefreshRequest{
+		RefreshToken: req.RefreshToken,
+		DeviceId:     req.DeviceID,
+	}
+
+	resp, err := h.authClient.Logout(ctx.Context(), grpcReq)
+	if err != nil {
+		return httperr.WriteGRPCError(ctx, err)
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(authdto.LogoutResponse{
+		AllDevice: resp.AllDevice,
+		DeviceID:  resp.DeviceId,
+	})
 }
 
 func httpToGRPCRegister(req authdto.RegisterRequest) *authv1.RegisterRequest {
 	return &authv1.RegisterRequest{
 		Email:    req.Email,
-		Pass:     req.Pass,
+		Password: req.Password,
 		Username: req.Username,
-		DeviceID: req.DeviceID,
+		DeviceId: req.DeviceID,
 	}
 }
 
-func grpcToHTTPRegister(resp *authv1.TokenPairResponse) *authdto.TokenPairResponse {
-	return &authdto.TokenPairResponse{
-		Access:       resp.Access,
+func grpcToHTTPTokenPair(resp *authv1.TokenPairResponse) authdto.TokenPairResponse {
+	return authdto.TokenPairResponse{
+		Access:       resp.AccessToken,
+		Refresh:      resp.RefreshToken,
 		ExpiresInSec: resp.ExpiresInSec,
 	}
 }
