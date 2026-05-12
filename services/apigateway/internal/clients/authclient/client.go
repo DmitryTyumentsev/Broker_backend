@@ -1,7 +1,7 @@
 package authclient
 
 import (
-	"Donate_backend/services/apigateway/internal/configs"
+	"Donate_backend/services/apigateway/internal/config"
 	authv1 "Donate_backend/shared/pkg/grpc/gen/auth/v1"
 	"context"
 
@@ -10,7 +10,7 @@ import (
 
 type Client struct {
 	auth   authv1.AuthServiceClient
-	config *configs.Config
+	config *config.Config
 }
 
 func NewAuthServiceClient() authv1.AuthServiceClient { //TODO: так всё теперь? не понял если честно даже на уровне идеи зачем мы создаем экземпляр интерфейса.
@@ -23,12 +23,12 @@ func NewAuthServiceClient() authv1.AuthServiceClient { //TODO: так всё т�
 	return authv1.NewAuthServiceClient(conn)
 }
 
-func NewClient(auth authv1.AuthServiceClient, cfg *configs.Config) *Client {
+func NewClient(auth authv1.AuthServiceClient, cfg *config.Config) *Client {
 	return &Client{auth: auth, config: cfg}
 }
 
 func (c *Client) Register(ctx context.Context, req *authv1.RegisterRequest) (*authv1.TokenPairResponse, error) { //TODO: как чаще на high load проектах в рф делают - хендлер преобразовывает dto в grpcReq или transport в этой функции? наверно логично в хендлере потому что он и нужен для пасринга и преобразований, а транспорт отвечает просто за отправку, так?
-	ctx, cancel := context.WithTimeout(ctx, c.config.ContextTimeout)
+	ctx, cancel := context.WithTimeout(ctx, c.config.Business.ContextTimeout)
 	defer cancel()
 
 	return c.auth.Register(ctx, req)
