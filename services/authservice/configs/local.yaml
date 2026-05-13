@@ -1,27 +1,35 @@
 server:
-  host: 0.0.0.0
+  host: "0.0.0.0"
   port: 50051
+  read_timeout: "5s"
+  write_timeout: "5s"
+  idle_timeout: "60s"
 
 business:
-  context_timeout: 5s
+  context_timeout: "5s"
+  lifetime_access_token: "15m"
+  lifetime_refresh_token: "720h"
 
 database:
   postgres:
     dsn: ""
-    host: localhost
+    host: "127.0.0.1"
     port: 5432
-    database_name: auth_pg
-    username: postgres
-    password: 2409
-    ssl_mode: disable
-    migrations_path: services/authservice/migrations
-    migrations_table: goose_db_version
-    schema_name: public
+    database_name: "auth_pg"
+    username: "postgres"
+    password: "2409"
+    ssl_mode: "disable"
+
+    migrations_path: "services/authservice/migrations"
+    migrations_table: "goose_db_version"
+    schema_name: "public"
+
     max_connections: 10
     min_connections: 1
-    max_idle_time: 30m
-    max_lifetime: 60m
-    health_check_period: 5m
-    write_timeout: 30s
-    read_timeout: 15s
-    connect_timeout: 5s
+    max_idle_time: "30m"
+    max_lifetime: "60m"
+    health_check_period: "5m"
+
+    write_timeout: "30s"
+    read_timeout: "15s"
+    connect_timeout: "5s"
