@@ -1,6 +1,6 @@
 -- +goose Up
 create table if not exists users(
-    id bigserial not null primary key,
+    id uuid not null primary key,
     email varchar(64) not null unique,
     user_role text not null,
     password_hash text not null,
