@@ -3,6 +3,7 @@ package usecases
 import (
 	"Donate_backend/services/authservice/internal/config"
 	"Donate_backend/services/authservice/internal/domain"
+	"fmt"
 
 	"go.uber.org/zap"
 )
@@ -37,5 +38,26 @@ func NewService(
 		accessIssuer: accessIssuer,
 		refreshToken: refreshToken,
 		clock:        clock,
+	}
+}
+
+func (s *Service) ensureDeps() error {
+	switch {
+	case s.config == nil:
+		return fmt.Errorf("config is nil")
+	case s.users == nil:
+		return fmt.Errorf("users repository is nil")
+	case s.sessions == nil:
+		return fmt.Errorf("sessions repository is nil")
+	case s.passHasher == nil:
+		return fmt.Errorf("password hasher is nil")
+	case s.accessIssuer == nil:
+		return fmt.Errorf("access token issuer is nil")
+	case s.refreshToken == nil:
+		return fmt.Errorf("refresh token service is nil")
+	case s.clock == nil:
+		return fmt.Errorf("clock is nil")
+	default:
+		return nil
 	}
 }

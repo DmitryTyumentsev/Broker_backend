@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"Donate_backend/shared/pkg/helpers"
 	"context"
 	"fmt"
 	"strings"
@@ -12,18 +13,28 @@ import (
 	"go.uber.org/zap"
 )
 
-func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPairResponse, error) {
+const (
+	roleSuperadmin       = "superAdmin"       //технический админ всей платформы
+	roleDeveloperAdmin   = "developerAdmin"   //админ застройщика
+	roleAccountManager   = "accountManager"   //менеджер застройщика по работе с агентствами
+	roleSalesManager     = "salesManager"     //менеджер продаж застройщика по конкретным сделкам
+	roleAgencyOwner      = "agencyOwner"      //руководитель агентства недвижимости
+	roleBrokerTeamLeader = "brokerTeamLeader" //руководитель группы брокеров внутри агентства
+	roleBrokerTeamMember = "brokerTeamMember" //брокер / агент
+)
+
+func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPairResponse, error) { //в методе вижу что данные передаю где-то по ссылке, где-то без ссылки. Данные между слоями вообще как верно передавать? у меня не будут копии в каждом методе создаваться если без ссылки буду их передавать? у меня тут пробел как будто
 	const op = "usecases.Register"
 
 	if s == nil {
 		return nil, fmt.Errorf("%s: service is nil", op)
 	}
 
-	if err := validateRegisterInput(req); err != nil {
+	if err := s.ensureDeps(); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	if err := s.ensureRegisterDeps(); err != nil {
+	if err := validateRegisterInput(req); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -35,12 +46,15 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 	now := s.clock.Now()
 
 	user := entity.User{
-		ID:        uuid.NewString(),
-		Email:     strings.TrimSpace(req.Email),
-		Username:  strings.TrimSpace(req.Username),
-		PassHash:  passwordHash,
-		Role:      "user",
-		CreatedAt: now,
+		ID:         uuid.NewString(),
+		Email:      strings.TrimSpace(req.Email),
+		Role:       roleBrokerTeamMember,
+		PassHash:   passwordHash,
+		LastName:   helpers.NormalizeString(req.LastName),
+		FirstName:  helpers.NormalizeString(req.FirstName),
+		MiddleName: helpers.NormalizeString(req.MiddleName), //горит красным из-за *string. Как на продовых проектах делают? мне helper менять или прям тут поправить как-то?
+		CreatedAt:  now,
+		UpdatedAt:  req.UpdatedAt,
 	}
 
 	if err := s.users.Save(ctx, user); err != nil {
@@ -87,8 +101,8 @@ func validateRegisterInput(req *RegisterRequest) error {
 		return ErrEmailRequired
 	}
 
-	req.Email = strings.TrimSpace(req.Email)
-	req.Username = strings.TrimSpace(req.Username)
+	req.Email = helpers.NormalizeString(req.Email)
+	req.Username = helpers.NormalizeString(req.Username)
 
 	if req.Email == "" {
 		return ErrEmailRequired
@@ -119,25 +133,4 @@ func validateRegisterInput(req *RegisterRequest) error {
 	}
 
 	return nil
-}
-
-func (s *Service) ensureRegisterDeps() error {
-	switch {
-	case s.config == nil:
-		return fmt.Errorf("config is nil")
-	case s.users == nil:
-		return fmt.Errorf("users repository is nil")
-	case s.sessions == nil:
-		return fmt.Errorf("sessions repository is nil")
-	case s.passHasher == nil:
-		return fmt.Errorf("password hasher is nil")
-	case s.accessIssuer == nil:
-		return fmt.Errorf("access token issuer is nil")
-	case s.refreshToken == nil:
-		return fmt.Errorf("refresh token service is nil")
-	case s.clock == nil:
-		return fmt.Errorf("clock is nil")
-	default:
-		return nil
-	}
 }

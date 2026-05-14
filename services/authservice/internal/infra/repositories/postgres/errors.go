@@ -16,7 +16,8 @@ func MapError(op string, err error) error {
 		return nil
 	}
 
-	if errors.Is(err, pgx.ErrNoRows) {
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
 		return fmt.Errorf("%s: %w", op, domain.ErrNotFound)
 	}
 

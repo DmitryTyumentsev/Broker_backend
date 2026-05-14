@@ -25,14 +25,16 @@ func (r *Repository) Save(ctx context.Context, user entity.User) error {
 
 	query := `
 		insert into users (
-			id,
-			email,
-			password_hash,
-			username,
-			role,
-			created_at
-		)
-		values ($1, $2, $3, $4, $5, $6)
+		                   id,
+		                   email,
+		                   user_role,
+		                   password_hash,
+		                   last_name,
+		                   first_name,
+		                   middle_name,
+		                   created_at,
+		                   updated_at
+		                   ) values ($1, $2, $3, $4, $5, $6)
 	`
 
 	_, err := r.pg.DB().Exec(
@@ -40,10 +42,13 @@ func (r *Repository) Save(ctx context.Context, user entity.User) error {
 		query,
 		user.ID,
 		user.Email,
-		user.PassHash,
-		user.Username,
 		user.Role,
+		user.PassHash,
+		user.LastName,
+		user.FirstName, //выносят ли на реальных проектах такие значения как отдельно тип? чтобы не перепутать. насколько принято так писать в продовых проектах и если принято то где пишут?
+		user.MiddleName,
 		user.CreatedAt,
+		user.UpdatedAt,
 	)
 	if err != nil {
 		return postgres.MapError(op, err)

@@ -1,7 +1,7 @@
-package validators
+package helpers
 
 import "strings"
 
-func normalizeString(v string) string {
+func NormalizeString(v string) string {
 	return strings.ToLower(strings.TrimSpace(v))
 }

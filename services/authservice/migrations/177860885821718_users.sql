@@ -7,10 +7,10 @@ create table if not exists users(
     last_name varchar(64) not null,
     first_name varchar(64) not null,
     middle_name varchar(64),
-    created_at timestamptz default now(),
-    updated_at timestamptz default now(),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz,
 
-    constraint constraint_check_role check(
+    constraint check_users_user_role check(
         user_role IN(
         'superadmin',                 -- технический админ всей платформы
         'developer_admin',            -- админ застройщика
@@ -18,10 +18,12 @@ create table if not exists users(
         'sales_manager',              -- менеджер продаж застройщика по конкретным сделкам
         'agency_owner',               -- руководитель агентства недвижимости
         'broker_team_lead',           -- руководитель группы брокеров внутри агентства
-        'broker'                     -- брокер / агент
+        'broker_team_member'          -- брокер / агент
                     )
-                                          )
-    );
+                                          ),
+    constraint unique_users_email unique(email)
+);
+
 create index idx_users_email on users(email);
 
 -- +goose Down
