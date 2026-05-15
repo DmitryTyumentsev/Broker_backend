@@ -31,10 +31,10 @@ func (h *Handler) Register(
 	}
 
 	resp, err := h.service.Register(ctx, &usecases.RegisterRequest{
-		Email:    req.Email,
-		Password: req.Password,
-		Username: req.Username,
-		DeviceID: req.DeviceId,
+		Email:       req.Email,
+		RawPassword: req.Password,
+		Username:    req.Username,
+		DeviceID:    req.DeviceId,
 	})
 	if err != nil {
 		return nil, mapError(err)

@@ -32,8 +32,7 @@ func (r *Repository) Save(ctx context.Context, user entity.User) error {
 		                   last_name,
 		                   first_name,
 		                   middle_name,
-		                   created_at,
-		                   updated_at
+		                   created_at
 		                   ) values ($1, $2, $3, $4, $5, $6)
 	`
 
@@ -43,12 +42,11 @@ func (r *Repository) Save(ctx context.Context, user entity.User) error {
 		user.ID,
 		user.Email,
 		user.Role,
-		user.PassHash,
+		user.PasswordHash,
 		user.LastName,
 		user.FirstName, //выносят ли на реальных проектах такие значения как отдельно тип? чтобы не перепутать. насколько принято так писать в продовых проектах и если принято то где пишут?
 		user.MiddleName,
 		user.CreatedAt,
-		user.UpdatedAt,
 	)
 	if err != nil {
 		return postgres.MapError(op, err)
@@ -80,7 +78,7 @@ func (r *Repository) FindByEmail(ctx context.Context, email string) (entity.User
 	err := r.pg.DB().QueryRow(ctx, query, email).Scan(
 		&user.ID,
 		&user.Email,
-		&user.PassHash,
+		&user.PasswordHash,
 		&user.Username,
 		&user.Role,
 		&user.CreatedAt,
@@ -115,7 +113,7 @@ func (r *Repository) FindByUsername(ctx context.Context, username string) (entit
 	err := r.pg.DB().QueryRow(ctx, query, username).Scan(
 		&user.ID,
 		&user.Email,
-		&user.PassHash,
+		&user.PasswordHash,
 		&user.Username,
 		&user.Role,
 		&user.CreatedAt,

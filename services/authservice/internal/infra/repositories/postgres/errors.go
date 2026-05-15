@@ -11,6 +11,10 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+const (
+	constraintUniqueUsersEmail = "unique_users_email"
+)
+
 func MapError(op string, err error) error {
 	if err == nil {
 		return nil
@@ -25,7 +29,11 @@ func MapError(op string, err error) error {
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
 		case pgerrcode.UniqueViolation:
-			return fmt.Errorf("%s: %w", op, domain.ErrNotUnique)
+			switch pgErr.ConstraintName {
+			case constraintUniqueUsersEmail:
+				return fmt.Errorf("%s: %w", op, domain.ErrNotUniqueEmail)
+			}
+			return fmt.Errorf("%s: %w", op, domain.ErrNotUnique) //мне немного не нравится switch в switch, ок ли так или можно более читаемо сделать? как на продовых проектах делают? или как щас у меня хорошо читаемо?
 		case pgerrcode.NotNullViolation:
 			return fmt.Errorf("%s: %w", op, domain.ErrMustBeNotNull)
 		case pgerrcode.ForeignKeyViolation:

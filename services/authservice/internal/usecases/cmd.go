@@ -1,10 +1,12 @@
 package usecases
 
 type RegisterRequest struct {
-	Email      string
-	Password   string
-	MiddleName string
-	DeviceID   string
+	Email       string
+	RawPassword string
+	LastName    string
+	FirstName   string
+	MiddleName  *string
+	DeviceID    string
 }
 
 type TokenPairResponse struct {

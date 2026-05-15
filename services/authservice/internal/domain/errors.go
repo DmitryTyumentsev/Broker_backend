@@ -12,4 +12,5 @@ var (
 	ErrUnauthenticated = errors.New("unauthenticated")
 	ErrForbidden       = errors.New("forbidden")
 	ErrGeneral         = errors.New("internal error")
+	ErrNotUniqueEmail  = errors.New("email not unique")
 )

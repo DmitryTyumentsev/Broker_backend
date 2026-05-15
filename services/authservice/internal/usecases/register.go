@@ -38,7 +38,7 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	passwordHash, err := s.passHasher.Hash(req.Password)
+	passwordHash, err := s.passHasher.Hash(req.RawPassword)
 	if err != nil {
 		return nil, fmt.Errorf("%s: hash password: %w", op, err)
 	}
@@ -46,15 +46,14 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 	now := s.clock.Now()
 
 	user := entity.User{
-		ID:         uuid.NewString(),
-		Email:      strings.TrimSpace(req.Email),
-		Role:       roleBrokerTeamMember,
-		PassHash:   passwordHash,
-		LastName:   helpers.NormalizeString(req.LastName),
-		FirstName:  helpers.NormalizeString(req.FirstName),
-		MiddleName: helpers.NormalizeString(req.MiddleName), //горит красным из-за *string. Как на продовых проектах делают? мне helper менять или прям тут поправить как-то?
-		CreatedAt:  now,
-		UpdatedAt:  req.UpdatedAt,
+		ID:           uuid.NewString(),
+		Email:        strings.TrimSpace(req.Email),
+		Role:         roleBrokerTeamMember,
+		PasswordHash: passwordHash,
+		LastName:     helpers.NormalizeString(req.LastName),
+		FirstName:    helpers.NormalizeString(req.FirstName),
+		MiddleName:   helpers.NormalizeString(req.MiddleName), //горит красным из-за *string. Как на продовых проектах делают? мне helper менять или прям тут поправить как-то?
+		CreatedAt:    now,
 	}
 
 	if err := s.users.Save(ctx, user); err != nil {
@@ -112,11 +111,11 @@ func validateRegisterInput(req *RegisterRequest) error {
 		return ErrEmailInvalid
 	}
 
-	if req.Password == "" {
+	if req.RawPassword == "" {
 		return ErrPasswordRequired
 	}
 
-	if !validators.IsStrongPassword(req.Password) {
+	if !validators.IsStrongPassword(req.RawPassword) {
 		return ErrPasswordWeak
 	}
 
