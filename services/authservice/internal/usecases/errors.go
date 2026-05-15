@@ -8,6 +8,5 @@ var (
 	ErrPasswordRequired = errors.New("password is required")
 	ErrPasswordWeak     = errors.New("password is weak")
 	ErrUsernameRequired = errors.New("username is required")
-	ErrUsernameInvalid  = errors.New("username is invalid")
 	ErrDeviceIDRequired = errors.New("device_id is required")
 )

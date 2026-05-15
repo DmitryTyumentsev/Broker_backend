@@ -1,6 +1,6 @@
 -- +goose Up
 create table if not exists refresh_sessions(
-    session_id bigserial primary key,
+    session_id bigserial primary key,--верно ли session_id делать bigserial?
     refresh_token_hash text not null unique,
     device_id text not null,
     created_at timestamptz not null default now(),

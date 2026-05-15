@@ -68,11 +68,10 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 	refreshHash := s.refreshToken.Hash(rawRefreshToken)
 
 	session := entity.RefreshSession{
-		Hash:      refreshHash,
-		UserID:    user.ID,
-		DeviceID:  req.DeviceID,
-		CreatedAt: now,
-		ExpiresAt: now.Add(s.config.Business.LifetimeRefreshToken),
+		RefreshTokenHash: refreshHash,
+		DeviceID:         req.DeviceID,
+		CreatedAt:        now,
+		ExpiresAt:        now.Add(s.config.Business.LifetimeRefreshToken),
 	}
 
 	if err := s.sessions.Save(ctx, session); err != nil {
@@ -100,35 +99,27 @@ func validateRegisterInput(req *RegisterRequest) error {
 		return ErrEmailRequired
 	}
 
-	req.Email = helpers.NormalizeString(req.Email)
-	req.Username = helpers.NormalizeString(req.Username)
+	arrayReq := make([]string, ) //как выделить объем под *struct? была идея попробовать из req вытащить все поля и проверить на "" их в цикле for range. Как тебе? как сделать?
+	for k, v := range
 
 	if req.Email == "" {
 		return ErrEmailRequired
 	}
+	if req.RawPassword == "" {
+		return ErrPasswordRequired
+	}
+	if req.DeviceID == "" {
+		return ErrDeviceIDRequired
+	}
+
+	req.Email = helpers.NormalizeString(req.Email)
 
 	if !validators.IsValidEmail(req.Email) {
 		return ErrEmailInvalid
 	}
 
-	if req.RawPassword == "" {
-		return ErrPasswordRequired
-	}
-
 	if !validators.IsStrongPassword(req.RawPassword) {
 		return ErrPasswordWeak
-	}
-
-	if req.Username == "" {
-		return ErrUsernameRequired
-	}
-
-	if !validators.IsValidUsername(req.Username) {
-		return ErrUsernameInvalid
-	}
-
-	if req.DeviceID == "" {
-		return ErrDeviceIDRequired
 	}
 
 	return nil
