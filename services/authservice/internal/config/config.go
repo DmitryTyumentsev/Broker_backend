@@ -36,6 +36,7 @@ type BusinessConfig struct {
 
 type DatabaseConfig struct {
 	Postgres PostgresConfig `mapstructure:"postgres"`
+	Redis    RedisConfig    `mapstructure:"redis"`
 }
 
 type PostgresConfig struct {
@@ -61,6 +62,32 @@ type PostgresConfig struct {
 	ReadTimeout    time.Duration `mapstructure:"read_timeout"`
 	WriteTimeout   time.Duration `mapstructure:"write_timeout"`
 	ConnectTimeout time.Duration `mapstructure:"connect_timeout"`
+}
+
+type RedisConfig struct {
+	Host         string        `mapstructure:"host"`
+	Port         int           `mapstructure:"port"`
+	Password     string        `mapstructure:"password"`
+	DB           int           `mapstructure:"db"`
+	DialTimeout  time.Duration `mapstructure:"dial_timeout"`
+	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout time.Duration `mapstructure:"write_timeout"`
+	PoolSize     int           `mapstructure:"pool_size"`
+	MinIdleConns int           `mapstructure:"min_idle_conns"`
+}
+
+func (r RedisConfig) Addr() string {
+	host := strings.TrimSpace(r.Host)
+	if host == "" {
+		host = "localhost"
+	}
+
+	port := r.Port
+	if port <= 0 {
+		port = 6379
+	}
+
+	return net.JoinHostPort(host, strconv.Itoa(port))
 }
 
 func LoadConfig() (*Config, error) {
@@ -112,6 +139,26 @@ func (c *Config) Validate() error {
 		if strings.TrimSpace(pg.Username) == "" {
 			return errors.New("database.postgres.username is required when dsn is empty")
 		}
+	}
+
+	redis := c.Database.Redis
+	if strings.TrimSpace(redis.Host) == "" {
+		return errors.New("database.redis.host is required")
+	}
+	if redis.Port <= 0 {
+		return errors.New("database.redis.port must be positive")
+	}
+	if redis.DB < 0 {
+		return errors.New("database.redis.db must not be negative")
+	}
+	if redis.DialTimeout <= 0 {
+		return errors.New("database.redis.dial_timeout must be positive")
+	}
+	if redis.ReadTimeout <= 0 {
+		return errors.New("database.redis.read_timeout must be positive")
+	}
+	if redis.WriteTimeout <= 0 {
+		return errors.New("database.redis.write_timeout must be positive")
 	}
 
 	return nil

@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strconv"
 
 	"Donate_backend/services/authservice/internal/config"
+	"Donate_backend/services/authservice/internal/infra/cache/redis"
 	"Donate_backend/services/authservice/internal/transport/grpchandler"
 	authv1 "Donate_backend/shared/pkg/grpc/gen/auth/v1"
 
@@ -26,6 +28,25 @@ func main() {
 	defer func() {
 		_ = logger.Sync()
 	}()
+
+	startupCtx, cancel := context.WithTimeout(context.Background(), cfg.Database.Redis.DialTimeout)
+	defer cancel()
+
+	redisClient, err := redis.NewClient(startupCtx, cfg.Database.Redis)
+	if err != nil {
+		logger.Fatal("connect redis failed", zap.Error(err))
+	}
+	defer func() {
+		if err := redisClient.Close(); err != nil {
+			logger.Error("close redis client failed", zap.Error(err))
+		}
+	}()
+
+	logger.Info(
+		"redis connected",
+		zap.String("addr", cfg.Database.Redis.Addr()),
+		zap.Int("db", cfg.Database.Redis.DB),
+	)
 
 	addr := net.JoinHostPort(cfg.Server.Host, strconv.Itoa(cfg.Server.Port))
 
