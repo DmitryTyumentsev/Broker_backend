@@ -1,7 +1,7 @@
 package httperr
 
 import (
-	"Donate_backend/services/apigateway/internal/http/dto"
+	"Donate_backend/services/apigateway/internal/transport/http/dto"
 
 	"github.com/gofiber/fiber/v2"
 	"google.golang.org/grpc/codes"

@@ -33,7 +33,7 @@ func (r *Repository) Save(ctx context.Context, user entity.User) error {
 		                   first_name,
 		                   middle_name,
 		                   created_at
-		                   ) values ($1, $2, $3, $4, $5, $6)
+		                   ) values ($1, $2, $3, $4, $5, $6, &7, &8)
 	`
 
 	_, err := r.pg.DB().Exec(

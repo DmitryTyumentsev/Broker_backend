@@ -1,11 +1,13 @@
 package entity
 
-import "time"
+import (
+	"time"
+)
 
 type User struct {
 	ID           string
 	Email        string
-	Role         string
+	Role         UserRole
 	PasswordHash string
 	LastName     string
 	FirstName    string

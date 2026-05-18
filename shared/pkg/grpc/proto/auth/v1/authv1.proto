@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package v1;
 
-option go_package = "v1;authv1";
+option go_package = "Broker_backend/shared/pkg/grpc/gen/auth/v1;authv1";
 
 service AuthService {
   rpc Register(RegisterRequest) returns (TokenPairResponse);
@@ -14,12 +14,14 @@ service AuthService {
 message RegisterRequest {
   string email = 1;
   string password = 2;
-  string username = 3;
-  string device_id = 4;
+  string last_name = 3;
+  string first_name = 4;
+  optional string middle_name = 5;
+  string device_id = 6;
 }
 
 message AuthRequest {
-  string username = 1;
+  string email = 1;
   string password = 2;
   string device_id = 3;
 }

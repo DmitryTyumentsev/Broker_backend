@@ -1,7 +1,7 @@
 -- +goose Up
 create table if not exists users(
     id uuid not null primary key,
-    email varchar(64) not null unique,
+    email varchar(64) not null,
     user_role text not null,
     password_hash text not null,
     last_name varchar(64) not null,
@@ -10,7 +10,7 @@ create table if not exists users(
     created_at timestamptz not null default now(),
     updated_at timestamptz,
 
-    constraint check_users_user_role check(
+    constraint users_user_role_check check(
         user_role IN(
         'superadmin',                 -- технический админ всей платформы
         'developer_admin',            -- админ застройщика
@@ -21,10 +21,8 @@ create table if not exists users(
         'broker_team_member'          -- брокер / агент
                     )
                                           ),
-    constraint unique_users_email unique(email)
+    constraint users_email_unique unique(email)
 );
-
-create index idx_users_email on users(email);
 
 -- +goose Down
 drop table if exists users;

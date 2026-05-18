@@ -1,6 +1,9 @@
 package main
 
 import (
+	httprouter "Donate_backend/services/apigateway/internal/transport/http"
+	"Donate_backend/services/apigateway/internal/transport/http/handlers"
+	"Donate_backend/services/apigateway/internal/transport/http/handlers/authhandlers"
 	"context"
 	"fmt"
 	"net"
@@ -8,9 +11,6 @@ import (
 
 	"Donate_backend/services/apigateway/internal/clients/authclient"
 	"Donate_backend/services/apigateway/internal/config"
-	httprouter "Donate_backend/services/apigateway/internal/http"
-	"Donate_backend/services/apigateway/internal/http/handlers"
-	"Donate_backend/services/apigateway/internal/http/handlers/authhandlers"
 
 	validate "github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"

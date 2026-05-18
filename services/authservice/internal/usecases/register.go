@@ -13,16 +13,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	roleSuperadmin       = "superAdmin"       //технический админ всей платформы
-	roleDeveloperAdmin   = "developerAdmin"   //админ застройщика
-	roleAccountManager   = "accountManager"   //менеджер застройщика по работе с агентствами
-	roleSalesManager     = "salesManager"     //менеджер продаж застройщика по конкретным сделкам
-	roleAgencyOwner      = "agencyOwner"      //руководитель агентства недвижимости
-	roleBrokerTeamLeader = "brokerTeamLeader" //руководитель группы брокеров внутри агентства
-	roleBrokerTeamMember = "brokerTeamMember" //брокер / агент
-)
-
 func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPairResponse, error) { //в методе вижу что данные передаю где-то по ссылке, где-то без ссылки. Данные между слоями вообще как верно передавать? у меня не будут копии в каждом методе создаваться если без ссылки буду их передавать? у меня тут пробел как будто
 	const op = "usecases.Register"
 
@@ -47,12 +37,12 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 
 	user := entity.User{
 		ID:           uuid.NewString(),
-		Email:        strings.TrimSpace(req.Email),
-		Role:         roleBrokerTeamMember,
+		Email:        helpers.NormalizeEmail(req.Email),
+		Role:         entity.RoleBrokerTeamMember,
 		PasswordHash: passwordHash,
-		LastName:     helpers.NormalizeString(req.LastName),
-		FirstName:    helpers.NormalizeString(req.FirstName),
-		MiddleName:   helpers.NormalizeString(req.MiddleName), //горит красным из-за *string. Как на продовых проектах делают? мне helper менять или прям тут поправить как-то?
+		LastName:     helpers.NormalizeText(req.LastName),
+		FirstName:    helpers.NormalizeText(req.FirstName),
+		MiddleName:   helpers.NormalizeOptionText(req.MiddleName),
 		CreatedAt:    now,
 	}
 
@@ -99,20 +89,29 @@ func validateRegisterInput(req *RegisterRequest) error {
 		return ErrEmailRequired
 	}
 
-	arrayReq := make([]string, ) //как выделить объем под *struct? была идея попробовать из req вытащить все поля и проверить на "" их в цикле for range. Как тебе? как сделать?
-	for k, v := range
+	req.Email = helpers.NormalizeEmail(req.Email)
+	req.FirstName = strings.TrimSpace(req.FirstName)
+	req.LastName = strings.TrimSpace(req.LastName)
 
 	if req.Email == "" {
 		return ErrEmailRequired
 	}
+
 	if req.RawPassword == "" {
 		return ErrPasswordRequired
 	}
-	if req.DeviceID == "" {
+
+	if strings.TrimSpace(req.DeviceID) == "" {
 		return ErrDeviceIDRequired
 	}
 
-	req.Email = helpers.NormalizeString(req.Email)
+	if req.FirstName == "" {
+		return ErrFirstNameRequired
+	}
+
+	if req.LastName == "" {
+		return ErrLastNameRequired
+	}
 
 	if !validators.IsValidEmail(req.Email) {
 		return ErrEmailInvalid

@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	constraintUniqueEmail            = "unique_users_email"
-	constraintCheckUserRole          = "check_users_user_role" //для самих const лучше писать сокращенное название?
-	constraintUniqueRefreshTokenHash = "unique_refresh_sessions_refresh_token_hash"
+	constraintUniqueEmail            = "users_email_unique"
+	constraintCheckUserRole          = "users_user_role_check" //для самих const лучше писать сокращенное название?
+	constraintUniqueRefreshTokenHash = "refresh_sessions_refresh_token_hash_unique"
 )
 
 func MapError(op string, err error) error {
@@ -24,7 +24,7 @@ func MapError(op string, err error) error {
 
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
-		return fmt.Errorf("%s: %w", op, domain.ErrNotFound) //верно ли это тут оставлять или можно ниже в case добавить?
+		return fmt.Errorf("%s: %w", op, domain.ErrNotFound)
 	}
 
 	var pgErr *pgconn.PgError
@@ -35,14 +35,14 @@ func MapError(op string, err error) error {
 			case constraintUniqueEmail:
 				return fmt.Errorf("%s: %w", op, domain.ErrNotUniqueEmail)
 			case constraintUniqueRefreshTokenHash:
-				return fmt.Errorf("%s: %w", op, domain.ErrNotUniqueRefreshTokenHash) //верно рассуждаю что надо возвращать ошибку в доменный слой чтобы сделать новую попытку создания хэша?
-			} //мне немного не нравится switch в switch, ок ли так или можно более читаемо сделать? как на продовых проектах делают? или как щас у меня хорошо читаемо? и еще вопрос - зачем нужен pgerrcode.IntegrityConstraintViolation?
+				return fmt.Errorf("%s: %w", op, domain.ErrNotUniqueRefreshTokenHash)
+			}
 
 		case pgerrcode.NotNullViolation:
-			return fmt.Errorf("%s: %w, full error: %w", op, domain.ErrMustBeNotNull, err)
+			return fmt.Errorf("%s: %w: %v", op, domain.ErrMustBeNotNull, err)
 
 		case pgerrcode.ForeignKeyViolation:
-			return fmt.Errorf("%s: %w, full error: %w", op, domain.ErrBadRequest, err) //внешне получился винергрет внутри самого fmt.Errorf как по мне. Как тебе? или норм?
+			return fmt.Errorf("%s: %w: %v", op, domain.ErrBadRequest, err)
 
 		case pgerrcode.CheckViolation:
 			switch pgErr.ConstraintName {

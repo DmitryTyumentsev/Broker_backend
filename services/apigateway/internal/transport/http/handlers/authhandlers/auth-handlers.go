@@ -2,8 +2,8 @@ package authhandlers
 
 import (
 	"Donate_backend/services/apigateway/internal/clients/authclient"
-	"Donate_backend/services/apigateway/internal/http/dto/authdto"
-	"Donate_backend/services/apigateway/internal/http/httperr"
+	"Donate_backend/services/apigateway/internal/transport/http/dto/authdto"
+	"Donate_backend/services/apigateway/internal/transport/http/httperr"
 	authv1 "Donate_backend/shared/pkg/grpc/gen/auth/v1"
 
 	validate "github.com/go-playground/validator/v10"
@@ -66,7 +66,7 @@ func (h *AuthHandler) Login(ctx *fiber.Ctx) error {
 	}
 
 	grpcReq := &authv1.AuthRequest{
-		Username: req.Username,
+		Email:    req.Email,
 		Password: req.Password,
 		DeviceId: req.DeviceID,
 	}
@@ -136,10 +136,12 @@ func (h *AuthHandler) Logout(ctx *fiber.Ctx) error {
 
 func httpToGRPCRegister(req authdto.RegisterRequest) *authv1.RegisterRequest {
 	return &authv1.RegisterRequest{
-		Email:    req.Email,
-		Password: req.Password,
-		Username: req.Username,
-		DeviceId: req.DeviceID,
+		Email:      req.Email,
+		Password:   req.Password,
+		LastName:   req.LastName,
+		FirstName:  req.FirstName,
+		MiddleName: req.MiddleName,
+		DeviceId:   req.DeviceID,
 	}
 }
 

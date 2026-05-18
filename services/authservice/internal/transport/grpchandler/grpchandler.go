@@ -22,10 +22,7 @@ func NewHandler(service *usecases.Service) *Handler {
 	}
 }
 
-func (h *Handler) Register(
-	ctx context.Context,
-	req *authv1.RegisterRequest,
-) (*authv1.TokenPairResponse, error) {
+func (h *Handler) Register(ctx context.Context, req *authv1.RegisterRequest) (*authv1.TokenPairResponse, error) {
 	if h.service == nil {
 		return nil, status.Error(codes.Unavailable, "auth service is not wired yet")
 	}
@@ -33,7 +30,9 @@ func (h *Handler) Register(
 	resp, err := h.service.Register(ctx, &usecases.RegisterRequest{
 		Email:       req.Email,
 		RawPassword: req.Password,
-		Username:    req.Username,
+		LastName:    req.LastName,
+		FirstName:   req.FirstName,
+		MiddleName:  req.MiddleName,
 		DeviceID:    req.DeviceId,
 	})
 	if err != nil {
