@@ -44,7 +44,7 @@ func (r *Repository) Save(ctx context.Context, user entity.User) error {
 		user.Role,
 		user.PasswordHash,
 		user.LastName,
-		user.FirstName, //выносят ли на реальных проектах такие значения как отдельно тип? чтобы не перепутать. насколько принято так писать в продовых проектах и если принято то где пишут?
+		user.FirstName,
 		user.MiddleName,
 		user.CreatedAt,
 	)

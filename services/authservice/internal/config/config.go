@@ -32,6 +32,8 @@ type BusinessConfig struct {
 	ContextTimeout       time.Duration `mapstructure:"context_timeout"`
 	LifetimeAccessToken  time.Duration `mapstructure:"lifetime_access_token"`
 	LifetimeRefreshToken time.Duration `mapstructure:"lifetime_refresh_token"`
+	AccessTokenAlg       string        `mapstructure:"access_token_alg"`
+	AccessTokenType      string        `mapstructure:"access_token_type"`
 }
 
 type DatabaseConfig struct {

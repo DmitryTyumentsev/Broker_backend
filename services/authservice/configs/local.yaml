@@ -9,6 +9,8 @@ business:
   context_timeout: "5s"
   lifetime_access_token: "15m"
   lifetime_refresh_token: "720h"
+  access_token_alg: "HS256"
+  access_token_type: "JWT"
 
 database:
   postgres:
