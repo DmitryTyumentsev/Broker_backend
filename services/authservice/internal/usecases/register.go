@@ -69,10 +69,12 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 		return nil, fmt.Errorf("%s: save refresh session: %w", op, err)
 	}
 
-	accessToken, err := s.accessIssuer.Issue(user.ID, req.DeviceID, user.Role, now)
-	if err != nil {
-		return nil, fmt.Errorf("%s: issue access token: %w", op, err)
-	}
+	accessToken, err := s.accessIssuer.Issue(
+		user.ID,
+		req.DeviceID,
+		string(user.Role),
+		now,
+	)
 
 	if s.logger != nil {
 		s.logger.Info("user registered", zap.String("user_id", user.ID))

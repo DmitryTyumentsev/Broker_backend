@@ -11,18 +11,23 @@ import (
 	"time"
 
 	"Donate_backend/services/authservice/internal/config"
+
+	"go.uber.org/zap"
 )
 
 const (
-	accessTokenAlg  = "HS256"
-	accessTokenType = "JWT"
-	accessTokenKind = "access"
+	supportedAccessTokenAlg  = "HS256"
+	supportedAccessTokenType = "JWT"
+	accessTokenKind          = "access"
+
+	minAccessTokenSecretLen = 32
 )
 
 type AccessTokenIssuer struct {
 	secret []byte
 	ttl    time.Duration
 	issuer string
+	logger *zap.Logger
 }
 
 type accessTokenHeader struct {
@@ -31,7 +36,7 @@ type accessTokenHeader struct {
 }
 
 type accessTokenPayload struct {
-	UserID    string `json:"sub"`
+	Subject   string `json:"sub"`
 	DeviceID  string `json:"device_id"`
 	Role      string `json:"role"`
 	TokenType string `json:"token_type"`
@@ -41,21 +46,38 @@ type accessTokenPayload struct {
 	ExpiresAt int64  `json:"exp"`
 }
 
-func NewAccessTokenIssuer(cfg *config.Config) (*AccessTokenIssuer, error) {
-	if err := validateAccessTokenIssuerCfg(cfg); err != nil {
-		return nil, err
+type issueAccessTokenInput struct {
+	UserID   string
+	DeviceID string
+	Role     string
+	Now      time.Time
+}
+
+func NewAccessTokenIssuer(
+	cfg *config.Config,
+	logger *zap.Logger,
+) (*AccessTokenIssuer, error) {
+	const op = "jwt.NewAccessTokenIssuer"
+
+	if cfg == nil {
+		return nil, fmt.Errorf("%s: config is nil", op)
+	}
+
+	if err := validateAccessTokenConfig(cfg); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	if logger == nil {
+		logger = zap.NewNop()
 	}
 
 	secret := strings.TrimSpace(cfg.Business.AccessTokenSecret)
-	
-	if err := validateAccessTokenIssuerSecret(secret); err != nil {
-		return nil, err
-	}
 
 	return &AccessTokenIssuer{
 		secret: []byte(secret),
 		ttl:    cfg.Business.LifetimeAccessToken,
 		issuer: strings.TrimSpace(cfg.Business.AccessTokenIssuer),
+		logger: logger,
 	}, nil
 }
 
@@ -65,41 +87,34 @@ func (i *AccessTokenIssuer) Issue(
 	role string,
 	now time.Time,
 ) (string, error) {
+	const op = "jwt.AccessTokenIssuer.Issue"
+
 	if i == nil {
-		return "", errors.New("access token issuer is nil")
+		return "", fmt.Errorf("%s: issuer is nil", op)
 	}
 
-	userID = strings.TrimSpace(userID)
-	deviceID = strings.TrimSpace(deviceID)
-	role = strings.TrimSpace(role)
-
-	if userID == "" {
-		return "", errors.New("user id is required")
+	input := issueAccessTokenInput{
+		UserID:   userID,
+		DeviceID: deviceID,
+		Role:     role,
+		Now:      now,
 	}
 
-	if deviceID == "" {
-		return "", errors.New("device id is required")
+	if err := validateIssueAccessTokenInput(input); err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
-	if role == "" {
-		return "", errors.New("role is required")
-	}
-
-	if now.IsZero() {
-		now = time.Now().UTC()
-	}
-
-	now = now.UTC()
+	now = input.Now.UTC()
 
 	header := accessTokenHeader{
-		Alg: accessTokenAlg,
-		Typ: accessTokenType,
+		Alg: supportedAccessTokenAlg,
+		Typ: supportedAccessTokenType,
 	}
 
 	payload := accessTokenPayload{
-		UserID:    userID,
-		DeviceID:  deviceID,
-		Role:      role,
+		Subject:   strings.TrimSpace(input.UserID),
+		DeviceID:  strings.TrimSpace(input.DeviceID),
+		Role:      strings.TrimSpace(input.Role),
 		TokenType: accessTokenKind,
 		Issuer:    i.issuer,
 		IssuedAt:  now.Unix(),
@@ -107,24 +122,89 @@ func (i *AccessTokenIssuer) Issue(
 		ExpiresAt: now.Add(i.ttl).Unix(),
 	}
 
-	encodedHeader, err := marshalAndEncodeBase64URL(header)
+	encodedHeader, err := marshalJSONAndEncodeBase64URL(header)
 	if err != nil {
-		return "", fmt.Errorf("encode access token header: %w", err)
+		return "", fmt.Errorf("%s: encode header: %w", op, err)
 	}
 
-	encodedPayload, err := marshalAndEncodeBase64URL(payload)
+	encodedPayload, err := marshalJSONAndEncodeBase64URL(payload)
 	if err != nil {
-		return "", fmt.Errorf("encode access token payload: %w", err)
+		return "", fmt.Errorf("%s: encode payload: %w", op, err)
 	}
 
-	signingInput := encodedHeader + "." + encodedPayload
+	signingInput := buildSigningInput(encodedHeader, encodedPayload)
 
-	encodedSignature := signHS256(signingInput, i.secret)
+	encodedSignature := signHS256AndEncodeBase64URL(signingInput, i.secret)
 
-	return signingInput + "." + encodedSignature, nil
+	token := buildJWT(encodedHeader, encodedPayload, encodedSignature)
+
+	i.logger.Debug(
+		"access token issued",
+		zap.String("user_id", payload.Subject),
+		zap.String("device_id", payload.DeviceID),
+		zap.String("role", payload.Role),
+		zap.Int64("expires_at", payload.ExpiresAt),
+	)
+
+	return token, nil
 }
 
-func marshalAndEncodeBase64URL(v any) (string, error) {
+func validateAccessTokenConfig(cfg *config.Config) error {
+	alg := strings.TrimSpace(cfg.Business.AccessTokenAlg)
+	if alg == "" {
+		return errors.New("access token alg is required")
+	}
+
+	if alg != supportedAccessTokenAlg {
+		return fmt.Errorf("unsupported access token alg: %s", alg)
+	}
+
+	typ := strings.TrimSpace(cfg.Business.AccessTokenType)
+	if typ == "" {
+		return errors.New("access token type is required")
+	}
+
+	if typ != supportedAccessTokenType {
+		return fmt.Errorf("unsupported access token type: %s", typ)
+	}
+
+	secret := strings.TrimSpace(cfg.Business.AccessTokenSecret)
+	if secret == "" {
+		return errors.New("access token secret is required")
+	}
+
+	if len(secret) < minAccessTokenSecretLen {
+		return fmt.Errorf("access token secret must be at least %d bytes", minAccessTokenSecretLen)
+	}
+
+	if cfg.Business.LifetimeAccessToken <= 0 {
+		return errors.New("access token ttl must be positive")
+	}
+
+	return nil
+}
+
+func validateIssueAccessTokenInput(input issueAccessTokenInput) error {
+	if strings.TrimSpace(input.UserID) == "" {
+		return errors.New("user id is required")
+	}
+
+	if strings.TrimSpace(input.DeviceID) == "" {
+		return errors.New("device id is required")
+	}
+
+	if strings.TrimSpace(input.Role) == "" {
+		return errors.New("role is required")
+	}
+
+	if input.Now.IsZero() {
+		return errors.New("now must not be zero")
+	}
+
+	return nil
+}
+
+func marshalJSONAndEncodeBase64URL(v any) (string, error) {
 	jsonBytes, err := json.Marshal(v)
 	if err != nil {
 		return "", fmt.Errorf("json marshal: %w", err)
@@ -133,42 +213,43 @@ func marshalAndEncodeBase64URL(v any) (string, error) {
 	return base64.RawURLEncoding.EncodeToString(jsonBytes), nil
 }
 
-func signHS256(signingInput string, secret []byte) string {
+func buildSigningInput(encodedHeader string, encodedPayload string) string {
+	return encodedHeader + "." + encodedPayload
+}
+
+func buildJWT(encodedHeader string, encodedPayload string, encodedSignature string) string {
+	return encodedHeader + "." + encodedPayload + "." + encodedSignature
+}
+
+func signHS256AndEncodeBase64URL(signingInput string, secret []byte) string {
 	mac := hmac.New(sha256.New, secret)
 
-	mac.Write([]byte(signingInput))
+	_, _ = mac.Write([]byte(signingInput))
 
 	signatureBytes := mac.Sum(nil)
 
 	return base64.RawURLEncoding.EncodeToString(signatureBytes)
 }
 
-func validateAccessTokenIssuerCfg(cfg *config.Config) error {
-	if cfg == nil {
-		return errors.New("config is nil")
+func verifyAccessTokenSignature(token, secret string) bool {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return false
 	}
 
-	if cfg.Business.LifetimeAccessToken <= 0 {
-		return errors.New("lifetime access token must be positive")
+	signingInput := buildSigningInput(parts[0], parts[1])
+
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, err := mac.Write([]byte(signingInput))
+	if err != nil {
+		return false
+	}
+	expectedSignature := mac.Sum(nil)
+
+	currentSignature, err := base64.RawURLEncoding.DecodeString(parts[2])
+	if err != nil {
+		return false
 	}
 
-	if cfg.Business.AccessTokenAlg != "" && cfg.Business.AccessTokenAlg != accessTokenAlg {
-		return fmt.Errorf("unsupported access token alg: %s", cfg.Business.AccessTokenAlg)
-	}
-
-	if cfg.Business.AccessTokenType != "" && cfg.Business.AccessTokenType != accessTokenType {
-		return fmt.Errorf("unsupported access token type: %s", cfg.Business.AccessTokenType)
-	}
-	return nil
-}
-
-func validateAccessTokenIssuerSecret(secret string) error {
-	if secret == "" {
-		return errors.New("access token secret is required")
-	}
-
-	if len(secret) < 32 {
-		return errors.New("access token secret must be at least 32 bytes")
-	}
-	return nil
+	return hmac.Equal(currentSignature, expectedSignature)
 }

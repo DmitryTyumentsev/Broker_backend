@@ -126,16 +126,20 @@ func (c *Config) Validate() error {
 		return errors.New("business.lifetime_refresh_token must be positive")
 	}
 
-	if strings.TrimSpace(c.Business.AccessTokenSecret) == "" {
-		return errors.New("business.access_token_secret is required")
-	}
-
 	if strings.TrimSpace(c.Business.AccessTokenAlg) == "" {
 		return errors.New("business.access_token_alg is required")
 	}
 
 	if strings.TrimSpace(c.Business.AccessTokenType) == "" {
 		return errors.New("business.access_token_type is required")
+	}
+
+	if strings.TrimSpace(c.Business.AccessTokenSecret) == "" {
+		return errors.New("business.access_token_secret is required")
+	}
+
+	if len(strings.TrimSpace(c.Business.AccessTokenSecret)) < 32 {
+		return errors.New("business.access_token_secret must be at least 32 bytes")
 	}
 
 	pg := c.Database.Postgres
