@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"Donate_backend/services/authservice/internal/infra/security/jwt"
 	"context"
 	"time"
 
@@ -14,10 +15,10 @@ type UserRepository interface {
 }
 
 type RefreshSessionRepository interface {
-	Save(ctx context.Context, session entity.RefreshSession) error
-	Rotate(ctx context.Context, oldHash string, newSession entity.RefreshSession) error
+	Save(ctx context.Context, session jwt.RefreshSession) error
+	Rotate(ctx context.Context, oldHash string, newSession jwt.RefreshSession) error
 	Revoke(ctx context.Context, hash string) error
-	FindByHash(ctx context.Context, hash string) (entity.RefreshSession, error)
+	FindByHash(ctx context.Context, hash string) (jwt.RefreshSession, error)
 }
 
 type PasswordHasher interface {

@@ -25,7 +25,7 @@ func (p *Postgres) DB() *pgxpool.Pool {
 }
 
 func (p *Postgres) WriteWithTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(ctx, p.cfg.Database.Postgres.WriteTimeout) //верно ли эти методы держать тут а не в shared?
+	return context.WithTimeout(ctx, p.cfg.Database.Postgres.WriteTimeout)
 }
 
 func (p *Postgres) ReadWithTimeout(ctx context.Context) (context.Context, context.CancelFunc) {

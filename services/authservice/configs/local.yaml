@@ -11,6 +11,8 @@ business:
   lifetime_refresh_token: "720h"
   access_token_alg: "HS256"
   access_token_type: "JWT"
+  access_token_secret: "local-access-secret-change-me-32-bytes-minimum"
+  access_token_issuer: "authservice"
 
 database:
   postgres:

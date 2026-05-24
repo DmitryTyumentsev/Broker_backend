@@ -32,8 +32,11 @@ type BusinessConfig struct {
 	ContextTimeout       time.Duration `mapstructure:"context_timeout"`
 	LifetimeAccessToken  time.Duration `mapstructure:"lifetime_access_token"`
 	LifetimeRefreshToken time.Duration `mapstructure:"lifetime_refresh_token"`
-	AccessTokenAlg       string        `mapstructure:"access_token_alg"`
-	AccessTokenType      string        `mapstructure:"access_token_type"`
+
+	AccessTokenAlg    string `mapstructure:"access_token_alg"`
+	AccessTokenType   string `mapstructure:"access_token_type"`
+	AccessTokenSecret string `mapstructure:"access_token_secret"`
+	AccessTokenIssuer string `mapstructure:"access_token_issuer"`
 }
 
 type DatabaseConfig struct {
@@ -121,6 +124,18 @@ func (c *Config) Validate() error {
 
 	if c.Business.LifetimeRefreshToken <= 0 {
 		return errors.New("business.lifetime_refresh_token must be positive")
+	}
+
+	if strings.TrimSpace(c.Business.AccessTokenSecret) == "" {
+		return errors.New("business.access_token_secret is required")
+	}
+
+	if strings.TrimSpace(c.Business.AccessTokenAlg) == "" {
+		return errors.New("business.access_token_alg is required")
+	}
+
+	if strings.TrimSpace(c.Business.AccessTokenType) == "" {
+		return errors.New("business.access_token_type is required")
 	}
 
 	pg := c.Database.Postgres

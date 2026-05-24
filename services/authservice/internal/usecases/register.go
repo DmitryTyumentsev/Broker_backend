@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"Donate_backend/services/authservice/internal/infra/security/jwt"
 	"Donate_backend/shared/pkg/helpers"
 	"context"
 	"fmt"
@@ -57,7 +58,7 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 
 	refreshHash := s.refreshToken.Hash(rawRefreshToken)
 
-	session := entity.RefreshSession{
+	session := jwt.RefreshSession{
 		RefreshTokenHash: refreshHash,
 		DeviceID:         req.DeviceID,
 		CreatedAt:        now,
