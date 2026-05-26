@@ -20,8 +20,6 @@ func mapError(err error) error {
 		errors.Is(err, usecases.ErrEmailInvalid),
 		errors.Is(err, usecases.ErrPasswordRequired),
 		errors.Is(err, usecases.ErrPasswordWeak),
-		errors.Is(err, usecases.ErrUsernameRequired),
-		errors.Is(err, usecases.ErrUsernameInvalid),
 		errors.Is(err, usecases.ErrDeviceIDRequired),
 		errors.Is(err, domain.ErrBadRequest),
 		errors.Is(err, domain.ErrMustBeNotNull):
@@ -42,6 +40,6 @@ func mapError(err error) error {
 		return status.Error(codes.PermissionDenied, err.Error())
 
 	default:
-		return status.Error(codes.Internal, "internal server error")
+		return status.Error(codes.Internal, err.Error())
 	}
 }

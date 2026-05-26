@@ -42,7 +42,7 @@ func (h *AuthHandler) Register(ctx *fiber.Ctx) error {
 		}
 	}
 
-	grpcReq := httpToGRPCRegister(req)
+	grpcReq := httpToGRPCRegister(req) //хорошее ли решение каждый раз делать такую функцию отдельную или лучше прям тут парсить?
 
 	resp, err := h.authClient.Register(ctx.Context(), grpcReq)
 	if err != nil {
@@ -68,7 +68,7 @@ func (h *AuthHandler) Login(ctx *fiber.Ctx) error {
 	grpcReq := &authv1.AuthRequest{
 		Email:    req.Email,
 		Password: req.Password,
-		DeviceId: req.DeviceID,
+		DeviceId: req.DeviceID, //DeviceId откуда берем? когда и где запрашиваем?
 	}
 
 	resp, err := h.authClient.Auth(ctx.Context(), grpcReq)

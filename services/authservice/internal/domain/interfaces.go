@@ -10,11 +10,10 @@ import (
 
 type UserRepository interface {
 	Save(ctx context.Context, user entity.User) error
-	FindByEmail(ctx context.Context, email string) (entity.User, error)
-	FindByUsername(ctx context.Context, username string) (entity.User, error)
+	FindByEmail(ctx context.Context, email string) (entity.User, error) //верное ли решение разделять поиск по email и паролю? я же и то и то одновременно проверяю
 }
 
-type RefreshSessionRepository interface {
+type RefreshSessionRepository interface { //покажи на примере в чем смысл в уровень репозитория передавать структуры без указателя? хочу увидеть от чего защищаемся так
 	Save(ctx context.Context, session jwt.RefreshSession) error
 	Rotate(ctx context.Context, oldHash string, newSession jwt.RefreshSession) error
 	Revoke(ctx context.Context, hash string) error
@@ -27,7 +26,7 @@ type PasswordHasher interface {
 }
 
 type AccessTokenIssuer interface {
-	Issue(userID string, deviceID string, role string, now time.Time) (string, error)
+	Issue(userID string, deviceID string, role entity.UserRole, now time.Time) (string, error)
 }
 
 type RefreshTokenService interface {

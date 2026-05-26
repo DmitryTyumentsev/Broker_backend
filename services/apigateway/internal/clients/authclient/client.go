@@ -58,7 +58,7 @@ func (c *Client) Auth(
 	ctx context.Context,
 	req *authv1.AuthRequest,
 ) (*authv1.TokenPairResponse, error) {
-	ctx, cancel := context.WithTimeout(ctx, c.config.Business.ContextTimeout)
+	ctx, cancel := context.WithTimeout(ctx, c.config.Business.ContextTimeout) //зачем мы передаем контекст? на что этот таймаут? зачем вообще нужны контексты?
 	defer cancel()
 
 	return c.auth.Auth(ctx, req)

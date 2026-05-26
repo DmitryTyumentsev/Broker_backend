@@ -15,4 +15,7 @@ var (
 	ErrNotUniqueEmail            = errors.New("email not unique")
 	ErrUserRoleInvalid           = errors.New("user role invalid")
 	ErrNotUniqueRefreshTokenHash = errors.New("refresh token hash not unique")
+	ErrPasswordWrong             = errors.New("wrong password")
+	ErrSessionNotSaved           = errors.New("session not saved")
+	ErrAccessTokenNotCreated     = errors.New("access token not created")
 )

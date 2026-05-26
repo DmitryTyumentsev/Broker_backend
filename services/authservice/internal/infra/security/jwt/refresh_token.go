@@ -45,6 +45,6 @@ func (s *RefreshTokenService) New() (string, error) {
 }
 
 func (s *RefreshTokenService) Hash(rawToken string) string {
-	hash := sha256.Sum256([]byte(rawToken))
+	hash := sha256.Sum256([]byte(rawToken)) //напомни еще раз - сколько вариантов тут получается? как считается?
 	return base64.RawURLEncoding.EncodeToString(hash[:])
 }

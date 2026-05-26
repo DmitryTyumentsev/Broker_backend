@@ -55,41 +55,6 @@ func (r *Repository) Save(ctx context.Context, user entity.User) error {
 	return nil
 }
 
-func (r *Repository) FindByEmail(ctx context.Context, email string) (entity.User, error) {
-	const op = "postgres.users.FindByEmail"
-
-	ctx, cancel := r.pg.ReadWithTimeout(ctx)
-	defer cancel()
-
-	query := `
-		select
-			id,
-			email,
-			password_hash,
-			username,
-			role,
-			created_at
-		from users
-		where email = $1
-	`
-
-	var user entity.User
-
-	err := r.pg.DB().QueryRow(ctx, query, email).Scan(
-		&user.ID,
-		&user.Email,
-		&user.PasswordHash,
-		&user.Username,
-		&user.Role,
-		&user.CreatedAt,
-	)
-	if err != nil {
-		return entity.User{}, postgres.MapError(op, err)
-	}
-
-	return user, nil
-}
-
 func (r *Repository) FindByUsername(ctx context.Context, username string) (entity.User, error) {
 	const op = "postgres.users.FindByUsername"
 
