@@ -1,11 +1,11 @@
 package domain
 
 import (
-	"Donate_backend/services/authservice/internal/infra/security/jwt"
+	"Broker_backend/services/authservice/internal/infra/security/jwt"
 	"context"
 	"time"
 
-	"Donate_backend/services/authservice/internal/domain/entity"
+	"Broker_backend/services/authservice/internal/domain/entity"
 )
 
 type UserRepository interface {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"Donate_backend/services/apigateway/internal/config"
-	authv1 "Donate_backend/shared/pkg/grpc/gen/auth/v1"
+	"Broker_backend/services/apigateway/internal/config"
+	authv1 "Broker_backend/shared/pkg/grpc/gen/auth/v1"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -54,14 +54,14 @@ func (c *Client) Register(
 	return c.auth.Register(ctx, req)
 }
 
-func (c *Client) Auth(
+func (c *Client) Login(
 	ctx context.Context,
-	req *authv1.AuthRequest,
+	req *authv1.LoginRequest,
 ) (*authv1.TokenPairResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.config.Business.ContextTimeout) //зачем мы передаем контекст? на что этот таймаут? зачем вообще нужны контексты?
 	defer cancel()
 
-	return c.auth.Auth(ctx, req)
+	return c.auth.Login(ctx, req)
 }
 
 func (c *Client) Refresh(

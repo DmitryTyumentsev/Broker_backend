@@ -1,14 +1,14 @@
 package usecases
 
 import (
-	"Donate_backend/services/authservice/internal/infra/security/jwt"
-	"Donate_backend/shared/pkg/helpers"
+	"Broker_backend/services/authservice/internal/infra/security/jwt"
+	"Broker_backend/shared/pkg/helpers"
 	"context"
 	"fmt"
 	"strings"
 
-	"Donate_backend/services/authservice/internal/domain/entity"
-	"Donate_backend/services/authservice/internal/pkg/validators"
+	"Broker_backend/services/authservice/internal/domain/entity"
+	"Broker_backend/services/authservice/internal/pkg/validators"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -72,7 +72,7 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 	accessToken, err := s.accessIssuer.Issue(
 		user.ID,
 		req.DeviceID,
-		string(user.Role),
+		user.Role,
 		now,
 	)
 

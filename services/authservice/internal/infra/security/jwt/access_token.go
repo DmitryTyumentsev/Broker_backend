@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"Donate_backend/services/authservice/internal/config"
+	"Broker_backend/services/authservice/internal/config"
 
 	"go.uber.org/zap"
 )

@@ -6,10 +6,10 @@ import (
 	"net"
 	"strconv"
 
-	"Donate_backend/services/authservice/internal/config"
-	"Donate_backend/services/authservice/internal/infra/cache/redis"
-	"Donate_backend/services/authservice/internal/transport/grpchandler"
-	authv1 "Donate_backend/shared/pkg/grpc/gen/auth/v1"
+	"Broker_backend/services/authservice/internal/config"
+	"Broker_backend/services/authservice/internal/infra/cache/redis"
+	"Broker_backend/services/authservice/internal/transport/grpchandler"
+	authv1 "Broker_backend/shared/pkg/grpc/gen/auth/v1"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"

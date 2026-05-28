@@ -15,7 +15,7 @@ type TokenPairResponse struct {
 	ExpiresInSec int64
 }
 
-type AuthRequest struct {
+type LoginRequest struct {
 	Email       string
 	RawPassword string
 	DeviceID    string

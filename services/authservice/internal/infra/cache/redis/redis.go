@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"Donate_backend/services/authservice/internal/config"
+	"Broker_backend/services/authservice/internal/config"
 
 	"github.com/redis/go-redis/v9"
 )

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"Donate_backend/services/authservice/internal/config"
+	"Broker_backend/services/authservice/internal/config"
 
 	"github.com/pressly/goose/v3"
 

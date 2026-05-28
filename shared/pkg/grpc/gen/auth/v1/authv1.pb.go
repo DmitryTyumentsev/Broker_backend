@@ -105,7 +105,7 @@ func (x *RegisterRequest) GetDeviceId() string {
 	return ""
 }
 
-type AuthRequest struct {
+type LoginRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Email         string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
 	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
@@ -114,20 +114,20 @@ type AuthRequest struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AuthRequest) Reset() {
-	*x = AuthRequest{}
+func (x *LoginRequest) Reset() {
+	*x = LoginRequest{}
 	mi := &file_auth_v1_authv1_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AuthRequest) String() string {
+func (x *LoginRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AuthRequest) ProtoMessage() {}
+func (*LoginRequest) ProtoMessage() {}
 
-func (x *AuthRequest) ProtoReflect() protoreflect.Message {
+func (x *LoginRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_auth_v1_authv1_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -139,26 +139,26 @@ func (x *AuthRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AuthRequest.ProtoReflect.Descriptor instead.
-func (*AuthRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use LoginRequest.ProtoReflect.Descriptor instead.
+func (*LoginRequest) Descriptor() ([]byte, []int) {
 	return file_auth_v1_authv1_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *AuthRequest) GetEmail() string {
+func (x *LoginRequest) GetEmail() string {
 	if x != nil {
 		return x.Email
 	}
 	return ""
 }
 
-func (x *AuthRequest) GetPassword() string {
+func (x *LoginRequest) GetPassword() string {
 	if x != nil {
 		return x.Password
 	}
 	return ""
 }
 
-func (x *AuthRequest) GetDeviceId() string {
+func (x *LoginRequest) GetDeviceId() string {
 	if x != nil {
 		return x.DeviceId
 	}
@@ -343,8 +343,8 @@ const file_auth_v1_authv1_proto_rawDesc = "" +
 	"\vmiddle_name\x18\x05 \x01(\tH\x00R\n" +
 	"middleName\x88\x01\x01\x12\x1b\n" +
 	"\tdevice_id\x18\x06 \x01(\tR\bdeviceIdB\x0e\n" +
-	"\f_middle_name\"\\\n" +
-	"\vAuthRequest\x12\x14\n" +
+	"\f_middle_name\"]\n" +
+	"\fLoginRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x1b\n" +
 	"\tdevice_id\x18\x03 \x01(\tR\bdeviceId\"R\n" +
@@ -358,12 +358,12 @@ const file_auth_v1_authv1_proto_rawDesc = "" +
 	"\x0eLogoutResponse\x12\x1d\n" +
 	"\n" +
 	"all_device\x18\x01 \x01(\bR\tallDevice\x12\x1b\n" +
-	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId2\xdd\x01\n" +
+	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId2\xdf\x01\n" +
 	"\vAuthService\x126\n" +
-	"\bRegister\x12\x13.v1.RegisterRequest\x1a\x15.v1.TokenPairResponse\x12.\n" +
-	"\x04Auth\x12\x0f.v1.AuthRequest\x1a\x15.v1.TokenPairResponse\x124\n" +
+	"\bRegister\x12\x13.v1.RegisterRequest\x1a\x15.v1.TokenPairResponse\x120\n" +
+	"\x05Login\x12\x10.v1.LoginRequest\x1a\x15.v1.TokenPairResponse\x124\n" +
 	"\aRefresh\x12\x12.v1.RefreshRequest\x1a\x15.v1.TokenPairResponse\x120\n" +
-	"\x06Logout\x12\x12.v1.RefreshRequest\x1a\x12.v1.LogoutResponseB3Z1Broker_backend/shared/pkg/grpc/gen/auth/v1;authv1b\x06proto3"
+	"\x06Logout\x12\x12.v1.RefreshRequest\x1a\x12.v1.LogoutResponseB\x10Z\x0eauth/v1;authv1b\x06proto3"
 
 var (
 	file_auth_v1_authv1_proto_rawDescOnce sync.Once
@@ -380,18 +380,18 @@ func file_auth_v1_authv1_proto_rawDescGZIP() []byte {
 var file_auth_v1_authv1_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_auth_v1_authv1_proto_goTypes = []any{
 	(*RegisterRequest)(nil),   // 0: v1.RegisterRequest
-	(*AuthRequest)(nil),       // 1: v1.AuthRequest
+	(*LoginRequest)(nil),      // 1: v1.LoginRequest
 	(*RefreshRequest)(nil),    // 2: v1.RefreshRequest
 	(*TokenPairResponse)(nil), // 3: v1.TokenPairResponse
 	(*LogoutResponse)(nil),    // 4: v1.LogoutResponse
 }
 var file_auth_v1_authv1_proto_depIdxs = []int32{
 	0, // 0: v1.AuthService.Register:input_type -> v1.RegisterRequest
-	1, // 1: v1.AuthService.Auth:input_type -> v1.AuthRequest
+	1, // 1: v1.AuthService.Login:input_type -> v1.LoginRequest
 	2, // 2: v1.AuthService.Refresh:input_type -> v1.RefreshRequest
 	2, // 3: v1.AuthService.Logout:input_type -> v1.RefreshRequest
 	3, // 4: v1.AuthService.Register:output_type -> v1.TokenPairResponse
-	3, // 5: v1.AuthService.Auth:output_type -> v1.TokenPairResponse
+	3, // 5: v1.AuthService.Login:output_type -> v1.TokenPairResponse
 	3, // 6: v1.AuthService.Refresh:output_type -> v1.TokenPairResponse
 	4, // 7: v1.AuthService.Logout:output_type -> v1.LogoutResponse
 	4, // [4:8] is the sub-list for method output_type

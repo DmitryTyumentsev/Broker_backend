@@ -1,7 +1,7 @@
 package http
 
 import (
-	"Donate_backend/services/apigateway/internal/transport/http/handlers"
+	"Broker_backend/services/apigateway/internal/transport/http/handlers"
 
 	"github.com/gofiber/fiber/v2"
 )

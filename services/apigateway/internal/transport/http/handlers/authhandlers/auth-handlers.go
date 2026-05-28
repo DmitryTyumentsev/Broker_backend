@@ -1,10 +1,10 @@
 package authhandlers
 
 import (
-	"Donate_backend/services/apigateway/internal/clients/authclient"
-	"Donate_backend/services/apigateway/internal/transport/http/dto/authdto"
-	"Donate_backend/services/apigateway/internal/transport/http/httperr"
-	authv1 "Donate_backend/shared/pkg/grpc/gen/auth/v1"
+	"Broker_backend/services/apigateway/internal/clients/authclient"
+	"Broker_backend/services/apigateway/internal/transport/http/dto/authdto"
+	"Broker_backend/services/apigateway/internal/transport/http/httperr"
+	authv1 "Broker_backend/shared/pkg/grpc/gen/auth/v1"
 
 	validate "github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -65,13 +65,13 @@ func (h *AuthHandler) Login(ctx *fiber.Ctx) error {
 		}
 	}
 
-	grpcReq := &authv1.AuthRequest{
+	grpcReq := &authv1.LoginRequest{
 		Email:    req.Email,
 		Password: req.Password,
 		DeviceId: req.DeviceID, //DeviceId откуда берем? когда и где запрашиваем?
 	}
 
-	resp, err := h.authClient.Auth(ctx.Context(), grpcReq)
+	resp, err := h.authClient.Login(ctx.Context(), grpcReq)
 	if err != nil {
 		return httperr.WriteGRPCError(ctx, err)
 	}

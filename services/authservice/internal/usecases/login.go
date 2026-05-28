@@ -1,15 +1,15 @@
 package usecases
 
 import (
-	"Donate_backend/services/authservice/internal/domain"
-	"Donate_backend/services/authservice/internal/domain/entity"
-	"Donate_backend/services/authservice/internal/infra/security/jwt"
+	"Broker_backend/services/authservice/internal/domain"
+	"Broker_backend/services/authservice/internal/domain/entity"
+	"Broker_backend/services/authservice/internal/infra/security/jwt"
 	"context"
 	"fmt"
 )
 
-func (s *Service) Auth(ctx context.Context, req *AuthRequest) (resp *TokenPairResponse, err error) {
-	const op = "usecases.Auth"
+func (s *Service) Login(ctx context.Context, req *LoginRequest) (resp *TokenPairResponse, err error) {
+	const op = "usecases.Login"
 	s.logger.Debug(fmt.Sprintf("start %s", op)) //надо ли на zap вешать defer close в конце каждого метода где вызывался(или как он правильно но с этим смыслом)
 
 	user, err := s.findUser(ctx, req.Email, req.RawPassword)
@@ -27,7 +27,7 @@ func (s *Service) Auth(ctx context.Context, req *AuthRequest) (resp *TokenPairRe
 
 func (s *Service) findUser(ctx context.Context, email, rawPass string) (*entity.User, error) { //по названию верно ли писать rawPass тут а в миграции password_hasher? какое название вообще будет правильным по синтаксису имени?
 	const op = "usecases.checkCredentials"
-	user, err := s.users.FindByEmail(ctx, email)
+	user, err := s.users.FindByEmail(ctx, email) //верно же понял что здесь получаю копию потому что entity.User метод возвращает без указателя? оригинал экземпляра остается в базе
 	if err != nil {
 		s.logger.Warn(fmt.Sprintf("%s: %s", op, err.Error()))
 		return nil, domain.ErrNotFound
@@ -38,7 +38,7 @@ func (s *Service) findUser(ctx context.Context, email, rawPass string) (*entity.
 		return nil, domain.ErrPasswordWrong
 	}
 
-	return &user, nil
+	return &user, nil //&user создает указатель на user(адрес) который и возвращаю?
 }
 
 func (s *Service) createSession(ctx context.Context, userID string, role entity.UserRole, deviceID string) (*TokenPairResponse, error) {

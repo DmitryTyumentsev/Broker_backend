@@ -1,8 +1,8 @@
 package usecases
 
 import (
-	"Donate_backend/services/authservice/internal/config"
-	"Donate_backend/services/authservice/internal/domain"
+	"Broker_backend/services/authservice/internal/config"
+	"Broker_backend/services/authservice/internal/domain"
 	"fmt"
 
 	"go.uber.org/zap"

@@ -3,8 +3,8 @@ package users
 import (
 	"context"
 
-	"Donate_backend/services/authservice/internal/domain/entity"
-	"Donate_backend/services/authservice/internal/infra/repositories/postgres"
+	"Broker_backend/services/authservice/internal/domain/entity"
+	"Broker_backend/services/authservice/internal/infra/repositories/postgres"
 )
 
 type Repository struct {
@@ -53,39 +53,4 @@ func (r *Repository) Save(ctx context.Context, user entity.User) error {
 	}
 
 	return nil
-}
-
-func (r *Repository) FindByUsername(ctx context.Context, username string) (entity.User, error) {
-	const op = "postgres.users.FindByUsername"
-
-	ctx, cancel := r.pg.ReadWithTimeout(ctx)
-	defer cancel()
-
-	query := `
-		select
-			id,
-			email,
-			password_hash,
-			username,
-			role,
-			created_at
-		from users
-		where username = $1
-	`
-
-	var user entity.User
-
-	err := r.pg.DB().QueryRow(ctx, query, username).Scan(
-		&user.ID,
-		&user.Email,
-		&user.PasswordHash,
-		&user.Username,
-		&user.Role,
-		&user.CreatedAt,
-	)
-	if err != nil {
-		return entity.User{}, postgres.MapError(op, err)
-	}
-
-	return user, nil
 }

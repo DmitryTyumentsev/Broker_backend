@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	sharedconfig "Donate_backend/shared/pkg/config"
+	sharedconfig "Broker_backend/shared/pkg/config"
 )
 
 const serviceName = "apigateway"

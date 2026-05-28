@@ -1,16 +1,16 @@
 package main
 
 import (
-	httprouter "Donate_backend/services/apigateway/internal/transport/http"
-	"Donate_backend/services/apigateway/internal/transport/http/handlers"
-	"Donate_backend/services/apigateway/internal/transport/http/handlers/authhandlers"
+	httprouter "Broker_backend/services/apigateway/internal/transport/http"
+	"Broker_backend/services/apigateway/internal/transport/http/handlers"
+	"Broker_backend/services/apigateway/internal/transport/http/handlers/authhandlers"
 	"context"
 	"fmt"
 	"net"
 	"strconv"
 
-	"Donate_backend/services/apigateway/internal/clients/authclient"
-	"Donate_backend/services/apigateway/internal/config"
+	"Broker_backend/services/apigateway/internal/clients/authclient"
+	"Broker_backend/services/apigateway/internal/config"
 
 	validate "github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
