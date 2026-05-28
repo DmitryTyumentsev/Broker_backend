@@ -81,20 +81,6 @@ type RedisConfig struct {
 	MinIdleConns int           `mapstructure:"min_idle_conns"`
 }
 
-func (r RedisConfig) Addr() string {
-	host := strings.TrimSpace(r.Host)
-	if host == "" {
-		host = "localhost"
-	}
-
-	port := r.Port
-	if port <= 0 {
-		port = 6379
-	}
-
-	return net.JoinHostPort(host, strconv.Itoa(port))
-}
-
 func LoadConfig() (*Config, error) {
 	cfg := &Config{}
 
@@ -238,4 +224,32 @@ func (p PostgresConfig) GooseTableName() string {
 	}
 
 	return schema + "." + table
+}
+
+func (r RedisConfig) AddrRedis() string {
+	host := strings.TrimSpace(r.Host)
+	if host == "" {
+		host = "localhost"
+	}
+
+	port := r.Port
+	if port <= 0 {
+		port = 6379
+	}
+
+	return net.JoinHostPort(host, strconv.Itoa(port))
+}
+
+func (s ServerConfig) AddrServer() string {
+	host := strings.TrimSpace(s.Host)
+	if host == "" {
+		host = "0.0.0.0"
+	}
+
+	port := s.Port
+	if port <= 0 {
+		port = 50051
+	}
+
+	return net.JoinHostPort(host, strconv.Itoa(port))
 }
