@@ -4,6 +4,7 @@ import (
 	"Broker_backend/services/authservice/internal/config"
 	"Broker_backend/services/authservice/internal/infra/cache/redis"
 	"Broker_backend/services/authservice/internal/transport/grpchandler"
+	"Broker_backend/services/authservice/internal/usecases"
 	authv1 "Broker_backend/shared/pkg/grpc/gen/auth/v1"
 	"context"
 	"fmt"
@@ -64,9 +65,13 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 
+	service := usecases.NewService(cfg,
+		logger,
+	)
+
 	authv1.RegisterAuthServiceServer(
 		grpcServer,
-		grpchandler.NewHandler(nil),
+		grpchandler.NewHandler(service),
 	)
 
 	logger.Info("authservice grpc started", zap.String("addr", addrServer))
