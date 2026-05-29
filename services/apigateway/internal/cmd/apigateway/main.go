@@ -1,16 +1,15 @@
 package main
 
 import (
-	httprouter "Broker_backend/services/apigateway/internal/transport/http"
-	"Broker_backend/services/apigateway/internal/transport/http/handlers"
-	"Broker_backend/services/apigateway/internal/transport/http/handlers/authhandlers"
-	"context"
 	"fmt"
 	"net"
 	"strconv"
 
 	"Broker_backend/services/apigateway/internal/clients/authclient"
 	"Broker_backend/services/apigateway/internal/config"
+	httprouter "Broker_backend/services/apigateway/internal/transport/http"
+	"Broker_backend/services/apigateway/internal/transport/http/handlers"
+	"Broker_backend/services/apigateway/internal/transport/http/handlers/authhandlers"
 
 	validate "github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -31,9 +30,9 @@ func main() {
 		_ = logger.Sync()
 	}()
 
-	conn, authGRPCClient, err := authclient.NewAuthServiceClient(context.Background(), cfg)
+	conn, authGRPCClient, err := authclient.NewAuthServiceClient(cfg)
 	if err != nil {
-		logger.Fatal("connect to auth service", zap.Error(err))
+		logger.Fatal("create auth grpc client failed", zap.Error(err))
 	}
 	defer func() {
 		_ = conn.Close()
@@ -45,9 +44,10 @@ func main() {
 	authHandler := authhandlers.NewAuthHandler(logger, authClient, validator)
 
 	app := fiber.New(fiber.Config{
-		ReadTimeout:  cfg.Server.ReadTimeout,
-		WriteTimeout: cfg.Server.WriteTimeout,
-		IdleTimeout:  cfg.Server.IdleTimeout,
+		ReadTimeout:           cfg.Server.ReadTimeout,
+		WriteTimeout:          cfg.Server.WriteTimeout,
+		IdleTimeout:           cfg.Server.IdleTimeout,
+		DisableStartupMessage: false,
 	})
 
 	httprouter.SetupRouter(app, &handlers.Deps{

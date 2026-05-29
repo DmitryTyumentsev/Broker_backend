@@ -148,25 +148,25 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	redis := c.Database.Redis
-	if strings.TrimSpace(redis.Host) == "" {
-		return errors.New("database.redis.host is required")
-	}
-	if redis.Port <= 0 {
-		return errors.New("database.redis.port must be positive")
-	}
-	if redis.DB < 0 {
-		return errors.New("database.redis.db must not be negative")
-	}
-	if redis.DialTimeout <= 0 {
-		return errors.New("database.redis.dial_timeout must be positive")
-	}
-	if redis.ReadTimeout <= 0 {
-		return errors.New("database.redis.read_timeout must be positive")
-	}
-	if redis.WriteTimeout <= 0 {
-		return errors.New("database.redis.write_timeout must be positive")
-	}
+	//redis := c.Database.Redis
+	//if strings.TrimSpace(redis.Host) == "" {
+	//	return errors.New("database.redis.host is required")
+	//}
+	//if redis.Port <= 0 {
+	//	return errors.New("database.redis.port must be positive")
+	//}
+	//if redis.DB < 0 {
+	//	return errors.New("database.redis.db must not be negative")
+	//}
+	//if redis.DialTimeout <= 0 {
+	//	return errors.New("database.redis.dial_timeout must be positive")
+	//}
+	//if redis.ReadTimeout <= 0 {
+	//	return errors.New("database.redis.read_timeout must be positive")
+	//}
+	//if redis.WriteTimeout <= 0 {
+	//	return errors.New("database.redis.write_timeout must be positive")
+	//}
 
 	return nil
 }

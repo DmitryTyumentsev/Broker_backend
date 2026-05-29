@@ -16,15 +16,10 @@ type Client struct {
 	config *config.Config
 }
 
-func NewAuthServiceClient(
-	ctx context.Context,
-	cfg *config.Config,
-) (*grpc.ClientConn, authv1.AuthServiceClient, error) {
+func NewAuthServiceClient(cfg *config.Config) (*grpc.ClientConn, authv1.AuthServiceClient, error) {
 	if cfg == nil {
 		return nil, nil, fmt.Errorf("config is nil")
 	}
-
-	_ = ctx
 
 	conn, err := grpc.NewClient(
 		"passthrough:///"+cfg.AuthGRPC.Address,
@@ -58,7 +53,7 @@ func (c *Client) Login(
 	ctx context.Context,
 	req *authv1.LoginRequest,
 ) (*authv1.TokenPairResponse, error) {
-	ctx, cancel := context.WithTimeout(ctx, c.config.Business.ContextTimeout) //зачем мы передаем контекст? на что этот таймаут? зачем вообще нужны контексты?
+	ctx, cancel := context.WithTimeout(ctx, c.config.Business.ContextTimeout)
 	defer cancel()
 
 	return c.auth.Login(ctx, req)

@@ -1,9 +1,10 @@
 package usecases
 
 import (
+	"fmt"
+
 	"Broker_backend/services/authservice/internal/config"
 	"Broker_backend/services/authservice/internal/domain"
-	"fmt"
 
 	"go.uber.org/zap"
 )
@@ -29,6 +30,10 @@ func NewService(
 	refreshToken domain.RefreshTokenService,
 	clock domain.Clock,
 ) *Service {
+	if logger == nil {
+		logger = zap.NewNop()
+	}
+
 	return &Service{
 		config:       cfg,
 		logger:       logger,
@@ -43,6 +48,8 @@ func NewService(
 
 func (s *Service) ensureDeps() error {
 	switch {
+	case s == nil:
+		return fmt.Errorf("service is nil")
 	case s.config == nil:
 		return fmt.Errorf("config is nil")
 	case s.users == nil:

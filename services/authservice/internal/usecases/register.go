@@ -1,14 +1,13 @@
 package usecases
 
 import (
-	"Broker_backend/services/authservice/internal/infra/security/jwt"
-	"Broker_backend/shared/pkg/helpers"
 	"context"
 	"fmt"
 	"strings"
 
 	"Broker_backend/services/authservice/internal/domain/entity"
 	"Broker_backend/services/authservice/internal/pkg/validators"
+	"Broker_backend/shared/pkg/helpers"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -16,10 +15,6 @@ import (
 
 func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPairResponse, error) {
 	const op = "usecases.Register"
-
-	if s == nil {
-		return nil, fmt.Errorf("%s: service is nil", op)
-	}
 
 	if err := s.ensureDeps(); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -51,40 +46,14 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 		return nil, fmt.Errorf("%s: save user: %w", op, err)
 	}
 
-	rawRefreshToken, err := s.refreshToken.New()
+	tokenPair, err := s.createTokenPair(ctx, user.ID, req.DeviceID, string(user.Role), now)
 	if err != nil {
-		return nil, fmt.Errorf("%s: create refresh token: %w", op, err)
+		return nil, fmt.Errorf("%s: create token pair: %w", op, err)
 	}
 
-	refreshHash := s.refreshToken.Hash(rawRefreshToken)
+	s.logger.Info("user registered", zap.String("user_id", user.ID))
 
-	session := jwt.RefreshSession{
-		RefreshTokenHash: refreshHash,
-		DeviceID:         req.DeviceID,
-		CreatedAt:        now,
-		ExpiresAt:        now.Add(s.config.Business.LifetimeRefreshToken),
-	}
-
-	if err := s.sessions.Save(ctx, session); err != nil {
-		return nil, fmt.Errorf("%s: save refresh session: %w", op, err)
-	}
-
-	accessToken, err := s.accessIssuer.Issue(
-		user.ID,
-		req.DeviceID,
-		user.Role,
-		now,
-	)
-
-	if s.logger != nil {
-		s.logger.Info("user registered", zap.String("user_id", user.ID))
-	}
-
-	return &TokenPairResponse{
-		AccessToken:  accessToken,
-		RefreshToken: rawRefreshToken,
-		ExpiresInSec: int64(s.config.Business.LifetimeAccessToken.Seconds()),
-	}, nil
+	return tokenPair, nil
 }
 
 func validateRegisterInput(req *RegisterRequest) error {
@@ -93,18 +62,27 @@ func validateRegisterInput(req *RegisterRequest) error {
 	}
 
 	req.Email = helpers.NormalizeEmail(req.Email)
-	req.FirstName = strings.TrimSpace(req.FirstName)
-	req.LastName = strings.TrimSpace(req.LastName)
+	req.FirstName = helpers.NormalizeText(req.FirstName)
+	req.LastName = helpers.NormalizeText(req.LastName)
+	req.DeviceID = strings.TrimSpace(req.DeviceID)
 
 	if req.Email == "" {
 		return ErrEmailRequired
+	}
+
+	if !validators.IsValidEmail(req.Email) {
+		return ErrEmailInvalid
 	}
 
 	if req.RawPassword == "" {
 		return ErrPasswordRequired
 	}
 
-	if strings.TrimSpace(req.DeviceID) == "" {
+	if !validators.IsStrongPassword(req.RawPassword) {
+		return ErrPasswordWeak
+	}
+
+	if req.DeviceID == "" {
 		return ErrDeviceIDRequired
 	}
 
@@ -114,14 +92,6 @@ func validateRegisterInput(req *RegisterRequest) error {
 
 	if req.LastName == "" {
 		return ErrLastNameRequired
-	}
-
-	if !validators.IsValidEmail(req.Email) {
-		return ErrEmailInvalid
-	}
-
-	if !validators.IsStrongPassword(req.RawPassword) {
-		return ErrPasswordWeak
 	}
 
 	return nil

@@ -1,75 +1,77 @@
 package usecases
 
 import (
-	"Broker_backend/services/authservice/internal/domain"
-	"Broker_backend/services/authservice/internal/domain/entity"
-	"Broker_backend/services/authservice/internal/infra/security/jwt"
 	"context"
+	"errors"
 	"fmt"
+	"strings"
+
+	"Broker_backend/services/authservice/internal/domain"
+	"Broker_backend/services/authservice/internal/pkg/validators"
+	"Broker_backend/shared/pkg/helpers"
+
+	"go.uber.org/zap"
 )
 
-func (s *Service) Login(ctx context.Context, req *LoginRequest) (resp *TokenPairResponse, err error) {
+func (s *Service) Login(ctx context.Context, req *LoginRequest) (*TokenPairResponse, error) {
 	const op = "usecases.Login"
-	s.logger.Debug(fmt.Sprintf("start %s", op)) //надо ли на zap вешать defer close в конце каждого метода где вызывался(или как он правильно но с этим смыслом)
 
-	user, err := s.findUser(ctx, req.Email, req.RawPassword)
-	if err != nil {
-		return nil, err
+	if err := s.ensureDeps(); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	resp, err = s.createSession(ctx, user.ID, user.Role, req.DeviceID)
-	if err != nil {
-		return nil, err
+	if err := validateLoginInput(req); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return resp, nil
+	user, err := s.users.FindByEmail(ctx, req.Email)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil, fmt.Errorf("%s: %w", op, domain.ErrUnauthenticated)
+		}
+
+		return nil, fmt.Errorf("%s: find user by email: %w", op, err)
+	}
+
+	if !s.passHasher.Verify(user.PasswordHash, req.RawPassword) {
+		return nil, fmt.Errorf("%s: %w", op, domain.ErrUnauthenticated)
+	}
+
+	now := s.clock.Now()
+
+	tokenPair, err := s.createTokenPair(ctx, user.ID, req.DeviceID, string(user.Role), now)
+	if err != nil {
+		return nil, fmt.Errorf("%s: create token pair: %w", op, err)
+	}
+
+	s.logger.Info("user logged in", zap.String("user_id", user.ID))
+
+	return tokenPair, nil
 }
 
-func (s *Service) findUser(ctx context.Context, email, rawPass string) (*entity.User, error) { //по названию верно ли писать rawPass тут а в миграции password_hasher? какое название вообще будет правильным по синтаксису имени?
-	const op = "usecases.checkCredentials"
-	user, err := s.users.FindByEmail(ctx, email) //верно же понял что здесь получаю копию потому что entity.User метод возвращает без указателя? оригинал экземпляра остается в базе
-	if err != nil {
-		s.logger.Warn(fmt.Sprintf("%s: %s", op, err.Error()))
-		return nil, domain.ErrNotFound
+func validateLoginInput(req *LoginRequest) error {
+	if req == nil {
+		return ErrEmailRequired
 	}
 
-	if s.passHasher.Verify(user.PasswordHash, rawPass) == false {
-		s.logger.Warn(fmt.Sprintf("%s: %s", op, domain.ErrPasswordWrong))
-		return nil, domain.ErrPasswordWrong
+	req.Email = helpers.NormalizeEmail(req.Email)
+	req.DeviceID = strings.TrimSpace(req.DeviceID)
+
+	if req.Email == "" {
+		return ErrEmailRequired
 	}
 
-	return &user, nil //&user создает указатель на user(адрес) который и возвращаю?
-}
-
-func (s *Service) createSession(ctx context.Context, userID string, role entity.UserRole, deviceID string) (*TokenPairResponse, error) {
-	const op = "usecases.createSession"
-	rawRefresh, err := s.refreshToken.New()
-	if err != nil {
-		return nil, err
-	}
-	hashRefresh := s.refreshToken.Hash(rawRefresh)
-
-	refreshSession := jwt.RefreshSession{
-		RefreshTokenHash: hashRefresh,
-		DeviceID:         deviceID,
-		CreatedAt:        s.clock.Now(),
-		ExpiresAt:        s.clock.Now().Add(s.config.Business.LifetimeRefreshToken),
-	}
-	if err = s.sessions.Save(ctx, refreshSession); err != nil {
-		s.logger.Error(fmt.Sprintf("%s: %s", op, err.Error()))
-		return nil, domain.ErrSessionNotSaved
-	}
-	accessToken, err := s.accessIssuer.Issue(userID, deviceID, role, s.clock.Now())
-	if err != nil {
-		s.logger.Error(fmt.Sprintf("%s: %s", op, err.Error()))
-		return nil, domain.ErrAccessTokenNotCreated //верно и хорошая ли практика указывать так подробно на этом слое ошибки, если потом они будут мапиться в badRequest на уровне клиента?
+	if !validators.IsValidEmail(req.Email) {
+		return ErrEmailInvalid
 	}
 
-	resp := &TokenPairResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshSession.RefreshTokenHash,
-		ExpiresInSec: s.clock.Now().Add(s.config.Business.LifetimeAccessToken).Unix(), //какой правильно возвращать тип? int64 или time.Second?
+	if req.RawPassword == "" {
+		return ErrPasswordRequired
 	}
 
-	return resp, nil
+	if req.DeviceID == "" {
+		return ErrDeviceIDRequired
+	}
+
+	return nil
 }

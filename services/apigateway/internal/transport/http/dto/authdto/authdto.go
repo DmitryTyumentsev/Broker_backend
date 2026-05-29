@@ -3,14 +3,14 @@ package authdto
 type RegisterRequest struct {
 	Email      string  `json:"email" validate:"required,email"`
 	Password   string  `json:"password" validate:"required,min=8"`
-	LastName   string  `json:"last_name" validate:"required,min=3,max=32"`
-	FirstName  string  `json:"first_name" validate:"required,min=3,max=32"`
-	MiddleName *string `json:"middle_name,omitempty" validate:"min=3,max=32"`
+	LastName   string  `json:"last_name" validate:"required,min=2,max=64"`
+	FirstName  string  `json:"first_name" validate:"required,min=2,max=64"`
+	MiddleName *string `json:"middle_name,omitempty" validate:"omitempty,min=2,max=64"`
 	DeviceID   string  `json:"device_id" validate:"required"`
 }
 
 type LoginRequest struct {
-	Email    string `json:"email" validate:"required"`
+	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required"`
 	DeviceID string `json:"device_id" validate:"required"`
 }

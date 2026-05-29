@@ -5,22 +5,12 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"time"
 )
 
 const defaultRefreshTokenSize = 32
 
 type RefreshTokenService struct {
 	size int
-}
-
-type RefreshSession struct {
-	RefreshTokenHash           string
-	DeviceID                   string
-	CreatedAt                  time.Time
-	ExpiresAt                  time.Time
-	RevokedAt                  *time.Time
-	ReplacedByRefreshTokenHash *string
 }
 
 func NewRefreshTokenService() *RefreshTokenService {
@@ -45,6 +35,6 @@ func (s *RefreshTokenService) New() (string, error) {
 }
 
 func (s *RefreshTokenService) Hash(rawToken string) string {
-	hash := sha256.Sum256([]byte(rawToken)) //напомни еще раз - сколько вариантов тут получается? как считается?
+	hash := sha256.Sum256([]byte(rawToken))
 	return base64.RawURLEncoding.EncodeToString(hash[:])
 }

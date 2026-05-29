@@ -3,7 +3,6 @@ package domain
 import "errors"
 
 var (
-	ErrUsernameExist             = errors.New("username already exists")
 	ErrEmailExist                = errors.New("email already exists")
 	ErrNotUnique                 = errors.New("not unique")
 	ErrMustBeNotNull             = errors.New("must be not null")
@@ -16,6 +15,7 @@ var (
 	ErrUserRoleInvalid           = errors.New("user role invalid")
 	ErrNotUniqueRefreshTokenHash = errors.New("refresh token hash not unique")
 	ErrPasswordWrong             = errors.New("wrong password")
-	ErrSessionNotSaved           = errors.New("session not saved")
-	ErrAccessTokenNotCreated     = errors.New("access token not created")
+	ErrSessionRevoked            = errors.New("refresh session revoked")
+	ErrSessionExpired            = errors.New("refresh session expired")
+	ErrDeviceMismatch            = errors.New("device mismatch")
 )

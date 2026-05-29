@@ -22,6 +22,10 @@ func NewAuthHandler(
 	client *authclient.Client,
 	vld *validate.Validate,
 ) *AuthHandler {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
+
 	return &AuthHandler{
 		logger:     lg,
 		authClient: client,
@@ -36,16 +40,13 @@ func (h *AuthHandler) Register(ctx *fiber.Ctx) error {
 		return httperr.WriteBadRequest(ctx, "invalid request body")
 	}
 
-	if h.validator != nil {
-		if err := h.validator.Struct(req); err != nil {
-			return httperr.WriteBadRequest(ctx, "validation failed")
-		}
+	if err := h.validate(req); err != nil {
+		return httperr.WriteBadRequest(ctx, "validation failed")
 	}
 
-	grpcReq := httpToGRPCRegister(req) //хорошее ли решение каждый раз делать такую функцию отдельную или лучше прям тут парсить?
-
-	resp, err := h.authClient.Register(ctx.Context(), grpcReq)
+	resp, err := h.authClient.Register(ctx.UserContext(), httpToGRPCRegister(req))
 	if err != nil {
+		h.logger.Warn("register grpc failed", zap.Error(err))
 		return httperr.WriteGRPCError(ctx, err)
 	}
 
@@ -59,20 +60,19 @@ func (h *AuthHandler) Login(ctx *fiber.Ctx) error {
 		return httperr.WriteBadRequest(ctx, "invalid request body")
 	}
 
-	if h.validator != nil {
-		if err := h.validator.Struct(req); err != nil {
-			return httperr.WriteBadRequest(ctx, "validation failed")
-		}
+	if err := h.validate(req); err != nil {
+		return httperr.WriteBadRequest(ctx, "validation failed")
 	}
 
 	grpcReq := &authv1.LoginRequest{
 		Email:    req.Email,
 		Password: req.Password,
-		DeviceId: req.DeviceID, //DeviceId откуда берем? когда и где запрашиваем?
+		DeviceId: req.DeviceID,
 	}
 
-	resp, err := h.authClient.Login(ctx.Context(), grpcReq)
+	resp, err := h.authClient.Login(ctx.UserContext(), grpcReq)
 	if err != nil {
+		h.logger.Warn("login grpc failed", zap.Error(err))
 		return httperr.WriteGRPCError(ctx, err)
 	}
 
@@ -86,10 +86,8 @@ func (h *AuthHandler) Refresh(ctx *fiber.Ctx) error {
 		return httperr.WriteBadRequest(ctx, "invalid request body")
 	}
 
-	if h.validator != nil {
-		if err := h.validator.Struct(req); err != nil {
-			return httperr.WriteBadRequest(ctx, "validation failed")
-		}
+	if err := h.validate(req); err != nil {
+		return httperr.WriteBadRequest(ctx, "validation failed")
 	}
 
 	grpcReq := &authv1.RefreshRequest{
@@ -97,8 +95,9 @@ func (h *AuthHandler) Refresh(ctx *fiber.Ctx) error {
 		DeviceId:     req.DeviceID,
 	}
 
-	resp, err := h.authClient.Refresh(ctx.Context(), grpcReq)
+	resp, err := h.authClient.Refresh(ctx.UserContext(), grpcReq)
 	if err != nil {
+		h.logger.Warn("refresh grpc failed", zap.Error(err))
 		return httperr.WriteGRPCError(ctx, err)
 	}
 
@@ -112,10 +111,8 @@ func (h *AuthHandler) Logout(ctx *fiber.Ctx) error {
 		return httperr.WriteBadRequest(ctx, "invalid request body")
 	}
 
-	if h.validator != nil {
-		if err := h.validator.Struct(req); err != nil {
-			return httperr.WriteBadRequest(ctx, "validation failed")
-		}
+	if err := h.validate(req); err != nil {
+		return httperr.WriteBadRequest(ctx, "validation failed")
 	}
 
 	grpcReq := &authv1.RefreshRequest{
@@ -123,8 +120,9 @@ func (h *AuthHandler) Logout(ctx *fiber.Ctx) error {
 		DeviceId:     req.DeviceID,
 	}
 
-	resp, err := h.authClient.Logout(ctx.Context(), grpcReq)
+	resp, err := h.authClient.Logout(ctx.UserContext(), grpcReq)
 	if err != nil {
+		h.logger.Warn("logout grpc failed", zap.Error(err))
 		return httperr.WriteGRPCError(ctx, err)
 	}
 
@@ -132,6 +130,14 @@ func (h *AuthHandler) Logout(ctx *fiber.Ctx) error {
 		AllDevice: resp.AllDevice,
 		DeviceID:  resp.DeviceId,
 	})
+}
+
+func (h *AuthHandler) validate(v any) error {
+	if h.validator == nil {
+		return nil
+	}
+
+	return h.validator.Struct(v)
 }
 
 func httpToGRPCRegister(req authdto.RegisterRequest) *authv1.RegisterRequest {
@@ -146,6 +152,10 @@ func httpToGRPCRegister(req authdto.RegisterRequest) *authv1.RegisterRequest {
 }
 
 func grpcToHTTPTokenPair(resp *authv1.TokenPairResponse) authdto.TokenPairResponse {
+	if resp == nil {
+		return authdto.TokenPairResponse{}
+	}
+
 	return authdto.TokenPairResponse{
 		Access:       resp.AccessToken,
 		Refresh:      resp.RefreshToken,

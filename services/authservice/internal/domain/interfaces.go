@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"Broker_backend/services/authservice/internal/infra/security/jwt"
 	"context"
 	"time"
 
@@ -10,14 +9,15 @@ import (
 
 type UserRepository interface {
 	Save(ctx context.Context, user entity.User) error
-	FindByEmail(ctx context.Context, email string) (entity.User, error) //верное ли решение разделять поиск по email и паролю? я же и то и то одновременно проверяю
+	FindByID(ctx context.Context, id string) (entity.User, error)
+	FindByEmail(ctx context.Context, email string) (entity.User, error)
 }
 
-type RefreshSessionRepository interface { //покажи на примере в чем смысл в уровень репозитория передавать структуры без указателя? хочу увидеть от чего защищаемся так
-	Save(ctx context.Context, session jwt.RefreshSession) error
-	Rotate(ctx context.Context, oldHash string, newSession jwt.RefreshSession) error
+type RefreshSessionRepository interface {
+	Save(ctx context.Context, session entity.RefreshSession) error
+	Rotate(ctx context.Context, oldHash string, newSession entity.RefreshSession) error
 	Revoke(ctx context.Context, hash string) error
-	FindByHash(ctx context.Context, hash string) (jwt.RefreshSession, error)
+	FindByHash(ctx context.Context, hash string) (entity.RefreshSession, error)
 }
 
 type PasswordHasher interface {
@@ -26,7 +26,7 @@ type PasswordHasher interface {
 }
 
 type AccessTokenIssuer interface {
-	Issue(userID string, deviceID string, role entity.UserRole, now time.Time) (string, error)
+	Issue(userID string, deviceID string, role string, now time.Time) (string, error)
 }
 
 type RefreshTokenService interface {

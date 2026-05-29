@@ -25,15 +25,16 @@ func (r *Repository) Save(ctx context.Context, user entity.User) error {
 
 	query := `
 		insert into users (
-		                   id,
-		                   email,
-		                   user_role,
-		                   password_hash,
-		                   last_name,
-		                   first_name,
-		                   middle_name,
-		                   created_at
-		                   ) values ($1, $2, $3, $4, $5, $6, &7, &8)
+			id,
+			email,
+			user_role,
+			password_hash,
+			last_name,
+			first_name,
+			middle_name,
+			created_at
+		)
+		values ($1, $2, $3, $4, $5, $6, $7, $8)
 	`
 
 	_, err := r.pg.DB().Exec(
