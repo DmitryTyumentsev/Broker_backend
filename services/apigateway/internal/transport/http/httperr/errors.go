@@ -18,7 +18,7 @@ func WriteBadRequest(c *fiber.Ctx, message string) error {
 func WriteInternal(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{
 		Code:    fiber.StatusInternalServerError,
-		Message: "internal server error",
+		Message: "internal server error ",
 	})
 }
 
