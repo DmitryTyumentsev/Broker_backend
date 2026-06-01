@@ -15,38 +15,53 @@ func mapError(err error) error {
 		return nil
 	}
 
-	switch {
-	case errors.Is(err, usecases.ErrEmailRequired),
-		errors.Is(err, usecases.ErrEmailInvalid),
-		errors.Is(err, usecases.ErrPasswordRequired),
-		errors.Is(err, usecases.ErrPasswordWeak),
-		errors.Is(err, usecases.ErrDeviceIDRequired),
-		errors.Is(err, usecases.ErrFirstNameRequired),
-		errors.Is(err, usecases.ErrLastNameRequired),
-		errors.Is(err, usecases.ErrRefreshRequired),
-		errors.Is(err, domain.ErrBadRequest),
-		errors.Is(err, domain.ErrMustBeNotNull),
-		errors.Is(err, domain.ErrDeviceMismatch):
-		return status.Error(codes.InvalidArgument, err.Error())
+	code, message := grpcStatusFromError(err)
+	return status.Error(code, message)
+}
 
-	case errors.Is(err, domain.ErrNotUniqueEmail),
-		errors.Is(err, domain.ErrEmailExist),
-		errors.Is(err, domain.ErrNotUnique):
-		return status.Error(codes.AlreadyExists, err.Error())
+func grpcStatusFromError(err error) (codes.Code, string) {
+	switch {
+	case errors.Is(err, usecases.ErrEmailRequired):
+		return codes.InvalidArgument, usecases.ErrEmailRequired.Error()
+	case errors.Is(err, usecases.ErrEmailInvalid):
+		return codes.InvalidArgument, usecases.ErrEmailInvalid.Error()
+	case errors.Is(err, usecases.ErrPasswordRequired):
+		return codes.InvalidArgument, usecases.ErrPasswordRequired.Error()
+	case errors.Is(err, usecases.ErrPasswordWeak):
+		return codes.InvalidArgument, usecases.ErrPasswordWeak.Error()
+	case errors.Is(err, usecases.ErrDeviceIDRequired):
+		return codes.InvalidArgument, usecases.ErrDeviceIDRequired.Error()
+	case errors.Is(err, usecases.ErrFirstNameRequired):
+		return codes.InvalidArgument, usecases.ErrFirstNameRequired.Error()
+	case errors.Is(err, usecases.ErrLastNameRequired):
+		return codes.InvalidArgument, usecases.ErrLastNameRequired.Error()
+	case errors.Is(err, usecases.ErrRefreshRequired):
+		return codes.InvalidArgument, usecases.ErrRefreshRequired.Error()
+	case errors.Is(err, domain.ErrBadRequest):
+		return codes.InvalidArgument, domain.ErrBadRequest.Error()
+	case errors.Is(err, domain.ErrMustBeNotNull):
+		return codes.InvalidArgument, domain.ErrMustBeNotNull.Error()
+	case errors.Is(err, domain.ErrDeviceMismatch):
+		return codes.InvalidArgument, domain.ErrDeviceMismatch.Error()
+
+	case errors.Is(err, domain.ErrNotUniqueEmail), errors.Is(err, domain.ErrEmailExist):
+		return codes.AlreadyExists, "email already exists"
+	case errors.Is(err, domain.ErrNotUnique):
+		return codes.AlreadyExists, "resource already exists"
 
 	case errors.Is(err, domain.ErrUnauthenticated),
 		errors.Is(err, domain.ErrPasswordWrong),
 		errors.Is(err, domain.ErrSessionRevoked),
 		errors.Is(err, domain.ErrSessionExpired):
-		return status.Error(codes.Unauthenticated, "invalid credentials or token")
+		return codes.Unauthenticated, "invalid credentials or token"
 
 	case errors.Is(err, domain.ErrNotFound):
-		return status.Error(codes.NotFound, err.Error())
+		return codes.NotFound, domain.ErrNotFound.Error()
 
 	case errors.Is(err, domain.ErrForbidden):
-		return status.Error(codes.PermissionDenied, err.Error())
+		return codes.PermissionDenied, domain.ErrForbidden.Error()
 
 	default:
-		return status.Error(codes.Internal, "internal server error")
+		return codes.Internal, "internal server error"
 	}
 }

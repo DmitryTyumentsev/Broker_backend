@@ -1,18 +1,22 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strconv"
 
 	"Broker_backend/services/apigateway/internal/clients/authclient"
 	"Broker_backend/services/apigateway/internal/config"
+	redisclient "Broker_backend/services/apigateway/internal/infra/cache/redis"
 	httprouter "Broker_backend/services/apigateway/internal/transport/http"
 	"Broker_backend/services/apigateway/internal/transport/http/handlers"
 	"Broker_backend/services/apigateway/internal/transport/http/handlers/authhandlers"
+	sharedjwt "Broker_backend/shared/pkg/security/jwt"
 
 	validate "github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -38,7 +42,33 @@ func main() {
 		_ = conn.Close()
 	}()
 
-	authClient := authclient.NewClient(authGRPCClient, cfg)
+	var redisClient *redis.Client
+	if cfg.RateLimitEnabled() {
+		redisCtx, cancelRedis := context.WithTimeout(context.Background(), cfg.Business.ContextTimeout)
+
+		redisClient, err = redisclient.NewClient(redisCtx, cfg.Database.Redis)
+		cancelRedis()
+		if err != nil {
+			logger.Fatal("create redis client failed", zap.Error(err))
+		}
+		defer func() {
+			_ = redisClient.Close()
+		}()
+	}
+
+	accessVerifier, err := sharedjwt.NewAccessTokenVerifier(sharedjwt.AccessTokenVerifierConfig{
+		Secret: cfg.Business.AccessTokenSecret,
+		Issuer: cfg.Business.AccessTokenIssuer,
+	})
+	if err != nil {
+		logger.Fatal("create access token verifier failed", zap.Error(err))
+	}
+
+	authClient, err := authclient.NewClient(authGRPCClient, cfg)
+	if err != nil {
+		logger.Fatal("create auth client failed", zap.Error(err))
+	}
+
 	validator := validate.New()
 
 	authHandler := authhandlers.NewAuthHandler(logger, authClient, validator)
@@ -50,9 +80,15 @@ func main() {
 		DisableStartupMessage: false,
 	})
 
-	httprouter.SetupRouter(app, &handlers.Deps{
-		Auth: authHandler,
-	})
+	if err := httprouter.SetupRouter(app, &handlers.Deps{
+		Auth:           authHandler,
+		Config:         cfg,
+		Logger:         logger,
+		Redis:          redisClient,
+		AccessVerifier: accessVerifier,
+	}); err != nil {
+		logger.Fatal("setup router failed", zap.Error(err))
+	}
 
 	addr := net.JoinHostPort(cfg.Server.Host, strconv.Itoa(cfg.Server.Port))
 

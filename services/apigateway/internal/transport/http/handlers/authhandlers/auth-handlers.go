@@ -1,9 +1,12 @@
 package authhandlers
 
 import (
+	"errors"
+
 	"Broker_backend/services/apigateway/internal/clients/authclient"
 	"Broker_backend/services/apigateway/internal/transport/http/dto/authdto"
 	"Broker_backend/services/apigateway/internal/transport/http/httperr"
+	"Broker_backend/services/apigateway/internal/transport/http/middleware"
 	authv1 "Broker_backend/shared/pkg/grpc/gen/auth/v1"
 
 	validate "github.com/go-playground/validator/v10"
@@ -30,6 +33,17 @@ func NewAuthHandler(
 		logger:     lg,
 		authClient: client,
 		validator:  vld,
+	}
+}
+
+func (h *AuthHandler) Validate() error {
+	switch {
+	case h == nil:
+		return errors.New("auth handler is nil")
+	case h.authClient == nil:
+		return errors.New("auth client is required")
+	default:
+		return h.authClient.Validate()
 	}
 }
 
@@ -129,6 +143,33 @@ func (h *AuthHandler) Logout(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(authdto.LogoutResponse{
 		AllDevice: resp.AllDevice,
 		DeviceID:  resp.DeviceId,
+	})
+}
+
+func (h *AuthHandler) Me(ctx *fiber.Ctx) error {
+	claims, ok := middleware.CurrentClaims(ctx)
+	if !ok {
+		return httperr.WriteUnauthorized(ctx, "auth context is missing")
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(authdto.MeResponse{
+		UserID:   claims.UserID,
+		DeviceID: claims.DeviceID,
+		Role:     claims.Role,
+	})
+}
+
+func (h *AuthHandler) AdminPing(ctx *fiber.Ctx) error {
+	claims, ok := middleware.CurrentClaims(ctx)
+	if !ok {
+		return httperr.WriteUnauthorized(ctx, "auth context is missing")
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(authdto.AdminPingResponse{
+		OK:       true,
+		UserID:   claims.UserID,
+		DeviceID: claims.DeviceID,
+		Role:     claims.Role,
 	})
 }
 

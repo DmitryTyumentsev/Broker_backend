@@ -2,6 +2,7 @@ package authclient
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"Broker_backend/services/apigateway/internal/config"
@@ -32,10 +33,37 @@ func NewAuthServiceClient(cfg *config.Config) (*grpc.ClientConn, authv1.AuthServ
 	return conn, authv1.NewAuthServiceClient(conn), nil
 }
 
-func NewClient(auth authv1.AuthServiceClient, cfg *config.Config) *Client {
+func NewClient(auth authv1.AuthServiceClient, cfg *config.Config) (*Client, error) {
+	if auth == nil {
+		return nil, errors.New("auth grpc client is nil")
+	}
+
+	if cfg == nil {
+		return nil, errors.New("config is nil")
+	}
+
+	if cfg.Business.ContextTimeout <= 0 {
+		return nil, errors.New("business context timeout must be positive")
+	}
+
 	return &Client{
 		auth:   auth,
 		config: cfg,
+	}, nil
+}
+
+func (c *Client) Validate() error {
+	switch {
+	case c == nil:
+		return errors.New("auth client is nil")
+	case c.auth == nil:
+		return errors.New("auth grpc client is nil")
+	case c.config == nil:
+		return errors.New("config is nil")
+	case c.config.Business.ContextTimeout <= 0:
+		return errors.New("business context timeout must be positive")
+	default:
+		return nil
 	}
 }
 
@@ -43,7 +71,10 @@ func (c *Client) Register(
 	ctx context.Context,
 	req *authv1.RegisterRequest,
 ) (*authv1.TokenPairResponse, error) {
-	ctx, cancel := context.WithTimeout(ctx, c.config.Business.ContextTimeout)
+	ctx, cancel, err := c.contextWithTimeout(ctx)
+	if err != nil {
+		return nil, err
+	}
 	defer cancel()
 
 	return c.auth.Register(ctx, req)
@@ -53,7 +84,10 @@ func (c *Client) Login(
 	ctx context.Context,
 	req *authv1.LoginRequest,
 ) (*authv1.TokenPairResponse, error) {
-	ctx, cancel := context.WithTimeout(ctx, c.config.Business.ContextTimeout)
+	ctx, cancel, err := c.contextWithTimeout(ctx)
+	if err != nil {
+		return nil, err
+	}
 	defer cancel()
 
 	return c.auth.Login(ctx, req)
@@ -63,7 +97,10 @@ func (c *Client) Refresh(
 	ctx context.Context,
 	req *authv1.RefreshRequest,
 ) (*authv1.TokenPairResponse, error) {
-	ctx, cancel := context.WithTimeout(ctx, c.config.Business.ContextTimeout)
+	ctx, cancel, err := c.contextWithTimeout(ctx)
+	if err != nil {
+		return nil, err
+	}
 	defer cancel()
 
 	return c.auth.Refresh(ctx, req)
@@ -73,8 +110,24 @@ func (c *Client) Logout(
 	ctx context.Context,
 	req *authv1.RefreshRequest,
 ) (*authv1.LogoutResponse, error) {
-	ctx, cancel := context.WithTimeout(ctx, c.config.Business.ContextTimeout)
+	ctx, cancel, err := c.contextWithTimeout(ctx)
+	if err != nil {
+		return nil, err
+	}
 	defer cancel()
 
 	return c.auth.Logout(ctx, req)
+}
+
+func (c *Client) contextWithTimeout(parent context.Context) (context.Context, context.CancelFunc, error) {
+	if err := c.Validate(); err != nil {
+		return nil, nil, err
+	}
+
+	if parent == nil {
+		parent = context.Background()
+	}
+
+	ctx, cancel := context.WithTimeout(parent, c.config.Business.ContextTimeout)
+	return ctx, cancel, nil
 }

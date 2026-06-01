@@ -96,6 +96,10 @@ func LoadConfig() (*Config, error) {
 }
 
 func (c *Config) Validate() error {
+	if c == nil {
+		return errors.New("config is nil")
+	}
+
 	if c.Server.Port <= 0 {
 		return errors.New("server.port must be positive")
 	}
@@ -128,6 +132,10 @@ func (c *Config) Validate() error {
 		return errors.New("business.access_token_secret must be at least 32 bytes")
 	}
 
+	if strings.TrimSpace(c.Business.AccessTokenIssuer) == "" {
+		return errors.New("business.access_token_issuer is required")
+	}
+
 	pg := c.Database.Postgres
 
 	if strings.TrimSpace(pg.DSN) == "" {
@@ -148,25 +156,17 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	//redis := c.Database.Redis
-	//if strings.TrimSpace(redis.Host) == "" {
-	//	return errors.New("database.redis.host is required")
-	//}
-	//if redis.Port <= 0 {
-	//	return errors.New("database.redis.port must be positive")
-	//}
-	//if redis.DB < 0 {
-	//	return errors.New("database.redis.db must not be negative")
-	//}
-	//if redis.DialTimeout <= 0 {
-	//	return errors.New("database.redis.dial_timeout must be positive")
-	//}
-	//if redis.ReadTimeout <= 0 {
-	//	return errors.New("database.redis.read_timeout must be positive")
-	//}
-	//if redis.WriteTimeout <= 0 {
-	//	return errors.New("database.redis.write_timeout must be positive")
-	//}
+	if pg.ConnectTimeout <= 0 {
+		return errors.New("database.postgres.connect_timeout must be positive")
+	}
+
+	if pg.ReadTimeout <= 0 {
+		return errors.New("database.postgres.read_timeout must be positive")
+	}
+
+	if pg.WriteTimeout <= 0 {
+		return errors.New("database.postgres.write_timeout must be positive")
+	}
 
 	return nil
 }

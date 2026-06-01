@@ -14,11 +14,11 @@ func NormalizeOptionText(v *string) *string {
 	if v == nil {
 		return nil
 	}
-	if *v == "" {
-		return nil
-	}
 
 	normalizeV := NormalizeText(*v)
+	if normalizeV == "" {
+		return nil
+	}
 
 	return &normalizeV
 }

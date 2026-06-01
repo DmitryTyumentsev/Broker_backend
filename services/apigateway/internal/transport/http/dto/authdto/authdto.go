@@ -35,3 +35,16 @@ type LogoutResponse struct {
 	AllDevice bool   `json:"all_device"`
 	DeviceID  string `json:"device_id"`
 }
+
+type MeResponse struct {
+	UserID   string `json:"user_id"`
+	DeviceID string `json:"device_id"`
+	Role     string `json:"role"`
+}
+
+type AdminPingResponse struct {
+	OK       bool   `json:"ok"`
+	UserID   string `json:"user_id"`
+	DeviceID string `json:"device_id"`
+	Role     string `json:"role"`
+}

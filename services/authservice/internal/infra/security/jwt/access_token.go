@@ -177,6 +177,10 @@ func validateAccessTokenConfig(cfg *config.Config) error {
 		return fmt.Errorf("access token secret must be at least %d bytes", minAccessTokenSecretLen)
 	}
 
+	if strings.TrimSpace(cfg.Business.AccessTokenIssuer) == "" {
+		return errors.New("access token issuer is required")
+	}
+
 	if cfg.Business.LifetimeAccessToken <= 0 {
 		return errors.New("access token ttl must be positive")
 	}
@@ -229,27 +233,4 @@ func signHS256AndEncodeBase64URL(signingInput string, secret []byte) string {
 	signatureBytes := mac.Sum(nil)
 
 	return base64.RawURLEncoding.EncodeToString(signatureBytes)
-}
-
-func verifyAccessTokenSignature(token, secret string) bool {
-	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
-		return false
-	}
-
-	signingInput := buildSigningInput(parts[0], parts[1])
-
-	mac := hmac.New(sha256.New, []byte(secret))
-	_, err := mac.Write([]byte(signingInput))
-	if err != nil {
-		return false
-	}
-	expectedSignature := mac.Sum(nil)
-
-	currentSignature, err := base64.RawURLEncoding.DecodeString(parts[2])
-	if err != nil {
-		return false
-	}
-
-	return hmac.Equal(currentSignature, expectedSignature)
 }

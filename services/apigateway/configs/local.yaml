@@ -9,6 +9,40 @@ server:
 
 business:
   context_timeout: 5s
-
+  access_token_secret: "local-access-secret-change-me-32-bytes-minimum"
+  access_token_issuer: "authservice"
+  auth_rate_limit:
+    enabled: true
+    limit: 20
+    window: 1m
+    prefix: "rl:auth"
+  default_rate_limit:
+    enabled: true
+    limit: 120
+    window: 1m
+    prefix: "rl:api"
+  protected_allowed_roles:
+    - superadmin
+    - developer_admin
+    - account_manager
+    - sales_manager
+    - agency_owner
+    - broker_team_lead
+    - broker_team_member
+  admin_allowed_roles:
+    - superadmin
+    - developer_admin
 auth_grpc:
   address: localhost:50051
+
+database:
+  redis:
+    host: "127.0.0.1"
+    port: 6379
+    password: ""
+    db: 0
+    dial_timeout: "5s"
+    read_timeout: "3s"
+    write_timeout: "3s"
+    pool_size: 10
+    min_idle_conns: 2

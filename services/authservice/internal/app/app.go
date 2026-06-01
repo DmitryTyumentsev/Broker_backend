@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"time"
 
 	"Broker_backend/services/authservice/internal/config"
 	"Broker_backend/services/authservice/internal/infra/clock"
@@ -78,7 +79,9 @@ func InitAuthservice() {
 		logger.Fatal("listen tcp failed", zap.String("addr", addr), zap.Error(err))
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(unaryContextTimeout(cfg.Business.ContextTimeout)),
+	)
 
 	authv1.RegisterAuthServiceServer(
 		grpcServer,
@@ -89,5 +92,23 @@ func InitAuthservice() {
 
 	if err := grpcServer.Serve(listener); err != nil {
 		logger.Fatal("authservice grpc stopped", zap.Error(err))
+	}
+}
+
+func unaryContextTimeout(timeout time.Duration) grpc.UnaryServerInterceptor {
+	return func(
+		ctx context.Context,
+		req any,
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (any, error) {
+		if timeout <= 0 {
+			return handler(ctx, req)
+		}
+
+		ctx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+
+		return handler(ctx, req)
 	}
 }

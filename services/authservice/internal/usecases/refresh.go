@@ -37,6 +37,10 @@ func (s *Service) Refresh(ctx context.Context, req *RefreshRequest) (*TokenPairR
 	now := s.clock.Now()
 
 	if oldSession.RevokedAt != nil {
+		if err := s.revokeReplacedSession(ctx, oldSession); err != nil {
+			return nil, fmt.Errorf("%s: revoke replaced session: %w", op, err)
+		}
+
 		return nil, fmt.Errorf("%s: %w", op, domain.ErrSessionRevoked)
 	}
 
@@ -101,6 +105,29 @@ func validateRefreshInput(req *RefreshRequest) error {
 	if req.DeviceID == "" {
 		return ErrDeviceIDRequired
 	}
+
+	return nil
+}
+
+func (s *Service) revokeReplacedSession(ctx context.Context, session entity.RefreshSession) error {
+	if session.ReplacedByRefreshTokenHash == nil {
+		return nil
+	}
+
+	replacedHash := strings.TrimSpace(*session.ReplacedByRefreshTokenHash)
+	if replacedHash == "" {
+		return nil
+	}
+
+	if err := s.sessions.Revoke(ctx, replacedHash); err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return err
+	}
+
+	s.logger.Warn(
+		"refresh token reuse detected, replaced session revoked",
+		zap.String("user_id", session.UserID),
+		zap.String("device_id", session.DeviceID),
+	)
 
 	return nil
 }

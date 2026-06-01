@@ -18,7 +18,35 @@ func WriteBadRequest(c *fiber.Ctx, message string) error {
 func WriteInternal(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{
 		Code:    fiber.StatusInternalServerError,
-		Message: "internal server error ",
+		Message: "internal server error",
+	})
+}
+
+func WriteUnauthorized(c *fiber.Ctx, message string) error {
+	return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{
+		Code:    fiber.StatusUnauthorized,
+		Message: message,
+	})
+}
+
+func WriteForbidden(c *fiber.Ctx, message string) error {
+	return c.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{
+		Code:    fiber.StatusForbidden,
+		Message: message,
+	})
+}
+
+func WriteTooManyRequests(c *fiber.Ctx, message string) error {
+	return c.Status(fiber.StatusTooManyRequests).JSON(dto.ErrorResponse{
+		Code:    fiber.StatusTooManyRequests,
+		Message: message,
+	})
+}
+
+func WriteServiceUnavailable(c *fiber.Ctx, message string) error {
+	return c.Status(fiber.StatusServiceUnavailable).JSON(dto.ErrorResponse{
+		Code:    fiber.StatusServiceUnavailable,
+		Message: message,
 	})
 }
 

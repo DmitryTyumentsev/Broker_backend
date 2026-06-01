@@ -7,6 +7,6 @@ func IsValidEmail(email string) bool {
 		return false
 	}
 
-	_, err := mail.ParseAddress(email)
-	return err == nil
+	addr, err := mail.ParseAddress(email)
+	return err == nil && addr.Name == "" && addr.Address == email
 }
