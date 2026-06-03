@@ -9,6 +9,18 @@ business:
   context_timeout: "5s"
   lifetime_access_token: "15m"
   lifetime_refresh_token: "720h"
+  access_token_alg: "HS256"
+  access_token_type: "JWT"
+  access_token_secret: "local-access-secret-change-me-32-bytes-minimum"
+  access_token_issuer: "authservice"
+
+observability:
+  tracing:
+    enabled: true
+    service_name: "authservice"
+    otlp_endpoint: "localhost:4317"
+    insecure: true
+    sample_ratio: 1
 
 database:
   postgres:
@@ -19,17 +31,25 @@ database:
     username: "postgres"
     password: "2409"
     ssl_mode: "disable"
-
     migrations_path: "services/authservice/migrations"
     migrations_table: "goose_db_version"
     schema_name: "public"
-
     max_connections: 10
     min_connections: 1
     max_idle_time: "30m"
     max_lifetime: "60m"
     health_check_period: "5m"
-
     write_timeout: "30s"
     read_timeout: "15s"
     connect_timeout: "5s"
+
+  redis:
+    host: "127.0.0.1"
+    port: 6379
+    password: ""
+    db: 0
+    dial_timeout: "5s"
+    read_timeout: "3s"
+    write_timeout: "3s"
+    pool_size: 10
+    min_idle_conns: 2

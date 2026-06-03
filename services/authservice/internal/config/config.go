@@ -9,15 +9,16 @@ import (
 	"strings"
 	"time"
 
-	sharedconfig "Donate_backend/shared/pkg/config"
+	sharedconfig "Broker_backend/shared/pkg/config"
 )
 
 const serviceName = "authservice"
 
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Business BusinessConfig `mapstructure:"business"`
-	Database DatabaseConfig `mapstructure:"database"`
+	Server        ServerConfig        `mapstructure:"server"`
+	Business      BusinessConfig      `mapstructure:"business"`
+	Observability ObservabilityConfig `mapstructure:"observability"`
+	Database      DatabaseConfig      `mapstructure:"database"`
 }
 
 type ServerConfig struct {
@@ -32,10 +33,28 @@ type BusinessConfig struct {
 	ContextTimeout       time.Duration `mapstructure:"context_timeout"`
 	LifetimeAccessToken  time.Duration `mapstructure:"lifetime_access_token"`
 	LifetimeRefreshToken time.Duration `mapstructure:"lifetime_refresh_token"`
+
+	AccessTokenAlg    string `mapstructure:"access_token_alg"`
+	AccessTokenType   string `mapstructure:"access_token_type"`
+	AccessTokenSecret string `mapstructure:"access_token_secret"`
+	AccessTokenIssuer string `mapstructure:"access_token_issuer"`
+}
+
+type ObservabilityConfig struct {
+	Tracing TracingConfig `mapstructure:"tracing"`
+}
+
+type TracingConfig struct {
+	Enabled      bool    `mapstructure:"enabled"`
+	ServiceName  string  `mapstructure:"service_name"`
+	OTLPEndpoint string  `mapstructure:"otlp_endpoint"`
+	Insecure     bool    `mapstructure:"insecure"`
+	SampleRatio  float64 `mapstructure:"sample_ratio"`
 }
 
 type DatabaseConfig struct {
 	Postgres PostgresConfig `mapstructure:"postgres"`
+	Redis    RedisConfig    `mapstructure:"redis"`
 }
 
 type PostgresConfig struct {
@@ -63,6 +82,18 @@ type PostgresConfig struct {
 	ConnectTimeout time.Duration `mapstructure:"connect_timeout"`
 }
 
+type RedisConfig struct {
+	Host         string        `mapstructure:"host"`
+	Port         int           `mapstructure:"port"`
+	Password     string        `mapstructure:"password"`
+	DB           int           `mapstructure:"db"`
+	DialTimeout  time.Duration `mapstructure:"dial_timeout"`
+	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout time.Duration `mapstructure:"write_timeout"`
+	PoolSize     int           `mapstructure:"pool_size"`
+	MinIdleConns int           `mapstructure:"min_idle_conns"`
+}
+
 func LoadConfig() (*Config, error) {
 	cfg := &Config{}
 
@@ -78,6 +109,10 @@ func LoadConfig() (*Config, error) {
 }
 
 func (c *Config) Validate() error {
+	if c == nil {
+		return errors.New("config is nil")
+	}
+
 	if c.Server.Port <= 0 {
 		return errors.New("server.port must be positive")
 	}
@@ -92,6 +127,30 @@ func (c *Config) Validate() error {
 
 	if c.Business.LifetimeRefreshToken <= 0 {
 		return errors.New("business.lifetime_refresh_token must be positive")
+	}
+
+	if strings.TrimSpace(c.Business.AccessTokenAlg) == "" {
+		return errors.New("business.access_token_alg is required")
+	}
+
+	if strings.TrimSpace(c.Business.AccessTokenType) == "" {
+		return errors.New("business.access_token_type is required")
+	}
+
+	if strings.TrimSpace(c.Business.AccessTokenSecret) == "" {
+		return errors.New("business.access_token_secret is required")
+	}
+
+	if len(strings.TrimSpace(c.Business.AccessTokenSecret)) < 32 {
+		return errors.New("business.access_token_secret must be at least 32 bytes")
+	}
+
+	if strings.TrimSpace(c.Business.AccessTokenIssuer) == "" {
+		return errors.New("business.access_token_issuer is required")
+	}
+
+	if err := validateTracing(c.Observability.Tracing); err != nil {
+		return err
 	}
 
 	pg := c.Database.Postgres
@@ -112,6 +171,38 @@ func (c *Config) Validate() error {
 		if strings.TrimSpace(pg.Username) == "" {
 			return errors.New("database.postgres.username is required when dsn is empty")
 		}
+	}
+
+	if pg.ConnectTimeout <= 0 {
+		return errors.New("database.postgres.connect_timeout must be positive")
+	}
+
+	if pg.ReadTimeout <= 0 {
+		return errors.New("database.postgres.read_timeout must be positive")
+	}
+
+	if pg.WriteTimeout <= 0 {
+		return errors.New("database.postgres.write_timeout must be positive")
+	}
+
+	return nil
+}
+
+func validateTracing(cfg TracingConfig) error {
+	if !cfg.Enabled {
+		return nil
+	}
+
+	if strings.TrimSpace(cfg.ServiceName) == "" {
+		return errors.New("observability.tracing.service_name is required")
+	}
+
+	if strings.TrimSpace(cfg.OTLPEndpoint) == "" {
+		return errors.New("observability.tracing.otlp_endpoint is required")
+	}
+
+	if cfg.SampleRatio < 0 || cfg.SampleRatio > 1 {
+		return errors.New("observability.tracing.sample_ratio must be between 0 and 1")
 	}
 
 	return nil
@@ -170,4 +261,32 @@ func (p PostgresConfig) GooseTableName() string {
 	}
 
 	return schema + "." + table
+}
+
+func (r RedisConfig) AddrRedis() string {
+	host := strings.TrimSpace(r.Host)
+	if host == "" {
+		host = "localhost"
+	}
+
+	port := r.Port
+	if port <= 0 {
+		port = 6379
+	}
+
+	return net.JoinHostPort(host, strconv.Itoa(port))
+}
+
+func (s ServerConfig) AddrServer() string {
+	host := strings.TrimSpace(s.Host)
+	if host == "" {
+		host = "0.0.0.0"
+	}
+
+	port := s.Port
+	if port <= 0 {
+		port = 50051
+	}
+
+	return net.JoinHostPort(host, strconv.Itoa(port))
 }

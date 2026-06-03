@@ -20,6 +20,7 @@ func Load(serviceName string, out any) error {
 
 	v.SetConfigName(env)
 	v.SetConfigType("yaml")
+	v.SetEnvPrefix(strings.ToUpper(strings.NewReplacer("-", "_").Replace(serviceName)))
 
 	v.AddConfigPath(filepath.Join("services", serviceName, "configs"))
 	v.AddConfigPath(filepath.Join("configs"))

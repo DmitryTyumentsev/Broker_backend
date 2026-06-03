@@ -34,7 +34,7 @@ func (s *RefreshTokenService) New() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(raw), nil
 }
 
-func (s *RefreshTokenService) Hash(token string) string {
-	hash := sha256.Sum256([]byte(token))
+func (s *RefreshTokenService) Hash(rawToken string) string {
+	hash := sha256.Sum256([]byte(rawToken))
 	return base64.RawURLEncoding.EncodeToString(hash[:])
 }

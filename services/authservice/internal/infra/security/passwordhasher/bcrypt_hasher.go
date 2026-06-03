@@ -6,13 +6,17 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const (
+	costBcrypt = 11
+)
+
 type PasswordHasher struct {
 	cost int
 }
 
 func NewPasswordHasher() *PasswordHasher {
 	return &PasswordHasher{
-		cost: bcrypt.DefaultCost,
+		cost: costBcrypt,
 	}
 }
 

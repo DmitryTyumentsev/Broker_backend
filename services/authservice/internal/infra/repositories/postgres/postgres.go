@@ -3,7 +3,7 @@ package postgres
 import (
 	"context"
 
-	"Donate_backend/services/authservice/internal/config"
+	"Broker_backend/services/authservice/internal/config"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

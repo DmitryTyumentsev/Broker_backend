@@ -1,49 +1,7 @@
 package main
 
-import (
-	"fmt"
-	"net"
-	"strconv"
-
-	"Donate_backend/services/authservice/internal/config"
-	"Donate_backend/services/authservice/internal/transport/grpchandler"
-	authv1 "Donate_backend/shared/pkg/grpc/gen/auth/v1"
-
-	"go.uber.org/zap"
-	"google.golang.org/grpc"
-)
+import "Broker_backend/services/authservice/internal/app"
 
 func main() {
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		panic(fmt.Errorf("load config: %w", err))
-	}
-
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		panic(fmt.Errorf("create logger: %w", err))
-	}
-	defer func() {
-		_ = logger.Sync()
-	}()
-
-	addr := net.JoinHostPort(cfg.Server.Host, strconv.Itoa(cfg.Server.Port))
-
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		logger.Fatal("listen tcp", zap.String("addr", addr), zap.Error(err))
-	}
-
-	grpcServer := grpc.NewServer()
-
-	authv1.RegisterAuthServiceServer(
-		grpcServer,
-		grpchandler.NewHandler(nil),
-	)
-
-	logger.Info("authservice grpc started", zap.String("addr", addr))
-
-	if err := grpcServer.Serve(listener); err != nil {
-		logger.Fatal("authservice grpc stopped", zap.Error(err))
-	}
+	app.InitAuthservice()
 }

@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"Donate_backend/services/authservice/internal/domain/entity"
-	"Donate_backend/services/authservice/internal/pkg/validators"
+	"Broker_backend/services/authservice/internal/domain/entity"
+	"Broker_backend/services/authservice/internal/pkg/validators"
+	"Broker_backend/shared/pkg/helpers"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -15,19 +16,15 @@ import (
 func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPairResponse, error) {
 	const op = "usecases.Register"
 
-	if s == nil {
-		return nil, fmt.Errorf("%s: service is nil", op)
+	if err := s.ensureDeps(); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	if err := validateRegisterInput(req); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	if err := s.ensureRegisterDeps(); err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-
-	passwordHash, err := s.passHasher.Hash(req.Password)
+	passwordHash, err := s.passHasher.Hash(req.RawPassword)
 	if err != nil {
 		return nil, fmt.Errorf("%s: hash password: %w", op, err)
 	}
@@ -35,51 +32,28 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 	now := s.clock.Now()
 
 	user := entity.User{
-		ID:        uuid.NewString(),
-		Email:     strings.TrimSpace(req.Email),
-		Username:  strings.TrimSpace(req.Username),
-		PassHash:  passwordHash,
-		Role:      "user",
-		CreatedAt: now,
+		ID:           uuid.NewString(),
+		Email:        helpers.NormalizeEmail(req.Email),
+		Role:         entity.RoleBrokerTeamMember,
+		PasswordHash: passwordHash,
+		LastName:     helpers.NormalizeText(req.LastName),
+		FirstName:    helpers.NormalizeText(req.FirstName),
+		MiddleName:   helpers.NormalizeOptionText(req.MiddleName),
+		CreatedAt:    now,
 	}
 
 	if err := s.users.Save(ctx, user); err != nil {
 		return nil, fmt.Errorf("%s: save user: %w", op, err)
 	}
 
-	rawRefreshToken, err := s.refreshToken.New()
+	tokenPair, err := s.createTokenPair(ctx, user.ID, req.DeviceID, string(user.Role), now)
 	if err != nil {
-		return nil, fmt.Errorf("%s: create refresh token: %w", op, err)
+		return nil, fmt.Errorf("%s: create token pair: %w", op, err)
 	}
 
-	refreshHash := s.refreshToken.Hash(rawRefreshToken)
+	s.logger.Info("user registered", zap.String("user_id", user.ID))
 
-	session := entity.RefreshSession{
-		Hash:      refreshHash,
-		UserID:    user.ID,
-		DeviceID:  req.DeviceID,
-		CreatedAt: now,
-		ExpiresAt: now.Add(s.config.Business.LifetimeRefreshToken),
-	}
-
-	if err := s.sessions.Save(ctx, session); err != nil {
-		return nil, fmt.Errorf("%s: save refresh session: %w", op, err)
-	}
-
-	accessToken, err := s.accessIssuer.Issue(user.ID, req.DeviceID, user.Role, now)
-	if err != nil {
-		return nil, fmt.Errorf("%s: issue access token: %w", op, err)
-	}
-
-	if s.logger != nil {
-		s.logger.Info("user registered", zap.String("user_id", user.ID))
-	}
-
-	return &TokenPairResponse{
-		AccessToken:  accessToken,
-		RefreshToken: rawRefreshToken,
-		ExpiresInSec: int64(s.config.Business.LifetimeAccessToken.Seconds()),
-	}, nil
+	return tokenPair, nil
 }
 
 func validateRegisterInput(req *RegisterRequest) error {
@@ -87,8 +61,10 @@ func validateRegisterInput(req *RegisterRequest) error {
 		return ErrEmailRequired
 	}
 
-	req.Email = strings.TrimSpace(req.Email)
-	req.Username = strings.TrimSpace(req.Username)
+	req.Email = helpers.NormalizeEmail(req.Email)
+	req.FirstName = helpers.NormalizeText(req.FirstName)
+	req.LastName = helpers.NormalizeText(req.LastName)
+	req.DeviceID = strings.TrimSpace(req.DeviceID)
 
 	if req.Email == "" {
 		return ErrEmailRequired
@@ -98,46 +74,25 @@ func validateRegisterInput(req *RegisterRequest) error {
 		return ErrEmailInvalid
 	}
 
-	if req.Password == "" {
+	if req.RawPassword == "" {
 		return ErrPasswordRequired
 	}
 
-	if !validators.IsStrongPassword(req.Password) {
+	if !validators.IsStrongPassword(req.RawPassword) {
 		return ErrPasswordWeak
-	}
-
-	if req.Username == "" {
-		return ErrUsernameRequired
-	}
-
-	if !validators.IsValidUsername(req.Username) {
-		return ErrUsernameInvalid
 	}
 
 	if req.DeviceID == "" {
 		return ErrDeviceIDRequired
 	}
 
-	return nil
-}
-
-func (s *Service) ensureRegisterDeps() error {
-	switch {
-	case s.config == nil:
-		return fmt.Errorf("config is nil")
-	case s.users == nil:
-		return fmt.Errorf("users repository is nil")
-	case s.sessions == nil:
-		return fmt.Errorf("sessions repository is nil")
-	case s.passHasher == nil:
-		return fmt.Errorf("password hasher is nil")
-	case s.accessIssuer == nil:
-		return fmt.Errorf("access token issuer is nil")
-	case s.refreshToken == nil:
-		return fmt.Errorf("refresh token service is nil")
-	case s.clock == nil:
-		return fmt.Errorf("clock is nil")
-	default:
-		return nil
+	if req.FirstName == "" {
+		return ErrFirstNameRequired
 	}
+
+	if req.LastName == "" {
+		return ErrLastNameRequired
+	}
+
+	return nil
 }
