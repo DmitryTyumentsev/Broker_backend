@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -10,9 +11,12 @@ import (
 	"Broker_backend/services/apigateway/internal/config"
 	redisclient "Broker_backend/services/apigateway/internal/infra/cache/redis"
 	httprouter "Broker_backend/services/apigateway/internal/transport/http"
+	"Broker_backend/services/apigateway/internal/transport/http/dto"
 	"Broker_backend/services/apigateway/internal/transport/http/handlers"
 	"Broker_backend/services/apigateway/internal/transport/http/handlers/authhandlers"
+	"Broker_backend/services/apigateway/internal/transport/http/middleware"
 	sharedjwt "Broker_backend/shared/pkg/security/jwt"
+	sharedtracing "Broker_backend/shared/pkg/tracing"
 
 	validate "github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -34,6 +38,24 @@ func main() {
 		_ = logger.Sync()
 	}()
 
+	tracingCtx, cancelTracing := context.WithTimeout(context.Background(), cfg.OperationTimeout())
+	tracerProvider, err := sharedtracing.InitTracerProvider(tracingCtx, sharedtracing.Config{
+		Enabled:      cfg.Observability.Tracing.Enabled,
+		ServiceName:  cfg.Observability.Tracing.ServiceName,
+		OTLPEndpoint: cfg.Observability.Tracing.OTLPEndpoint,
+		Insecure:     cfg.Observability.Tracing.Insecure,
+		SampleRatio:  cfg.Observability.Tracing.SampleRatio,
+	})
+	cancelTracing()
+	if err != nil {
+		logger.Fatal("init tracing failed", zap.Error(err))
+	}
+	defer func() {
+		shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), cfg.OperationTimeout())
+		defer cancelShutdown()
+		_ = tracerProvider.Shutdown(shutdownCtx)
+	}()
+
 	conn, authGRPCClient, err := authclient.NewAuthServiceClient(cfg)
 	if err != nil {
 		logger.Fatal("create auth grpc client failed", zap.Error(err))
@@ -43,8 +65,8 @@ func main() {
 	}()
 
 	var redisClient *redis.Client
-	if cfg.RateLimitEnabled() {
-		redisCtx, cancelRedis := context.WithTimeout(context.Background(), cfg.Business.ContextTimeout)
+	if cfg.RedisRequired() {
+		redisCtx, cancelRedis := context.WithTimeout(context.Background(), cfg.OperationTimeout())
 
 		redisClient, err = redisclient.NewClient(redisCtx, cfg.Database.Redis)
 		cancelRedis()
@@ -72,12 +94,15 @@ func main() {
 	validator := validate.New()
 
 	authHandler := authhandlers.NewAuthHandler(logger, authClient, validator)
+	metrics := middleware.NewPrometheusMetrics("apigateway")
 
 	app := fiber.New(fiber.Config{
 		ReadTimeout:           cfg.Server.ReadTimeout,
 		WriteTimeout:          cfg.Server.WriteTimeout,
 		IdleTimeout:           cfg.Server.IdleTimeout,
+		BodyLimit:             cfg.BodyLimitBytes(),
 		DisableStartupMessage: false,
+		ErrorHandler:          fiberErrorHandler,
 	})
 
 	if err := httprouter.SetupRouter(app, &handlers.Deps{
@@ -85,7 +110,9 @@ func main() {
 		Config:         cfg,
 		Logger:         logger,
 		Redis:          redisClient,
+		Validator:      validator,
 		AccessVerifier: accessVerifier,
+		Metrics:        metrics,
 	}); err != nil {
 		logger.Fatal("setup router failed", zap.Error(err))
 	}
@@ -97,4 +124,20 @@ func main() {
 	if err := app.Listen(addr); err != nil {
 		logger.Fatal("apigateway stopped", zap.Error(err))
 	}
+}
+
+func fiberErrorHandler(c *fiber.Ctx, err error) error {
+	statusCode := fiber.StatusInternalServerError
+	message := "internal server error"
+
+	var fiberErr *fiber.Error
+	if errors.As(err, &fiberErr) {
+		statusCode = fiberErr.Code
+		message = fiberErr.Message
+	}
+
+	return c.Status(statusCode).JSON(dto.ErrorResponse{
+		Code:    statusCode,
+		Message: message,
+	})
 }

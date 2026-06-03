@@ -15,9 +15,10 @@ import (
 const serviceName = "authservice"
 
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Business BusinessConfig `mapstructure:"business"`
-	Database DatabaseConfig `mapstructure:"database"`
+	Server        ServerConfig        `mapstructure:"server"`
+	Business      BusinessConfig      `mapstructure:"business"`
+	Observability ObservabilityConfig `mapstructure:"observability"`
+	Database      DatabaseConfig      `mapstructure:"database"`
 }
 
 type ServerConfig struct {
@@ -37,6 +38,18 @@ type BusinessConfig struct {
 	AccessTokenType   string `mapstructure:"access_token_type"`
 	AccessTokenSecret string `mapstructure:"access_token_secret"`
 	AccessTokenIssuer string `mapstructure:"access_token_issuer"`
+}
+
+type ObservabilityConfig struct {
+	Tracing TracingConfig `mapstructure:"tracing"`
+}
+
+type TracingConfig struct {
+	Enabled      bool    `mapstructure:"enabled"`
+	ServiceName  string  `mapstructure:"service_name"`
+	OTLPEndpoint string  `mapstructure:"otlp_endpoint"`
+	Insecure     bool    `mapstructure:"insecure"`
+	SampleRatio  float64 `mapstructure:"sample_ratio"`
 }
 
 type DatabaseConfig struct {
@@ -136,6 +149,10 @@ func (c *Config) Validate() error {
 		return errors.New("business.access_token_issuer is required")
 	}
 
+	if err := validateTracing(c.Observability.Tracing); err != nil {
+		return err
+	}
+
 	pg := c.Database.Postgres
 
 	if strings.TrimSpace(pg.DSN) == "" {
@@ -166,6 +183,26 @@ func (c *Config) Validate() error {
 
 	if pg.WriteTimeout <= 0 {
 		return errors.New("database.postgres.write_timeout must be positive")
+	}
+
+	return nil
+}
+
+func validateTracing(cfg TracingConfig) error {
+	if !cfg.Enabled {
+		return nil
+	}
+
+	if strings.TrimSpace(cfg.ServiceName) == "" {
+		return errors.New("observability.tracing.service_name is required")
+	}
+
+	if strings.TrimSpace(cfg.OTLPEndpoint) == "" {
+		return errors.New("observability.tracing.otlp_endpoint is required")
+	}
+
+	if cfg.SampleRatio < 0 || cfg.SampleRatio > 1 {
+		return errors.New("observability.tracing.sample_ratio must be between 0 and 1")
 	}
 
 	return nil

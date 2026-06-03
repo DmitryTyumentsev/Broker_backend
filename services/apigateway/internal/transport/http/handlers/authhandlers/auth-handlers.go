@@ -48,34 +48,27 @@ func (h *AuthHandler) Validate() error {
 }
 
 func (h *AuthHandler) Register(ctx *fiber.Ctx) error {
-	var req authdto.RegisterRequest
-
-	if err := ctx.BodyParser(&req); err != nil {
-		return httperr.WriteBadRequest(ctx, "invalid request body")
-	}
-
-	if err := h.validate(req); err != nil {
-		return httperr.WriteBadRequest(ctx, "validation failed")
+	req, ok := middleware.ValidatedBody[authdto.RegisterRequest](ctx)
+	if !ok {
+		return httperr.WriteBadRequest(ctx, "validated request is missing")
 	}
 
 	resp, err := h.authClient.Register(ctx.UserContext(), httpToGRPCRegister(req))
 	if err != nil {
 		h.logger.Warn("register grpc failed", zap.Error(err))
+		middleware.AuditLog(ctx, h.logger, "auth.register.failed", zap.String("email", req.Email))
 		return httperr.WriteGRPCError(ctx, err)
 	}
+
+	middleware.AuditLog(ctx, h.logger, "auth.register.succeeded", zap.String("email", req.Email))
 
 	return ctx.Status(fiber.StatusCreated).JSON(grpcToHTTPTokenPair(resp))
 }
 
 func (h *AuthHandler) Login(ctx *fiber.Ctx) error {
-	var req authdto.LoginRequest
-
-	if err := ctx.BodyParser(&req); err != nil {
-		return httperr.WriteBadRequest(ctx, "invalid request body")
-	}
-
-	if err := h.validate(req); err != nil {
-		return httperr.WriteBadRequest(ctx, "validation failed")
+	req, ok := middleware.ValidatedBody[authdto.LoginRequest](ctx)
+	if !ok {
+		return httperr.WriteBadRequest(ctx, "validated request is missing")
 	}
 
 	grpcReq := &authv1.LoginRequest{
@@ -87,21 +80,19 @@ func (h *AuthHandler) Login(ctx *fiber.Ctx) error {
 	resp, err := h.authClient.Login(ctx.UserContext(), grpcReq)
 	if err != nil {
 		h.logger.Warn("login grpc failed", zap.Error(err))
+		middleware.AuditLog(ctx, h.logger, "auth.login.failed", zap.String("email", req.Email))
 		return httperr.WriteGRPCError(ctx, err)
 	}
+
+	middleware.AuditLog(ctx, h.logger, "auth.login.succeeded", zap.String("email", req.Email))
 
 	return ctx.Status(fiber.StatusOK).JSON(grpcToHTTPTokenPair(resp))
 }
 
 func (h *AuthHandler) Refresh(ctx *fiber.Ctx) error {
-	var req authdto.RefreshRequest
-
-	if err := ctx.BodyParser(&req); err != nil {
-		return httperr.WriteBadRequest(ctx, "invalid request body")
-	}
-
-	if err := h.validate(req); err != nil {
-		return httperr.WriteBadRequest(ctx, "validation failed")
+	req, ok := middleware.ValidatedBody[authdto.RefreshRequest](ctx)
+	if !ok {
+		return httperr.WriteBadRequest(ctx, "validated request is missing")
 	}
 
 	grpcReq := &authv1.RefreshRequest{
@@ -112,21 +103,19 @@ func (h *AuthHandler) Refresh(ctx *fiber.Ctx) error {
 	resp, err := h.authClient.Refresh(ctx.UserContext(), grpcReq)
 	if err != nil {
 		h.logger.Warn("refresh grpc failed", zap.Error(err))
+		middleware.AuditLog(ctx, h.logger, "auth.refresh.failed", zap.String("device_id", req.DeviceID))
 		return httperr.WriteGRPCError(ctx, err)
 	}
+
+	middleware.AuditLog(ctx, h.logger, "auth.refresh.succeeded", zap.String("device_id", req.DeviceID))
 
 	return ctx.Status(fiber.StatusOK).JSON(grpcToHTTPTokenPair(resp))
 }
 
 func (h *AuthHandler) Logout(ctx *fiber.Ctx) error {
-	var req authdto.LogoutRequest
-
-	if err := ctx.BodyParser(&req); err != nil {
-		return httperr.WriteBadRequest(ctx, "invalid request body")
-	}
-
-	if err := h.validate(req); err != nil {
-		return httperr.WriteBadRequest(ctx, "validation failed")
+	req, ok := middleware.ValidatedBody[authdto.LogoutRequest](ctx)
+	if !ok {
+		return httperr.WriteBadRequest(ctx, "validated request is missing")
 	}
 
 	grpcReq := &authv1.RefreshRequest{
@@ -137,8 +126,11 @@ func (h *AuthHandler) Logout(ctx *fiber.Ctx) error {
 	resp, err := h.authClient.Logout(ctx.UserContext(), grpcReq)
 	if err != nil {
 		h.logger.Warn("logout grpc failed", zap.Error(err))
+		middleware.AuditLog(ctx, h.logger, "auth.logout.failed", zap.String("device_id", req.DeviceID))
 		return httperr.WriteGRPCError(ctx, err)
 	}
+
+	middleware.AuditLog(ctx, h.logger, "auth.logout.succeeded", zap.String("device_id", req.DeviceID))
 
 	return ctx.Status(fiber.StatusOK).JSON(authdto.LogoutResponse{
 		AllDevice: resp.AllDevice,
@@ -164,6 +156,8 @@ func (h *AuthHandler) AdminPing(ctx *fiber.Ctx) error {
 	if !ok {
 		return httperr.WriteUnauthorized(ctx, "auth context is missing")
 	}
+
+	middleware.AuditLog(ctx, h.logger, "admin.ping")
 
 	return ctx.Status(fiber.StatusOK).JSON(authdto.AdminPingResponse{
 		OK:       true,

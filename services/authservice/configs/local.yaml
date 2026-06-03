@@ -14,6 +14,14 @@ business:
   access_token_secret: "local-access-secret-change-me-32-bytes-minimum"
   access_token_issuer: "authservice"
 
+observability:
+  tracing:
+    enabled: true
+    service_name: "authservice"
+    otlp_endpoint: "localhost:4317"
+    insecure: true
+    sample_ratio: 1
+
 database:
   postgres:
     dsn: ""

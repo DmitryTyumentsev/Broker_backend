@@ -2,7 +2,9 @@ package http
 
 import (
 	"errors"
+	"strings"
 
+	"Broker_backend/services/apigateway/internal/transport/http/dto/authdto"
 	"Broker_backend/services/apigateway/internal/transport/http/handlers"
 	"Broker_backend/services/apigateway/internal/transport/http/middleware"
 
@@ -18,29 +20,82 @@ func SetupRouter(app *fiber.App, h *handlers.Deps) error {
 		return err
 	}
 
+	registerPlatformMiddleware(app, h)
+	registerSystemRoutes(app, h)
+	registerAPIRoutes(app, h)
+
+	return nil
+}
+
+func registerPlatformMiddleware(app *fiber.App, h *handlers.Deps) {
+	cfg := h.Config
+
+	app.Use(middleware.RequestID())
+	app.Use(middleware.AccessLog(h.Logger))
+	app.Use(middleware.Trace(cfg.Observability.Tracing.ServiceName))
+	app.Use(h.Metrics.Middleware())
+	app.Use(middleware.Recovery(h.Logger))
+	app.Use(middleware.SecurityHeaders(cfg.HTTP.SecurityHeaders.Enabled))
+	app.Use(middleware.CORS(cfg.HTTP.CORS))
+}
+
+func registerSystemRoutes(app *fiber.App, h *handlers.Deps) {
+	if h.Config.Observability.Metrics.Enabled {
+		app.Get(metricPath(h.Config.Observability.Metrics.Path), h.Metrics.Handler())
+	}
+
+	app.Get("/healthz", healthHandler)
+	app.Get("/readyz", healthHandler)
+}
+
+func registerAPIRoutes(app *fiber.App, h *handlers.Deps) {
 	cfg := h.Config
 
 	api := app.Group("/api")
-
-	//=====GLOBAL MIDDLEWARES=====
-	api.Use(middleware.RequestTimeout(cfg.Business.ContextTimeout))
+	api.Use(middleware.RequestTimeout(cfg.RequestTimeout()))
 	api.Use(middleware.RedisRateLimit(h.Redis, cfg.Business.DefaultRateLimit, h.Logger))
 
-	//=====api/v1=====
 	v1 := api.Group("/v1")
 
-	//=====authservice=====
-	auth := v1.Group("/auth")
-	auth.Use(middleware.RedisRateLimit(h.Redis, cfg.Business.AuthRateLimit, h.Logger))
-	auth.Post("/register", h.Auth.Register)
-	auth.Post("/login", h.Auth.Login)
-	auth.Post("/refresh", h.Auth.Refresh)
-	auth.Post("/logout", h.Auth.Logout)
+	registerPublicRoutes(v1, h)
+	registerProtectedRoutes(v1, h)
+}
 
+func registerPublicRoutes(v1 fiber.Router, h *handlers.Deps) {
+	registerAuthRoutes(v1.Group("/auth"), h)
+}
+
+func registerAuthRoutes(auth fiber.Router, h *handlers.Deps) {
+	auth.Use(middleware.RedisRateLimit(h.Redis, h.Config.Business.AuthRateLimit, h.Logger))
+	auth.Post(
+		"/register",
+		middleware.ValidateJSON[authdto.RegisterRequest](h.Validator),
+		h.Auth.Register,
+	)
+	auth.Post(
+		"/login",
+		middleware.ValidateJSON[authdto.LoginRequest](h.Validator),
+		h.Auth.Login,
+	)
+	auth.Post(
+		"/refresh",
+		middleware.ValidateJSON[authdto.RefreshRequest](h.Validator),
+		h.Auth.Refresh,
+	)
+	auth.Post(
+		"/logout",
+		middleware.ValidateJSON[authdto.LogoutRequest](h.Validator),
+		h.Auth.Logout,
+	)
+}
+
+func registerProtectedRoutes(v1 fiber.Router, h *handlers.Deps) {
+	cfg := h.Config
 	protected := v1.Group(
 		"",
 		middleware.Auth(h.AccessVerifier),
 		middleware.RBAC(cfg.Business.ProtectedAllowedRoles...),
+		middleware.Idempotency(h.Redis, cfg.Business.Idempotency, h.Logger),
 	)
 	protected.Get("/me", h.Auth.Me)
 	protected.Get(
@@ -48,6 +103,21 @@ func SetupRouter(app *fiber.App, h *handlers.Deps) error {
 		middleware.RBAC(cfg.Business.AdminAllowedRoles...),
 		h.Auth.AdminPing,
 	)
+}
 
-	return nil
+func metricPath(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return "/metrics"
+	}
+
+	if !strings.HasPrefix(path, "/") {
+		return "/" + path
+	}
+
+	return path
+}
+
+func healthHandler(c *fiber.Ctx) error {
+	return c.SendStatus(fiber.StatusOK)
 }

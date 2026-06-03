@@ -14,28 +14,71 @@ import (
 const serviceName = "apigateway"
 
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Business BusinessConfig `mapstructure:"business"`
-	AuthGRPC AuthGRPCConfig `mapstructure:"auth_grpc"`
-	Database DatabaseConfig `mapstructure:"database"`
+	Server        ServerConfig        `mapstructure:"server"`
+	Business      BusinessConfig      `mapstructure:"business"`
+	HTTP          HTTPConfig          `mapstructure:"http"`
+	Observability ObservabilityConfig `mapstructure:"observability"`
+	AuthGRPC      AuthGRPCConfig      `mapstructure:"auth_grpc"`
+	Database      DatabaseConfig      `mapstructure:"database"`
 }
 
 type ServerConfig struct {
-	Host         string        `mapstructure:"host"`
-	Port         int           `mapstructure:"port"`
-	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
-	WriteTimeout time.Duration `mapstructure:"write_timeout"`
-	IdleTimeout  time.Duration `mapstructure:"idle_timeout"`
+	Host           string        `mapstructure:"host"`
+	Port           int           `mapstructure:"port"`
+	ReadTimeout    time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout   time.Duration `mapstructure:"write_timeout"`
+	IdleTimeout    time.Duration `mapstructure:"idle_timeout"`
+	BodyLimitBytes int           `mapstructure:"body_limit_bytes"`
 }
 
 type BusinessConfig struct {
-	ContextTimeout        time.Duration   `mapstructure:"context_timeout"`
-	AccessTokenSecret     string          `mapstructure:"access_token_secret"`
-	AccessTokenIssuer     string          `mapstructure:"access_token_issuer"`
-	AuthRateLimit         RateLimitConfig `mapstructure:"auth_rate_limit"`
-	DefaultRateLimit      RateLimitConfig `mapstructure:"default_rate_limit"`
-	ProtectedAllowedRoles []string        `mapstructure:"protected_allowed_roles"`
-	AdminAllowedRoles     []string        `mapstructure:"admin_allowed_roles"`
+	ContextTimeout        time.Duration     `mapstructure:"context_timeout"`
+	RequestTimeout        time.Duration     `mapstructure:"request_timeout"`
+	OperationTimeout      time.Duration     `mapstructure:"operation_timeout"`
+	AccessTokenSecret     string            `mapstructure:"access_token_secret"`
+	AccessTokenIssuer     string            `mapstructure:"access_token_issuer"`
+	AuthRateLimit         RateLimitConfig   `mapstructure:"auth_rate_limit"`
+	DefaultRateLimit      RateLimitConfig   `mapstructure:"default_rate_limit"`
+	Idempotency           IdempotencyConfig `mapstructure:"idempotency"`
+	ProtectedAllowedRoles []string          `mapstructure:"protected_allowed_roles"`
+	AdminAllowedRoles     []string          `mapstructure:"admin_allowed_roles"`
+}
+
+type HTTPConfig struct {
+	CORS            CORSConfig            `mapstructure:"cors"`
+	SecurityHeaders SecurityHeadersConfig `mapstructure:"security_headers"`
+}
+
+type CORSConfig struct {
+	Enabled          bool     `mapstructure:"enabled"`
+	AllowOrigins     []string `mapstructure:"allow_origins"`
+	AllowMethods     []string `mapstructure:"allow_methods"`
+	AllowHeaders     []string `mapstructure:"allow_headers"`
+	ExposeHeaders    []string `mapstructure:"expose_headers"`
+	AllowCredentials bool     `mapstructure:"allow_credentials"`
+	MaxAgeSeconds    int      `mapstructure:"max_age_seconds"`
+}
+
+type SecurityHeadersConfig struct {
+	Enabled bool `mapstructure:"enabled"`
+}
+
+type ObservabilityConfig struct {
+	Metrics MetricsConfig `mapstructure:"metrics"`
+	Tracing TracingConfig `mapstructure:"tracing"`
+}
+
+type MetricsConfig struct {
+	Enabled bool   `mapstructure:"enabled"`
+	Path    string `mapstructure:"path"`
+}
+
+type TracingConfig struct {
+	Enabled      bool    `mapstructure:"enabled"`
+	ServiceName  string  `mapstructure:"service_name"`
+	OTLPEndpoint string  `mapstructure:"otlp_endpoint"`
+	Insecure     bool    `mapstructure:"insecure"`
+	SampleRatio  float64 `mapstructure:"sample_ratio"`
 }
 
 type AuthGRPCConfig struct {
@@ -47,6 +90,14 @@ type RateLimitConfig struct {
 	Limit   int64         `mapstructure:"limit"`
 	Window  time.Duration `mapstructure:"window"`
 	Prefix  string        `mapstructure:"prefix"`
+}
+
+type IdempotencyConfig struct {
+	Enabled          bool          `mapstructure:"enabled"`
+	TTL              time.Duration `mapstructure:"ttl"`
+	Header           string        `mapstructure:"header"`
+	LockPrefix       string        `mapstructure:"lock_prefix"`
+	MaxResponseBytes int           `mapstructure:"max_response_bytes"`
 }
 
 type DatabaseConfig struct {
@@ -88,8 +139,16 @@ func (c *Config) Validate() error {
 		return errors.New("server.port must be positive")
 	}
 
-	if c.Business.ContextTimeout <= 0 {
-		return errors.New("business.context_timeout must be positive")
+	if c.RequestTimeout() <= 0 {
+		return errors.New("business.request_timeout must be positive")
+	}
+
+	if c.OperationTimeout() <= 0 {
+		return errors.New("business.operation_timeout must be positive")
+	}
+
+	if c.BodyLimitBytes() <= 0 {
+		return errors.New("server.body_limit_bytes must be positive")
 	}
 
 	if strings.TrimSpace(c.Business.AccessTokenSecret) == "" {
@@ -112,6 +171,22 @@ func (c *Config) Validate() error {
 		return err
 	}
 
+	if err := validateIdempotency(c.Business.Idempotency); err != nil {
+		return err
+	}
+
+	if err := validateCORS(c.HTTP.CORS); err != nil {
+		return err
+	}
+
+	if err := validateMetrics(c.Observability.Metrics); err != nil {
+		return err
+	}
+
+	if err := validateTracing(c.Observability.Tracing); err != nil {
+		return err
+	}
+
 	if err := c.validateAllowedRoles(); err != nil {
 		return err
 	}
@@ -120,7 +195,7 @@ func (c *Config) Validate() error {
 		return errors.New("auth_grpc.address is required")
 	}
 
-	if c.RateLimitEnabled() {
+	if c.RedisRequired() {
 		if err := c.validateRedis(); err != nil {
 			return err
 		}
@@ -129,12 +204,60 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+func (c *Config) RequestTimeout() time.Duration {
+	if c == nil {
+		return 0
+	}
+
+	if c.Business.RequestTimeout > 0 {
+		return c.Business.RequestTimeout
+	}
+
+	return c.Business.ContextTimeout
+}
+
+func (c *Config) OperationTimeout() time.Duration {
+	if c == nil {
+		return 0
+	}
+
+	if c.Business.OperationTimeout > 0 {
+		return c.Business.OperationTimeout
+	}
+
+	return c.Business.ContextTimeout
+}
+
+func (c *Config) BodyLimitBytes() int {
+	if c == nil {
+		return 0
+	}
+
+	if c.Server.BodyLimitBytes > 0 {
+		return c.Server.BodyLimitBytes
+	}
+
+	return 2 * 1024 * 1024
+}
+
 func (c *Config) RateLimitEnabled() bool {
 	if c == nil {
 		return false
 	}
 
 	return c.Business.AuthRateLimit.Enabled || c.Business.DefaultRateLimit.Enabled
+}
+
+func (c *Config) IdempotencyEnabled() bool {
+	if c == nil {
+		return false
+	}
+
+	return c.Business.Idempotency.Enabled
+}
+
+func (c *Config) RedisRequired() bool {
+	return c.RateLimitEnabled() || c.IdempotencyEnabled()
 }
 
 func (c *Config) validateAllowedRoles() error {
@@ -217,6 +340,86 @@ func validateRateLimit(name string, cfg RateLimitConfig) error {
 
 	if cfg.Window <= 0 {
 		return fmt.Errorf("%s.window must be positive", name)
+	}
+
+	return nil
+}
+
+func validateIdempotency(cfg IdempotencyConfig) error {
+	if !cfg.Enabled {
+		return nil
+	}
+
+	if cfg.TTL <= 0 {
+		return errors.New("business.idempotency.ttl must be positive")
+	}
+
+	if strings.TrimSpace(cfg.Header) == "" {
+		return errors.New("business.idempotency.header is required")
+	}
+
+	if strings.TrimSpace(cfg.LockPrefix) == "" {
+		return errors.New("business.idempotency.lock_prefix is required")
+	}
+
+	if cfg.MaxResponseBytes <= 0 {
+		return errors.New("business.idempotency.max_response_bytes must be positive")
+	}
+
+	return nil
+}
+
+func validateCORS(cfg CORSConfig) error {
+	if !cfg.Enabled {
+		return nil
+	}
+
+	if len(nonEmptyStrings(cfg.AllowOrigins)) == 0 {
+		return errors.New("http.cors.allow_origins must contain at least one origin")
+	}
+
+	if len(nonEmptyStrings(cfg.AllowMethods)) == 0 {
+		return errors.New("http.cors.allow_methods must contain at least one method")
+	}
+
+	if len(nonEmptyStrings(cfg.AllowHeaders)) == 0 {
+		return errors.New("http.cors.allow_headers must contain at least one header")
+	}
+
+	if cfg.MaxAgeSeconds < 0 {
+		return errors.New("http.cors.max_age_seconds must not be negative")
+	}
+
+	return nil
+}
+
+func validateMetrics(cfg MetricsConfig) error {
+	if !cfg.Enabled {
+		return nil
+	}
+
+	if strings.TrimSpace(cfg.Path) == "" {
+		return errors.New("observability.metrics.path is required")
+	}
+
+	return nil
+}
+
+func validateTracing(cfg TracingConfig) error {
+	if !cfg.Enabled {
+		return nil
+	}
+
+	if strings.TrimSpace(cfg.ServiceName) == "" {
+		return errors.New("observability.tracing.service_name is required")
+	}
+
+	if strings.TrimSpace(cfg.OTLPEndpoint) == "" {
+		return errors.New("observability.tracing.otlp_endpoint is required")
+	}
+
+	if cfg.SampleRatio < 0 || cfg.SampleRatio > 1 {
+		return errors.New("observability.tracing.sample_ratio must be between 0 and 1")
 	}
 
 	return nil

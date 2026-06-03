@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"Broker_backend/services/apigateway/internal/config"
+	grpcauth "Broker_backend/shared/pkg/grpc/auth"
 	authv1 "Broker_backend/shared/pkg/grpc/gen/auth/v1"
 
 	"google.golang.org/grpc"
@@ -42,8 +43,8 @@ func NewClient(auth authv1.AuthServiceClient, cfg *config.Config) (*Client, erro
 		return nil, errors.New("config is nil")
 	}
 
-	if cfg.Business.ContextTimeout <= 0 {
-		return nil, errors.New("business context timeout must be positive")
+	if cfg.OperationTimeout() <= 0 {
+		return nil, errors.New("operation timeout must be positive")
 	}
 
 	return &Client{
@@ -60,8 +61,8 @@ func (c *Client) Validate() error {
 		return errors.New("auth grpc client is nil")
 	case c.config == nil:
 		return errors.New("config is nil")
-	case c.config.Business.ContextTimeout <= 0:
-		return errors.New("business context timeout must be positive")
+	case c.config.OperationTimeout() <= 0:
+		return errors.New("operation timeout must be positive")
 	default:
 		return nil
 	}
@@ -128,6 +129,8 @@ func (c *Client) contextWithTimeout(parent context.Context) (context.Context, co
 		parent = context.Background()
 	}
 
-	ctx, cancel := context.WithTimeout(parent, c.config.Business.ContextTimeout)
+	ctx, cancel := context.WithTimeout(parent, c.config.OperationTimeout())
+	ctx = grpcauth.InjectOutgoingContext(ctx)
+
 	return ctx, cancel, nil
 }

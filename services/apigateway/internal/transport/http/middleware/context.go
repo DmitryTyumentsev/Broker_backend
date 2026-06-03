@@ -29,8 +29,8 @@ func RequestTimeout(timeout time.Duration) fiber.Handler {
 			return err
 		}
 
-		if ctx.Err() == context.DeadlineExceeded {
-			return httperr.WriteServiceUnavailable(c, "request deadline exceeded")
+		if ctx.Err() == context.DeadlineExceeded && c.Response().StatusCode() < fiber.StatusBadRequest {
+			return httperr.WriteGatewayTimeout(c, "request deadline exceeded")
 		}
 
 		return nil

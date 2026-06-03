@@ -15,6 +15,13 @@ func WriteBadRequest(c *fiber.Ctx, message string) error {
 	})
 }
 
+func WriteConflict(c *fiber.Ctx, message string) error {
+	return c.Status(fiber.StatusConflict).JSON(dto.ErrorResponse{
+		Code:    fiber.StatusConflict,
+		Message: message,
+	})
+}
+
 func WriteInternal(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{
 		Code:    fiber.StatusInternalServerError,
@@ -36,9 +43,23 @@ func WriteForbidden(c *fiber.Ctx, message string) error {
 	})
 }
 
+func WritePayloadTooLarge(c *fiber.Ctx, message string) error {
+	return c.Status(fiber.StatusRequestEntityTooLarge).JSON(dto.ErrorResponse{
+		Code:    fiber.StatusRequestEntityTooLarge,
+		Message: message,
+	})
+}
+
 func WriteTooManyRequests(c *fiber.Ctx, message string) error {
 	return c.Status(fiber.StatusTooManyRequests).JSON(dto.ErrorResponse{
 		Code:    fiber.StatusTooManyRequests,
+		Message: message,
+	})
+}
+
+func WriteGatewayTimeout(c *fiber.Ctx, message string) error {
+	return c.Status(fiber.StatusGatewayTimeout).JSON(dto.ErrorResponse{
+		Code:    fiber.StatusGatewayTimeout,
 		Message: message,
 	})
 }

@@ -16,6 +16,8 @@ import (
 	"Broker_backend/services/authservice/internal/transport/grpchandler"
 	"Broker_backend/services/authservice/internal/usecases"
 	authv1 "Broker_backend/shared/pkg/grpc/gen/auth/v1"
+	grpcobservability "Broker_backend/shared/pkg/grpc/observability"
+	sharedtracing "Broker_backend/shared/pkg/tracing"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -36,6 +38,24 @@ func InitAuthservice() {
 	}()
 
 	rootCtx := context.Background()
+
+	tracingCtx, cancelTracing := context.WithTimeout(rootCtx, cfg.Business.ContextTimeout)
+	tracerProvider, err := sharedtracing.InitTracerProvider(tracingCtx, sharedtracing.Config{
+		Enabled:      cfg.Observability.Tracing.Enabled,
+		ServiceName:  cfg.Observability.Tracing.ServiceName,
+		OTLPEndpoint: cfg.Observability.Tracing.OTLPEndpoint,
+		Insecure:     cfg.Observability.Tracing.Insecure,
+		SampleRatio:  cfg.Observability.Tracing.SampleRatio,
+	})
+	cancelTracing()
+	if err != nil {
+		logger.Fatal("init tracing failed", zap.Error(err))
+	}
+	defer func() {
+		shutdownCtx, cancelShutdown := context.WithTimeout(rootCtx, cfg.Business.ContextTimeout)
+		defer cancelShutdown()
+		_ = tracerProvider.Shutdown(shutdownCtx)
+	}()
 
 	postgresCtx, cancelPostgres := context.WithTimeout(rootCtx, cfg.Database.Postgres.ConnectTimeout)
 	defer cancelPostgres()
@@ -80,7 +100,10 @@ func InitAuthservice() {
 	}
 
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(unaryContextTimeout(cfg.Business.ContextTimeout)),
+		grpc.ChainUnaryInterceptor(
+			grpcobservability.TraceUnaryServerInterceptor(cfg.Observability.Tracing.ServiceName),
+			unaryContextTimeout(cfg.Business.ContextTimeout),
+		),
 	)
 
 	authv1.RegisterAuthServiceServer(

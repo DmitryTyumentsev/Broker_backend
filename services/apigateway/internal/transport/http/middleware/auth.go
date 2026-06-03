@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"Broker_backend/services/apigateway/internal/transport/http/httperr"
+	sharedauth "Broker_backend/shared/pkg/auth"
 	sharedjwt "Broker_backend/shared/pkg/security/jwt"
 
 	"github.com/gofiber/fiber/v2"
@@ -40,8 +41,13 @@ func Auth(verifier AccessTokenVerifier) fiber.Handler {
 			return httperr.WriteUnauthorized(c, "invalid bearer token")
 		}
 
+		principal := sharedauth.PrincipalFromAccessTokenClaims(claims)
+		if !principal.Valid() {
+			return httperr.WriteUnauthorized(c, "invalid bearer token")
+		}
+
 		c.Locals(claimsLocalKey, claims)
-		c.SetUserContext(contextWithClaims(c.UserContext(), claims))
+		c.SetUserContext(sharedauth.WithPrincipal(contextWithClaims(c.UserContext(), claims), principal))
 
 		return c.Next()
 	}
@@ -54,6 +60,14 @@ func CurrentClaims(c *fiber.Ctx) (sharedjwt.AccessTokenClaims, bool) {
 
 	claims, ok := c.Locals(claimsLocalKey).(sharedjwt.AccessTokenClaims)
 	return claims, ok
+}
+
+func CurrentPrincipal(c *fiber.Ctx) (sharedauth.Principal, bool) {
+	if c == nil {
+		return sharedauth.Principal{}, false
+	}
+
+	return sharedauth.PrincipalFromContext(c.UserContext())
 }
 
 func bearerToken(header string) (string, bool) {
