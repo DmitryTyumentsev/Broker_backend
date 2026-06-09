@@ -13,7 +13,7 @@ import (
 	"Broker_backend/services/authservice/internal/infra/repositories/postgres/users"
 	"Broker_backend/services/authservice/internal/infra/security/jwt"
 	"Broker_backend/services/authservice/internal/infra/security/passwordhasher"
-	"Broker_backend/services/authservice/internal/transport/grpchandler"
+	"Broker_backend/services/authservice/internal/transport/grpcauthhandler"
 	"Broker_backend/services/authservice/internal/usecases"
 	authv1 "Broker_backend/shared/pkg/grpc/gen/auth/v1"
 	grpcobservability "Broker_backend/shared/pkg/grpc/observability"
@@ -108,7 +108,7 @@ func InitAuthservice() {
 
 	authv1.RegisterAuthServiceServer(
 		grpcServer,
-		grpchandler.NewHandler(authService, logger),
+		grpcauthhandler.NewHandler(authService, logger),
 	)
 
 	logger.Info("authservice grpc started", zap.String("addr", addr))

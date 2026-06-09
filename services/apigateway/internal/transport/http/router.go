@@ -103,6 +103,7 @@ func registerProtectedRoutes(v1 fiber.Router, h *handlers.Deps) {
 		middleware.RBAC(cfg.Business.AdminAllowedRoles...),
 		h.Auth.AdminPing,
 	)
+	protected.
 }
 
 func metricPath(path string) string {

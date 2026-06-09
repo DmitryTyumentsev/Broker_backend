@@ -1,14 +1,13 @@
 package usecases
 
 import (
+	"Broker_backend/services/authservice/internal/domain"
+	"Broker_backend/services/authservice/internal/pkg/validators"
+	"Broker_backend/shared/pkg/helpers"
 	"context"
 	"errors"
 	"fmt"
 	"strings"
-
-	"Broker_backend/services/authservice/internal/domain"
-	"Broker_backend/services/authservice/internal/pkg/validators"
-	"Broker_backend/shared/pkg/helpers"
 
 	"go.uber.org/zap"
 )
@@ -45,6 +44,28 @@ func (s *Service) Login(ctx context.Context, req *LoginRequest) (*TokenPairRespo
 	}
 
 	s.logger.Info("user logged in", zap.String("user_id", user.ID))
+
+	//var wg sync.WaitGroup
+	//wg.Add(1)
+	//
+	//chTokenPair := make(chan *TokenPairResponse)
+	//
+	//go func(ctx context.Context, userID, deviceID string, userRole entity.UserRole, now time.Time) chan *TokenPairResponse {
+	//	defer wg.Done() //напомни defer после return или перед
+	//
+	//	tokenPair, err := s.createTokenPair(ctx, userID, deviceID, string(user.Role), now)
+	//	if err != nil {
+	//		return fmt.Errorf("%s: create token pair: %w", op, err)
+	//	}
+	//
+	//	s.logger.Info("user logged in", zap.String("user_id", user.ID))
+	//	chTokenPair <- tokenPair
+	//	return chTokenPair
+	//} (ctx, user.ID, req.DeviceID, user.Role, now)
+	//
+	//wg.Wait()
+	//
+	//tokenPair := <- chTokenPair
 
 	return tokenPair, nil
 }

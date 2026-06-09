@@ -1,4 +1,4 @@
-package grpchandler
+package grpcauthhandler
 
 import (
 	"errors"
