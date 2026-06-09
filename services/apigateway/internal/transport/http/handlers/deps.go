@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"Broker_backend/services/apigateway/internal/transport/http/handlers/brokerhandlers"
 	"errors"
 
 	"Broker_backend/services/apigateway/internal/config"
@@ -14,6 +15,7 @@ import (
 
 type Deps struct {
 	Auth           *authhandlers.AuthHandler
+	Broker         *brokerhandlers.BrokerHandler
 	Config         *config.Config
 	Logger         *zap.Logger
 	Redis          *redis.Client

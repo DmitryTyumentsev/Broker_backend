@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"Broker_backend/services/apigateway/internal/transport/http/dto/authdto"
+	"Broker_backend/services/apigateway/internal/transport/http/dto/brokerdto"
 	"Broker_backend/services/apigateway/internal/transport/http/handlers"
 	"Broker_backend/services/apigateway/internal/transport/http/middleware"
 
@@ -67,24 +68,32 @@ func registerPublicRoutes(v1 fiber.Router, h *handlers.Deps) {
 
 func registerAuthRoutes(auth fiber.Router, h *handlers.Deps) {
 	auth.Use(middleware.RedisRateLimit(h.Redis, h.Config.Business.AuthRateLimit, h.Logger))
-	auth.Post(
+	validatedJSONRoute[authdto.RegisterRequest](
+		auth,
+		fiber.MethodPost,
 		"/register",
-		middleware.ValidateJSON[authdto.RegisterRequest](h.Validator),
+		h.Validator,
 		h.Auth.Register,
 	)
-	auth.Post(
+	validatedJSONRoute[authdto.LoginRequest](
+		auth,
+		fiber.MethodPost,
 		"/login",
-		middleware.ValidateJSON[authdto.LoginRequest](h.Validator),
+		h.Validator,
 		h.Auth.Login,
 	)
-	auth.Post(
+	validatedJSONRoute[authdto.RefreshRequest](
+		auth,
+		fiber.MethodPost,
 		"/refresh",
-		middleware.ValidateJSON[authdto.RefreshRequest](h.Validator),
+		h.Validator,
 		h.Auth.Refresh,
 	)
-	auth.Post(
+	validatedJSONRoute[authdto.LogoutRequest](
+		auth,
+		fiber.MethodPost,
 		"/logout",
-		middleware.ValidateJSON[authdto.LogoutRequest](h.Validator),
+		h.Validator,
 		h.Auth.Logout,
 	)
 }
@@ -103,7 +112,27 @@ func registerProtectedRoutes(v1 fiber.Router, h *handlers.Deps) {
 		middleware.RBAC(cfg.Business.AdminAllowedRoles...),
 		h.Auth.AdminPing,
 	)
-	protected.
+	validatedJSONRoute[brokerdto.CreateBrokerRequest](
+		protected,
+		fiber.MethodPost,
+		"/create-broker",
+		h.Validator,
+		h.Broker.CreateBroker,
+	)
+	validatedJSONRoute[brokerdto.CreateCustomerRequest](
+		protected,
+		fiber.MethodPost,
+		"/create-customer",
+		h.Validator,
+		h.Broker.CreateCustomer,
+	)
+	validatedJSONRoute[brokerdto.FixationCustomerRequest](
+		protected,
+		fiber.MethodPost,
+		"/fixation-customer",
+		h.Validator,
+		h.Broker.FixationCustomer,
+	)
 }
 
 func metricPath(path string) string {
