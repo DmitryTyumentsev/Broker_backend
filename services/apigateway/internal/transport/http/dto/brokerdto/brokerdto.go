@@ -6,6 +6,5 @@ type CreateBrokerRequest struct {
 type CreateCustomerRequest struct {
 }
 
-//type FixationCustomerRequest struct{
-//
-//}
+type FixationCustomerRequest struct {
+}

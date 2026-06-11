@@ -112,20 +112,20 @@ func registerProtectedRoutes(v1 fiber.Router, h *handlers.Deps) {
 		middleware.RBAC(cfg.Business.AdminAllowedRoles...),
 		h.Auth.AdminPing,
 	)
-	validatedJSONRoute[brokerdto.CreateBrokerRequest](
-		protected,
-		fiber.MethodPost,
-		"/create-broker",
-		h.Validator,
-		h.Broker.CreateBroker,
-	)
-	validatedJSONRoute[brokerdto.CreateCustomerRequest](
-		protected,
-		fiber.MethodPost,
-		"/create-customer",
-		h.Validator,
-		h.Broker.CreateCustomer,
-	)
+	//validatedJSONRoute[brokerdto.CreateBrokerRequest](
+	//	protected,
+	//	fiber.MethodPost,
+	//	"/create-broker",
+	//	h.Validator,
+	//	h.Broker.CreateBroker,
+	//)
+	//validatedJSONRoute[brokerdto.CreateCustomerRequest](
+	//	protected,
+	//	fiber.MethodPost,
+	//	"/create-customer",
+	//	h.Validator,
+	//	h.Broker.CreateCustomer,
+	//)
 	validatedJSONRoute[brokerdto.FixationCustomerRequest](
 		protected,
 		fiber.MethodPost,

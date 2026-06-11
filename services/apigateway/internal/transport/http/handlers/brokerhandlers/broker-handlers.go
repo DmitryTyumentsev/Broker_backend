@@ -22,4 +22,6 @@ func NewBrokerHandler(logger *zap.Logger, cfg *config.Config, client *brokerclie
 	}
 }
 
-func (h *BrokerHandler) CreateCustomer(ctx *fiber.Ctx) {}
+func (h *BrokerHandler) FixationCustomer(ctx *fiber.Ctx) error {
+
+}

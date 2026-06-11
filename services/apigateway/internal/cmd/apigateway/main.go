@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Broker_backend/services/apigateway/internal/transport/http/handlers/brokerhandlers"
 	"context"
 	"errors"
 	"fmt"
@@ -94,6 +95,7 @@ func main() {
 	validator := validate.New()
 
 	authHandler := authhandlers.NewAuthHandler(logger, authClient, validator)
+	brokerHandler := brokerhandlers.NewBrokerHandler(logger)
 	metrics := middleware.NewPrometheusMetrics("apigateway")
 
 	app := fiber.New(fiber.Config{
