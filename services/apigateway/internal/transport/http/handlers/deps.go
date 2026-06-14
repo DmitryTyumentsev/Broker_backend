@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"Broker_backend/services/apigateway/internal/transport/http/handlers/brokerhandlers"
 	"errors"
 
 	"Broker_backend/services/apigateway/internal/config"
 	"Broker_backend/services/apigateway/internal/transport/http/handlers/authhandlers"
+	"Broker_backend/services/apigateway/internal/transport/http/handlers/brokerhandlers"
 	"Broker_backend/services/apigateway/internal/transport/http/middleware"
 
 	validate "github.com/go-playground/validator/v10"
@@ -30,25 +30,29 @@ func (d *Deps) Validate() error {
 		return errors.New("http handlers deps are nil")
 	case d.Auth == nil:
 		return errors.New("auth handler is required")
+	case d.Broker == nil:
+		return errors.New("broker handler is required")
 	case d.Config == nil:
 		return errors.New("config is required")
+	case d.Logger == nil:
+		return errors.New("logger is required")
 	case d.Validator == nil:
 		return errors.New("validator is required")
 	case d.AccessVerifier == nil:
 		return errors.New("access verifier is required")
 	case d.Metrics == nil:
 		return errors.New("metrics registry is required")
-	case d.Redis == nil && d.rateLimitEnabled():
-		return errors.New("redis client is required when rate limit is enabled")
-	default:
-		return d.Auth.Validate()
+	case d.Redis == nil && d.redisRequired():
+		return errors.New("redis client is required when redis-backed middleware is enabled")
 	}
+
+	return d.Auth.Validate()
 }
 
-func (d *Deps) rateLimitEnabled() bool {
+func (d *Deps) redisRequired() bool {
 	if d == nil || d.Config == nil {
 		return false
 	}
 
-	return d.Config.RateLimitEnabled()
+	return d.Config.RedisRequired()
 }

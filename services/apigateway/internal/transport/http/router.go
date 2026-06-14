@@ -4,8 +4,6 @@ import (
 	"errors"
 	"strings"
 
-	"Broker_backend/services/apigateway/internal/transport/http/dto/authdto"
-	"Broker_backend/services/apigateway/internal/transport/http/dto/brokerdto"
 	"Broker_backend/services/apigateway/internal/transport/http/handlers"
 	"Broker_backend/services/apigateway/internal/transport/http/middleware"
 
@@ -63,39 +61,7 @@ func registerAPIRoutes(app *fiber.App, h *handlers.Deps) {
 }
 
 func registerPublicRoutes(v1 fiber.Router, h *handlers.Deps) {
-	registerAuthRoutes(v1.Group("/auth"), h)
-}
-
-func registerAuthRoutes(auth fiber.Router, h *handlers.Deps) {
-	auth.Use(middleware.RedisRateLimit(h.Redis, h.Config.Business.AuthRateLimit, h.Logger))
-	validatedJSONRoute[authdto.RegisterRequest](
-		auth,
-		fiber.MethodPost,
-		"/register",
-		h.Validator,
-		h.Auth.Register,
-	)
-	validatedJSONRoute[authdto.LoginRequest](
-		auth,
-		fiber.MethodPost,
-		"/login",
-		h.Validator,
-		h.Auth.Login,
-	)
-	validatedJSONRoute[authdto.RefreshRequest](
-		auth,
-		fiber.MethodPost,
-		"/refresh",
-		h.Validator,
-		h.Auth.Refresh,
-	)
-	validatedJSONRoute[authdto.LogoutRequest](
-		auth,
-		fiber.MethodPost,
-		"/logout",
-		h.Validator,
-		h.Auth.Logout,
-	)
+	registerAuthRoutes(v1, h)
 }
 
 func registerProtectedRoutes(v1 fiber.Router, h *handlers.Deps) {
@@ -106,33 +72,9 @@ func registerProtectedRoutes(v1 fiber.Router, h *handlers.Deps) {
 		middleware.RBAC(cfg.Business.ProtectedAllowedRoles...),
 		middleware.Idempotency(h.Redis, cfg.Business.Idempotency, h.Logger),
 	)
-	protected.Get("/me", h.Auth.Me)
-	protected.Get(
-		"/admin/ping",
-		middleware.RBAC(cfg.Business.AdminAllowedRoles...),
-		h.Auth.AdminPing,
-	)
-	//validatedJSONRoute[brokerdto.CreateBrokerRequest](
-	//	protected,
-	//	fiber.MethodPost,
-	//	"/create-broker",
-	//	h.Validator,
-	//	h.Broker.CreateBroker,
-	//)
-	//validatedJSONRoute[brokerdto.CreateCustomerRequest](
-	//	protected,
-	//	fiber.MethodPost,
-	//	"/create-customer",
-	//	h.Validator,
-	//	h.Broker.CreateCustomer,
-	//)
-	validatedJSONRoute[brokerdto.FixationCustomerRequest](
-		protected,
-		fiber.MethodPost,
-		"/fixation-customer",
-		h.Validator,
-		h.Broker.FixationCustomer,
-	)
+
+	registerAuthProtectedRoutes(protected, h)
+	registerBrokerRoutes(protected, h)
 }
 
 func metricPath(path string) string {

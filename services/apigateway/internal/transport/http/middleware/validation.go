@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"errors"
+	"reflect"
+	"strings"
 
 	"Broker_backend/services/apigateway/internal/transport/http/dto"
 
@@ -15,7 +17,14 @@ type RequestValidator interface {
 	Struct(s any) error
 }
 
-func ValidateJSON[T any](validator RequestValidator) fiber.Handler {
+func NewRequestValidator() *validate.Validate {
+	validator := validate.New()
+	validator.RegisterTagNameFunc(jsonTagName)
+
+	return validator
+}
+
+func ValidateJSON[T any](validator RequestValidator) fiber.Handler { //почему этот метод лежит тут? в миддлварах
 	return func(c *fiber.Ctx) error {
 		var req T
 
@@ -36,7 +45,7 @@ func ValidateJSON[T any](validator RequestValidator) fiber.Handler {
 			}
 		}
 
-		c.Locals(validatedBodyLocalKey, req)
+		c.Locals(validatedBodyLocalKey, req) //не понимаю что за c.Locals, почему мы сделали ключ для чего? верно ли что в fiber.Ctx кладут req?
 		return c.Next()
 	}
 }
@@ -66,4 +75,16 @@ func validationFields(err error) []dto.Field {
 	}
 
 	return fields
+}
+
+func jsonTagName(field reflect.StructField) string {
+	name := strings.SplitN(field.Tag.Get("json"), ",", 2)[0]
+	switch name {
+	case "":
+		return field.Name
+	case "-":
+		return ""
+	default:
+		return name
+	}
 }

@@ -19,7 +19,6 @@ import (
 	sharedjwt "Broker_backend/shared/pkg/security/jwt"
 	sharedtracing "Broker_backend/shared/pkg/tracing"
 
-	validate "github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -92,10 +91,11 @@ func main() {
 		logger.Fatal("create auth client failed", zap.Error(err))
 	}
 
-	validator := validate.New()
+	validator := middleware.NewRequestValidator()
 
 	authHandler := authhandlers.NewAuthHandler(logger, authClient, validator)
-	brokerHandler := brokerhandlers.NewBrokerHandler(logger)
+	brokerHandler := brokerhandlers.NewBrokerHandler(logger, brokerClient, validator)
+
 	metrics := middleware.NewPrometheusMetrics("apigateway")
 
 	app := fiber.New(fiber.Config{
@@ -109,6 +109,7 @@ func main() {
 
 	if err := httprouter.SetupRouter(app, &handlers.Deps{
 		Auth:           authHandler,
+		Broker:         brokerHandler,
 		Config:         cfg,
 		Logger:         logger,
 		Redis:          redisClient,

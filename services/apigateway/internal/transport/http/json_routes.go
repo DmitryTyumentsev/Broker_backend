@@ -6,8 +6,16 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// validatedJSONRoute keeps JSON body parsing and validation attached to route registration.
-func validatedJSONRoute[T any](
+func postJSON[T any](
+	router fiber.Router,
+	path string,
+	validator middleware.RequestValidator,
+	handler fiber.Handler,
+) fiber.Router {
+	return jsonRoute[T](router, fiber.MethodPost, path, validator, handler)
+}
+
+func jsonRoute[T any](
 	router fiber.Router,
 	method string,
 	path string,

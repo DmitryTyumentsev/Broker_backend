@@ -1,11 +1,13 @@
 package middleware
 
 import (
+	"encoding/json"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	validate "github.com/go-playground/validator/v10"
+	"Broker_backend/services/apigateway/internal/transport/http/dto"
+
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -15,7 +17,7 @@ type validationTestRequest struct {
 
 func TestValidateJSONRejectsInvalidBody(t *testing.T) {
 	app := fiber.New()
-	app.Post("/validate", ValidateJSON[validationTestRequest](validate.New()), func(c *fiber.Ctx) error {
+	app.Post("/validate", ValidateJSON[validationTestRequest](NewRequestValidator()), func(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusOK)
 	})
 
@@ -30,11 +32,24 @@ func TestValidateJSONRejectsInvalidBody(t *testing.T) {
 	if resp.StatusCode != fiber.StatusBadRequest {
 		t.Fatalf("expected status 400, got %d", resp.StatusCode)
 	}
+
+	var body dto.ErrorResponse
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
+
+	if len(body.Fields) != 1 {
+		t.Fatalf("expected one validation field, got %d", len(body.Fields))
+	}
+
+	if body.Fields[0].Field != "email" {
+		t.Fatalf("expected json field name email, got %q", body.Fields[0].Field)
+	}
 }
 
 func TestValidateJSONStoresValidatedBody(t *testing.T) {
 	app := fiber.New()
-	app.Post("/validate", ValidateJSON[validationTestRequest](validate.New()), func(c *fiber.Ctx) error {
+	app.Post("/validate", ValidateJSON[validationTestRequest](NewRequestValidator()), func(c *fiber.Ctx) error {
 		req, ok := ValidatedBody[validationTestRequest](c)
 		if !ok {
 			t.Fatal("expected validated body")
