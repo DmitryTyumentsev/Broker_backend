@@ -53,12 +53,12 @@ func NewClient(auth authv1.AuthServiceClient, cfg *config.Config) (*Client, erro
 	}, nil
 }
 
-func (c *Client) Validate() error {
+func (c *Client) Validate[T any]() error {
 	switch {
 	case c == nil:
-		return errors.New("auth client is nil")
+		return errors.New("client is nil")
 	case c.auth == nil:
-		return errors.New("auth grpc client is nil")
+		return errors.New("grpc client is nil")
 	case c.config == nil:
 		return errors.New("config is nil")
 	case c.config.OperationTimeout() <= 0:
@@ -120,8 +120,8 @@ func (c *Client) Logout(
 	return c.auth.Logout(ctx, req)
 }
 
-func (c *Client) contextWithTimeout(parent context.Context) (context.Context, context.CancelFunc, error) {
-	if err := c.Validate(); err != nil {
+func contextWithTimeout[T any](parent context.Context) (context.Context, context.CancelFunc, error) { //есть идея вытащить этот метод и Validate в общие и передавать Client разный через дженерик. Попробовал реализовать - не получилось. Расскажи сначала по самой задумке - как делают на реальных проектах и второй вопрос - как выглядит это в коде? нужно чтобы было по продовым практикам реальных проектов
+	if err := T.Validate(); err != nil {
 		return nil, nil, err
 	}
 

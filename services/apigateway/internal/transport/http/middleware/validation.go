@@ -22,9 +22,9 @@ func NewRequestValidator() *validate.Validate {
 	validator.RegisterTagNameFunc(jsonTagName)
 
 	return validator
-}
+} //верно понял что *fiber.Ctx нужен для приема запроса только? не понял немного про cli, worker, test, это же все http, транспорт или как? почему *fiber.Ctx не будет у них? наверно это корень не понимая по контестам разным. Ну и далее непонятны зачем нужны userContext(где задаем, как используем) и c.Locals тоже не очень ложится пока в картину
 
-func ValidateJSON[T any](validator RequestValidator) fiber.Handler { //почему этот метод лежит тут? в миддлварах
+func ValidateJSON[T any](validator RequestValidator) fiber.Handler { //в T мы задаем dto. А на вход передаем другой тип. Разве суть дженериков не в том что мы передаем на вход тот же тип что и в T? а то тут два разных типа выходит. Не понимаю зачем нам тогда дженерики вообще, они же задуманы как проверка типа если верно понял?
 	return func(c *fiber.Ctx) error {
 		var req T
 
@@ -45,18 +45,18 @@ func ValidateJSON[T any](validator RequestValidator) fiber.Handler { //поче�
 			}
 		}
 
-		c.Locals(validatedBodyLocalKey, req) //не понимаю что за c.Locals, почему мы сделали ключ для чего? верно ли что в fiber.Ctx кладут req?
+		c.Locals(validatedBodyLocalKey, req) //что значит value ...interface{} у методов? не понимаю суть c.Locals, почему мы его используем когда все на транспортном уровне можно передавать через *fiber.Ctx? верно понял что в fiber.Ctx кладут req и далее вытаскивают хэдеры/body/query параметры? и еще момент важный - что именно храним в c.Locals? это прям чисто связка миддлвар - хендлер? данные(req) у нас же хранятся в *fiber.Ctx. Мы их отдаем в миддлвар вадидации и дальше передаем их в клиент. Где тут c.Locals и зачем? и что в нем? или он вообще нужен чтобы просто задать ключ для данных(например body или хэдеров). то есть весь запрос это req, а что-то конкретное это константа через c.Locals?
 		return c.Next()
 	}
 }
 
-func ValidatedBody[T any](c *fiber.Ctx) (T, bool) {
+func ValidatedBody[T any](c *fiber.Ctx) (T, bool) { //по c.UserContext - timeout/deadline кладутся же в context.Context или я что-то не понимаю? зачем он нужен, где его используем?
 	if c == nil {
 		var zero T
 		return zero, false
 	}
 
-	req, ok := c.Locals(validatedBodyLocalKey).(T)
+	req, ok := c.Locals(validatedBodyLocalKey).(T) //разве c.Locals не мапа? когда задали связку и вызываем метод передавая ключ, получаем значение?
 	return req, ok
 }
 

@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func registerBrokerRoutes(protected fiber.Router, h *handlers.Deps) {
-	postJSON[brokerdto.FixationCustomerRequest](protected, "/fixation-customer", h.Validator, h.Broker.FixationCustomer)
+func registerBrokerRoutes(r fiber.Router, h *handlers.Deps) {
+	postJSON[brokerdto.ConnectCustomerRequest](r, "/connect-customer", h.Validator, h.Broker.ConnectCustomer)
+
 }

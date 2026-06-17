@@ -58,11 +58,11 @@ func CurrentClaims(c *fiber.Ctx) (sharedjwt.AccessTokenClaims, bool) {
 		return sharedjwt.AccessTokenClaims{}, false
 	}
 
-	claims, ok := c.Locals(claimsLocalKey).(sharedjwt.AccessTokenClaims)
+	claims, ok := c.Locals(claimsLocalKey).(sharedjwt.AccessTokenClaims) //верно понял что c.Locals берет значение по ключу? если так, то в какой момент мы вообще задали эту мапу? и далее, мы тут делаем type assertion? и отдельно напомни когда надо с nil делать type assertion и как?
 	return claims, ok
 }
 
-func CurrentPrincipal(c *fiber.Ctx) (sharedauth.Principal, bool) {
+func CurrentPrincipal(c *fiber.Ctx) (sharedauth.Principal, bool) { //в чем разница между контекстом и принципалом?
 	if c == nil {
 		return sharedauth.Principal{}, false
 	}
