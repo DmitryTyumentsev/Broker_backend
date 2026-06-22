@@ -3,3 +3,5 @@ protoc \
 --go_out=../shared/pkg/grpc/gen \
 --go-grpc_out=../shared/pkg/grpc/gen \
 ../shared/pkg/grpc/proto/auth/v1/authv1.proto
+
+#как правильно прописать protoc чтобы на все сервисы(proto) срабатывал?
