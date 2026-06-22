@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package v1;
+
+option go_package = "broker/v1;brokerv1";
+
+service BrokerService{
+  rpc FixationCustomer(ConnectCustomerRequest) returns (ConnectCustomerResponse);
+}
+
+message ConnectCustomerRequest{
+  string customer_id = 1;
+  string broker_id = 2;
+  string manager_id = 3;
+}
+
+message ConnectCustomerResponse{
+  string manager_last_name = 1;
+  string manager_first_name = 2;
+  string manager_middle_name = 3;
+}
