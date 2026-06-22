@@ -31,7 +31,7 @@ func registerPlatformMiddleware(app *fiber.App, h *handlers.Deps) {
 
 	app.Use(middleware.RequestID())
 	app.Use(middleware.AccessLog(h.Logger))
-	app.Use(middleware.Trace(cfg.Observability.Tracing.ServiceName)) //ты в самом начале ответа написал про миддлвар на идемпотентность, ты уверен что у меня есть такой миддлвар сейчвс и если даже нет - их делают в реальных проектах? если да - зачем? и в целом еще напомни в чем суть идемпотентности? в том чтобы в базу не записали дважды одну и ту же строку(даже скорее чтоб сервер дубль не обрабатывал)? если так - в случае с patch что происходит? patch же меняет то что есть сейчас, не удаляя остальное, а put полностью все стирает и записывает заново? выходит что оба неидемпотенты, идемпотентен только post?
+	app.Use(middleware.Trace(cfg.Observability.Tracing.ServiceName)) // их делают в реальных проектах? если да - зачем? и в целом еще напомни в чем суть идемпотентности? в том чтобы в базу не записали дважды одну и ту же строку(даже скорее чтоб сервер дубль не обрабатывал)? если так - в случае с patch что происходит? patch же меняет то что есть сейчас, не удаляя остальное, а put полностью все стирает и записывает заново? выходит что оба неидемпотенты, идемпотентен только post?
 	app.Use(h.Metrics.Middleware())
 	app.Use(middleware.Recovery(h.Logger))
 	app.Use(middleware.SecurityHeaders(cfg.HTTP.SecurityHeaders.Enabled))
@@ -69,13 +69,16 @@ func registerProtectedRoutes(v1 fiber.Router, h *handlers.Deps) {
 	protected := v1.Group(
 		"",
 		middleware.Auth(h.AccessVerifier),
-		middleware.RBAC(cfg.Business.ProtectedAllowedRoles...),              //а как быть когда мне надо сделать доступ к ручке при конкретных ролях? сейчас если верно понял, сделано что при всех ролях доступ. Даже в контексте текущей фичи с фиксацией. Пишут ли в целом так слайс с этим параметром или разбивают на роли и исходя из них собирают конфиг?
+		middleware.RBAC(cfg.Business.ProtectedAllowedRoles...),              //а как быть когда мне надо сделать доступ к ручке при конкретных ролях? сейчас если верно понял, сделано что при всех ролях доступ. Даже в контексте текущей фичи с фиксацией. Пишут ли в целом так слайс с этим параметром или разбивают на роли и исходя из них собирают конфиг? тут не понял в итоге как именно сделать надо
 		middleware.Idempotency(h.Redis, cfg.Business.Idempotency, h.Logger), //как эта проверка на идемпотентность работает? зачем нужна? это защита от дублей?
 	)
 	registerAuthProtectedRoutes(protected, h)
 
-	customers := protected.Group("/customers")
-	registerBrokerRoutes(customers, h)
+	brokers := protected.Group(
+		"/brokers",
+		middleware.RBAC(cfg.Business.),//я не понимаю как тут указать и в целом как роли настроить, объясни пж
+		)
+	registerBrokerRoutes(brokers, h)
 }
 
 func metricPath(path string) string {
