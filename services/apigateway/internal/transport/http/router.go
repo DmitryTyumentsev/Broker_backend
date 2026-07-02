@@ -69,16 +69,11 @@ func registerProtectedRoutes(v1 fiber.Router, h *handlers.Deps) {
 	protected := v1.Group(
 		"",
 		middleware.Auth(h.AccessVerifier),
-		middleware.RBAC(cfg.Business.ProtectedAllowedRoles...),              //а как быть когда мне надо сделать доступ к ручке при конкретных ролях? сейчас если верно понял, сделано что при всех ролях доступ. Даже в контексте текущей фичи с фиксацией. Пишут ли в целом так слайс с этим параметром или разбивают на роли и исходя из них собирают конфиг? тут не понял в итоге как именно сделать надо
+		middleware.RBAC(cfg.Business.ProtectedAllowedRoles...),              //а здесь зачем эти три точки стоят? что они значат?
 		middleware.Idempotency(h.Redis, cfg.Business.Idempotency, h.Logger), //как эта проверка на идемпотентность работает? зачем нужна? это защита от дублей?
 	)
 	registerAuthProtectedRoutes(protected, h)
-
-	brokers := protected.Group(
-		"/brokers",
-		middleware.RBAC(cfg.Business.),//я не понимаю как тут указать и в целом как роли настроить, объясни пж
-		)
-	registerBrokerRoutes(brokers, h)
+	registerBrokerRoutes(protected, h)
 }
 
 func metricPath(path string) string {

@@ -8,7 +8,7 @@ import (
 
 func TestConfigValidateRejectsAdminRoleOutsideProtectedRoles(t *testing.T) {
 	cfg := validTestConfig()
-	cfg.Business.AdminAllowedRoles = []string{"superadmin", "unexpected_admin"}
+	cfg.Business.DeveloperAdminAllowedRoles = []string{"superadmin", "unexpected_admin"}
 
 	err := cfg.Validate()
 	if err == nil {
@@ -37,11 +37,11 @@ func validTestConfig() *Config {
 			Port: 8080,
 		},
 		Business: BusinessConfig{
-			ContextTimeout:        time.Second,
-			AccessTokenSecret:     "test-access-secret-change-me-32-bytes-minimum",
-			AccessTokenIssuer:     "authservice",
-			ProtectedAllowedRoles: []string{"superadmin", "broker_team_member"},
-			AdminAllowedRoles:     []string{"superadmin"},
+			ContextTimeout:             time.Second,
+			AccessTokenSecret:          "test-access-secret-change-me-32-bytes-minimum",
+			AccessTokenIssuer:          "authservice",
+			ProtectedAllowedRoles:      []string{"superadmin", "broker_team_member"},
+			DeveloperAdminAllowedRoles: []string{"superadmin"},
 			AuthRateLimit: RateLimitConfig{
 				Enabled: true,
 				Limit:   10,

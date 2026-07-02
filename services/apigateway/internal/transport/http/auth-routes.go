@@ -22,7 +22,7 @@ func registerAuthProtectedRoutes(protected fiber.Router, h *handlers.Deps) {
 	protected.Get("/me", h.Auth.Me)
 	protected.Get(
 		"/admin/ping",
-		middleware.RBAC(h.Config.Business.AdminAllowedRoles...),
+		middleware.RBAC(h.Config.Business.DeveloperAdminAllowedRoles...),
 		h.Auth.AdminPing,
 	)
 }

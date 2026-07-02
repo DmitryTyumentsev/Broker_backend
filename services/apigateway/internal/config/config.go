@@ -32,16 +32,19 @@ type ServerConfig struct {
 }
 
 type BusinessConfig struct {
-	ContextTimeout        time.Duration     `mapstructure:"context_timeout"`
-	RequestTimeout        time.Duration     `mapstructure:"request_timeout"`
-	OperationTimeout      time.Duration     `mapstructure:"operation_timeout"`
-	AccessTokenSecret     string            `mapstructure:"access_token_secret"`
-	AccessTokenIssuer     string            `mapstructure:"access_token_issuer"`
-	AuthRateLimit         RateLimitConfig   `mapstructure:"auth_rate_limit"`
-	DefaultRateLimit      RateLimitConfig   `mapstructure:"default_rate_limit"`
-	Idempotency           IdempotencyConfig `mapstructure:"idempotency"`
-	ProtectedAllowedRoles []string          `mapstructure:"protected_allowed_roles"`
-	AdminAllowedRoles     []string          `mapstructure:"admin_allowed_roles"`
+	ContextTimeout             time.Duration     `mapstructure:"context_timeout"`
+	RequestTimeout             time.Duration     `mapstructure:"request_timeout"`
+	OperationTimeout           time.Duration     `mapstructure:"operation_timeout"`
+	AccessTokenSecret          string            `mapstructure:"access_token_secret"`
+	AccessTokenIssuer          string            `mapstructure:"access_token_issuer"`
+	AuthRateLimit              RateLimitConfig   `mapstructure:"auth_rate_limit"`
+	DefaultRateLimit           RateLimitConfig   `mapstructure:"default_rate_limit"`
+	Idempotency                IdempotencyConfig `mapstructure:"idempotency"`
+	ProtectedAllowedRoles      []string          `mapstructure:"protected_allowed_roles"`
+	DeveloperAdminAllowedRoles []string          `mapstructure:"developer_admin_allowed_roles"`
+	BrokerAdminAllowedRoles    []string          `mapstructure:"broker_admin_allowed_roles"`
+	BrokerTeamLeadAllowedRoles []string          `mapstructure:"broker_team_lead_allowed_roles"`
+	BrokerManagerAllowedRoles  []string          `mapstructure:"broker_manager_allowed_roles"`
 }
 
 type HTTPConfig struct {
@@ -266,7 +269,7 @@ func (c *Config) validateAllowedRoles() error {
 		return errors.New("business.protected_allowed_roles must contain at least one role")
 	}
 
-	adminRoles := nonEmptyStrings(c.Business.AdminAllowedRoles)
+	adminRoles := nonEmptyStrings(c.Business.DeveloperAdminAllowedRoles)
 	if len(adminRoles) == 0 {
 		return errors.New("business.admin_allowed_roles must contain at least one role")
 	}

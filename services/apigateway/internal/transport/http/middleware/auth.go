@@ -62,7 +62,7 @@ func CurrentClaims(c *fiber.Ctx) (sharedjwt.AccessTokenClaims, bool) {
 	return claims, ok
 }
 
-func CurrentPrincipal(c *fiber.Ctx) (sharedauth.Principal, bool) { //в чем разница между контекстом и принципалом?
+func CurrentPrincipal(c *fiber.Ctx) (sharedauth.Principal, bool) { //в чем разница между контекстом и принципалом? почему принципал не используется у меня?
 	if c == nil {
 		return sharedauth.Principal{}, false
 	}
