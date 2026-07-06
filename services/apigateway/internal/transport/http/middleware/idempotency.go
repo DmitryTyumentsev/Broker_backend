@@ -8,7 +8,7 @@ import (
 
 	"Broker_backend/services/apigateway/internal/config"
 	"Broker_backend/services/apigateway/internal/transport/http/httperr"
-	sharedauth "Broker_backend/shared/pkg/auth"
+	sharedauth "Broker_backend/shared/pkg/authz"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/redis/go-redis/v9"

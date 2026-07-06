@@ -1,6 +1,8 @@
 package config
 
 import (
+	sharedpermissions "Broker_backend/shared/pkg/authz/permissions"
+	sharedroles "Broker_backend/shared/pkg/authz/roles"
 	"errors"
 	"fmt"
 	"net"
@@ -19,7 +21,12 @@ type Config struct {
 	HTTP          HTTPConfig          `mapstructure:"http"`
 	Observability ObservabilityConfig `mapstructure:"observability"`
 	AuthGRPC      AuthGRPCConfig      `mapstructure:"auth_grpc"`
+	BrokerGRPC    BrokerGRPCConfig    `mapstructure:"broker_grpc"`
 	Database      DatabaseConfig      `mapstructure:"database"`
+}
+
+type BrokerGRPCConfig struct {
+	Address string `mapstructure:"address"`
 }
 
 type ServerConfig struct {
@@ -198,6 +205,9 @@ func (c *Config) Validate() error {
 	if strings.TrimSpace(c.AuthGRPC.Address) == "" {
 		return errors.New("auth_grpc.address is required")
 	}
+	if strings.TrimSpace(c.BrokerGRPC.Address) == "" {
+		return errors.New("broker_grpc.address is required")
+	}
 
 	if c.RedisRequired() {
 		if err := c.validateRedis(); err != nil {
@@ -270,9 +280,17 @@ func (c *Config) validateAuthz() error {
 		return errors.New("business.authz.roles must contain at least one role")
 	}
 
-	knownRoles := make(map[string]struct{}, len(roles)) //у нас роли это []string, тут в виде мапы где значение структура. Это верно? в чем логика, как это?
+	knownRoles := make(map[string]struct{}, len(roles))
 	for _, role := range roles {
-		knownRoles[role] = struct{}{} //первый ращ вижу struct{}{}, зачем вторая {} ?
+		if !sharedroles.Known(role) {
+			return fmt.Errorf("business.authz.roles contains unknown role %q", role)
+		}
+
+		if _, exists := knownRoles[role]; exists {
+			return fmt.Errorf("business.authz.roles contains duplicated role %q", role)
+		}
+
+		knownRoles[role] = struct{}{}
 	}
 
 	if len(c.Business.Authz.Permissions) == 0 {
@@ -285,19 +303,34 @@ func (c *Config) validateAuthz() error {
 			return errors.New("business.authz.permissions contains empty permission name")
 		}
 
+		if !sharedpermissions.Known(permission) {
+			return fmt.Errorf("business.authz.permissions contains unknown permission %q", permission)
+		}
+
 		allowedRoles = nonEmptyStrings(allowedRoles)
 		if len(allowedRoles) == 0 {
 			return fmt.Errorf("business.authz.permissions.%s must contain at least one role", permission)
 		}
 
+		seenRoles := make(map[string]struct{}, len(allowedRoles))
 		for _, role := range allowedRoles {
 			if _, ok := knownRoles[role]; !ok {
 				return fmt.Errorf(
-					"business.authz.permissions.%s contains unknown role %q",
+					"business.authz.permissions.%s contains role %q that is not declared in business.authz.roles",
 					permission,
 					role,
 				)
 			}
+
+			if _, exists := seenRoles[role]; exists {
+				return fmt.Errorf(
+					"business.authz.permissions.%s contains duplicated role %q",
+					permission,
+					role,
+				)
+			}
+
+			seenRoles[role] = struct{}{}
 		}
 	}
 

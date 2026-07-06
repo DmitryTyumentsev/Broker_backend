@@ -22,7 +22,7 @@ type Deps struct {
 	Validator      *validate.Validate
 	AccessVerifier middleware.AccessTokenVerifier
 	Metrics        *middleware.PrometheusMetrics
-	Authz          *config.AuthzConfig
+	Authz          middleware.AuthzPolicy
 }
 
 func (d *Deps) Validate() error {
@@ -43,11 +43,17 @@ func (d *Deps) Validate() error {
 		return errors.New("access verifier is required")
 	case d.Metrics == nil:
 		return errors.New("metrics registry is required")
+	case d.Authz == nil:
+		return errors.New("authorization policy is required")
 	case d.Redis == nil && d.redisRequired():
 		return errors.New("redis client is required when redis-backed middleware is enabled")
 	}
 
-	return d.Auth.Validate()
+	if err := d.Auth.Validate(); err != nil {
+		return err
+	}
+
+	return d.Broker.Validate()
 }
 
 func (d *Deps) redisRequired() bool {

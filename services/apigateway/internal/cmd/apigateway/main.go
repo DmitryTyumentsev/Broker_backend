@@ -8,7 +8,9 @@ import (
 	"net"
 	"strconv"
 
+	"Broker_backend/services/apigateway/internal/authz"
 	"Broker_backend/services/apigateway/internal/clients/authclient"
+	"Broker_backend/services/apigateway/internal/clients/brokerclient"
 	"Broker_backend/services/apigateway/internal/config"
 	redisclient "Broker_backend/services/apigateway/internal/infra/cache/redis"
 	httprouter "Broker_backend/services/apigateway/internal/transport/http"
@@ -91,6 +93,22 @@ func main() {
 		logger.Fatal("create auth client failed", zap.Error(err))
 	}
 
+	authzPolicy, err := authz.NewRolePermissionPolicy(cfg.Business.Authz)
+	if err != nil {
+		logger.Fatal("create authorization policy failed", zap.Error(err))
+	}
+
+	brokerConn, brokerGRPCClient, err := brokerclient.NewBrokerServiceClient(cfg)
+	if err != nil {
+		logger.Fatal("create broker grpc client failed", zap.Error(err))
+	}
+	defer func() { _ = brokerConn.Close() }()
+
+	brokerClient, err := brokerclient.NewClient(brokerGRPCClient, cfg)
+	if err != nil {
+		logger.Fatal("create broker client failed", zap.Error(err))
+	}
+
 	validator := middleware.NewRequestValidator()
 
 	authHandler := authhandlers.NewAuthHandler(logger, authClient, validator)
@@ -116,6 +134,7 @@ func main() {
 		Validator:      validator,
 		AccessVerifier: accessVerifier,
 		Metrics:        metrics,
+		Authz:          authzPolicy,
 	}); err != nil {
 		logger.Fatal("setup router failed", zap.Error(err))
 	}

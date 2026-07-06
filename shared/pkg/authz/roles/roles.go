@@ -19,3 +19,13 @@ var All = []string{
 	BrokerTeamLead,
 	BrokerTeamMember,
 }
+
+func Known(role string) bool {
+	for _, known := range All {
+		if role == known {
+			return true
+		}
+	}
+
+	return false
+}

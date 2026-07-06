@@ -50,6 +50,10 @@ business:
         - broker_team_lead
         - broker_team_member
 
+      developer.admin.access:
+        - superadmin
+        - developer_admin
+
       customer_fixation.create:
         - agency_owner
         - broker_team_lead
@@ -110,6 +114,9 @@ observability:
 
 auth_grpc:
   address: authservice:50051
+
+broker_grpc:
+  address: broker:50052
 
 database:
   redis:

@@ -8,8 +8,9 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func RBAC(allowedRoles ...string) fiber.Handler { // ...string и []string одно и тоже? если нет, зачем ставят многоточие перед типом?
+func RequireRole(allowedRoles ...string) fiber.Handler {
 	allowed := make(map[string]struct{}, len(allowedRoles))
+
 	for _, role := range allowedRoles {
 		role = strings.TrimSpace(role)
 		if role != "" {
@@ -18,7 +19,7 @@ func RBAC(allowedRoles ...string) fiber.Handler { // ...string и []string од�
 	}
 
 	return func(c *fiber.Ctx) error {
-		claims, ok := CurrentClaims(c)
+		principal, ok := CurrentPrincipal(c)
 		if !ok {
 			return httperr.WriteUnauthorized(c, "auth context is missing")
 		}
@@ -27,10 +28,16 @@ func RBAC(allowedRoles ...string) fiber.Handler { // ...string и []string од�
 			return httperr.WriteForbidden(c, "no roles are allowed")
 		}
 
-		if _, ok := allowed[claims.Role]; !ok {
+		if _, ok := allowed[principal.Role]; !ok {
 			return httperr.WriteForbidden(c, "insufficient role")
-		} //немного не понимаю что с чем мы сравниваем и откуда берем - мы получаем в fiber.Ctx данные, кладем их в localKey. Затем вытаскиваем оттуда access токен пользователя. как мы его проверяем? где? что в нем? и второй важный момент - а где само сравнение ролей? что с чем сравниваем? я читал код и не понял ничего, показывай прям на нем что где
+		}
 
 		return c.Next()
 	}
+}
+
+// RBAC оставляем для обратной совместимости.
+// Новый код лучше писать через RequireRole или RequirePermission.
+func RBAC(allowedRoles ...string) fiber.Handler {
+	return RequireRole(allowedRoles...)
 }

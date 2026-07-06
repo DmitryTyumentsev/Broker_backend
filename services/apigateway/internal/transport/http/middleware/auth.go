@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"Broker_backend/services/apigateway/internal/transport/http/httperr"
-	sharedauth "Broker_backend/shared/pkg/auth"
+	sharedauth "Broker_backend/shared/pkg/authz"
 	sharedjwt "Broker_backend/shared/pkg/security/jwt"
 
 	"github.com/gofiber/fiber/v2"

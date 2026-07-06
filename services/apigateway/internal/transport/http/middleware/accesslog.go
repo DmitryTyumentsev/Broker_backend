@@ -3,7 +3,7 @@ package middleware
 import (
 	"time"
 
-	sharedauth "Broker_backend/shared/pkg/auth"
+	sharedauth "Broker_backend/shared/pkg/authz"
 
 	"github.com/gofiber/fiber/v2"
 	"go.opentelemetry.io/otel/trace"

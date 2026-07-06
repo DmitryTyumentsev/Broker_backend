@@ -1,13 +1,9 @@
 package brokerdto
 
-type customerID string
-type brokerID string
-type managerID string
-
 type ConnectCustomerRequest struct {
-	CustomerID customerID `json:"customer_id"`
-	BrokerID   brokerID   `json:"broker_id"`
-	ManagerID  managerID  `json:"manager_id"`
+	CustomerID string `json:"customer_id" validate:"required,uuid4"` //мешают ли для мапингу приватные типы, если да - почему?
+	BrokerID   string `json:"broker_id" validate:"required"`
+	ManagerID  string `json:"manager_id" validate:"omitempty"`
 }
 
 type ConnectCustomerResponse struct {
