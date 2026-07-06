@@ -32,19 +32,20 @@ type ServerConfig struct {
 }
 
 type BusinessConfig struct {
-	ContextTimeout             time.Duration     `mapstructure:"context_timeout"`
-	RequestTimeout             time.Duration     `mapstructure:"request_timeout"`
-	OperationTimeout           time.Duration     `mapstructure:"operation_timeout"`
-	AccessTokenSecret          string            `mapstructure:"access_token_secret"`
-	AccessTokenIssuer          string            `mapstructure:"access_token_issuer"`
-	AuthRateLimit              RateLimitConfig   `mapstructure:"auth_rate_limit"`
-	DefaultRateLimit           RateLimitConfig   `mapstructure:"default_rate_limit"`
-	Idempotency                IdempotencyConfig `mapstructure:"idempotency"`
-	ProtectedAllowedRoles      []string          `mapstructure:"protected_allowed_roles"`
-	DeveloperAdminAllowedRoles []string          `mapstructure:"developer_admin_allowed_roles"`
-	BrokerAdminAllowedRoles    []string          `mapstructure:"broker_admin_allowed_roles"`
-	BrokerTeamLeadAllowedRoles []string          `mapstructure:"broker_team_lead_allowed_roles"`
-	BrokerManagerAllowedRoles  []string          `mapstructure:"broker_manager_allowed_roles"`
+	ContextTimeout    time.Duration     `mapstructure:"context_timeout"`
+	RequestTimeout    time.Duration     `mapstructure:"request_timeout"`
+	OperationTimeout  time.Duration     `mapstructure:"operation_timeout"`
+	AccessTokenSecret string            `mapstructure:"access_token_secret"`
+	AccessTokenIssuer string            `mapstructure:"access_token_issuer"`
+	AuthRateLimit     RateLimitConfig   `mapstructure:"auth_rate_limit"`
+	DefaultRateLimit  RateLimitConfig   `mapstructure:"default_rate_limit"`
+	Idempotency       IdempotencyConfig `mapstructure:"idempotency"`
+	Authz             AuthzConfig       `mapstructure:"authz"`
+}
+
+type AuthzConfig struct {
+	Roles       []string            `mapstructure:"roles"`
+	Permissions map[string][]string `mapstructure:"permissions"` //расскажи подробнее про пермишены. Где я их задаю? почему они мапа а не строка? у меня нет сейчас одной картины - где что писать и задавать(где писать пермишены, где роли, где полиси и вообще что такое полиси есть ли это на проектах больших)
 }
 
 type HTTPConfig struct {
@@ -190,7 +191,7 @@ func (c *Config) Validate() error {
 		return err
 	}
 
-	if err := c.validateAllowedRoles(); err != nil {
+	if err := c.validateAuthz(); err != nil {
 		return err
 	}
 
@@ -263,28 +264,40 @@ func (c *Config) RedisRequired() bool {
 	return c.RateLimitEnabled() || c.IdempotencyEnabled()
 }
 
-func (c *Config) validateAllowedRoles() error {
-	protectedRoles := nonEmptyStrings(c.Business.ProtectedAllowedRoles)
-	if len(protectedRoles) == 0 {
-		return errors.New("business.protected_allowed_roles must contain at least one role")
+func (c *Config) validateAuthz() error {
+	roles := nonEmptyStrings(c.Business.Authz.Roles)
+	if len(roles) == 0 {
+		return errors.New("business.authz.roles must contain at least one role")
 	}
 
-	adminRoles := nonEmptyStrings(c.Business.DeveloperAdminAllowedRoles)
-	if len(adminRoles) == 0 {
-		return errors.New("business.admin_allowed_roles must contain at least one role")
+	knownRoles := make(map[string]struct{}, len(roles)) //у нас роли это []string, тут в виде мапы где значение структура. Это верно? в чем логика, как это?
+	for _, role := range roles {
+		knownRoles[role] = struct{}{} //первый ращ вижу struct{}{}, зачем вторая {} ?
 	}
 
-	protected := make(map[string]struct{}, len(protectedRoles))
-	for _, role := range protectedRoles {
-		protected[role] = struct{}{}
+	if len(c.Business.Authz.Permissions) == 0 {
+		return errors.New("business.authz.permissions must contain at least one permission")
 	}
 
-	for _, role := range adminRoles {
-		if _, ok := protected[role]; !ok {
-			return fmt.Errorf(
-				"business.admin_allowed_roles contains role %q that is not in business.protected_allowed_roles",
-				role,
-			)
+	for permission, allowedRoles := range c.Business.Authz.Permissions {
+		permission = strings.TrimSpace(permission)
+		if permission == "" {
+			return errors.New("business.authz.permissions contains empty permission name")
+		}
+
+		allowedRoles = nonEmptyStrings(allowedRoles)
+		if len(allowedRoles) == 0 {
+			return fmt.Errorf("business.authz.permissions.%s must contain at least one role", permission)
+		}
+
+		for _, role := range allowedRoles {
+			if _, ok := knownRoles[role]; !ok {
+				return fmt.Errorf(
+					"business.authz.permissions.%s contains unknown role %q",
+					permission,
+					role,
+				)
+			}
 		}
 	}
 

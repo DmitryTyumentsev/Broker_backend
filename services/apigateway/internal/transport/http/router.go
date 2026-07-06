@@ -1,6 +1,7 @@
 package http
 
 import (
+	"Broker_backend/shared/pkg/auth/permissions"
 	"errors"
 	"strings"
 
@@ -69,7 +70,7 @@ func registerProtectedRoutes(v1 fiber.Router, h *handlers.Deps) {
 	protected := v1.Group(
 		"",
 		middleware.Auth(h.AccessVerifier),
-		middleware.RBAC(cfg.Business.ProtectedAllowedRoles...),              //а здесь зачем эти три точки стоят? что они значат?
+		middleware.RequirePermission(h.Authz, permissions.All),              //здесь ошибка что метод ждет строку а передаю слайс. и второй вопрос - иногда ставят три точки в сигнатуре метода. что они значат? и что передавать в такой метод?
 		middleware.Idempotency(h.Redis, cfg.Business.Idempotency, h.Logger), //как эта проверка на идемпотентность работает? зачем нужна? это защита от дублей?
 	)
 	registerAuthProtectedRoutes(protected, h)

@@ -22,6 +22,7 @@ type Deps struct {
 	Validator      *validate.Validate
 	AccessVerifier middleware.AccessTokenVerifier
 	Metrics        *middleware.PrometheusMetrics
+	Authz          *config.AuthzConfig
 }
 
 func (d *Deps) Validate() error {
