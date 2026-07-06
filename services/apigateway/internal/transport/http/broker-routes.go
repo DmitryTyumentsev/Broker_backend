@@ -12,7 +12,7 @@ import (
 func registerBrokerRoutes(r fiber.Router, h *handlers.Deps) {
 	broker := r.Group(
 		"/brokers",
-		middleware.RequirePermission(h.Authz, permissions.APIProtectedAccess),
+		middleware.RequirePermission(h.Authz, permissions.CustomerFixationCreate),
 	)
 	postJSON[brokerdto.ConnectCustomerRequest](broker, "/connect-customer", h.Validator, h.Broker.ConnectCustomer)
 }
