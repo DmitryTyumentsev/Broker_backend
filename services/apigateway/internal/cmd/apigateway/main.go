@@ -100,13 +100,13 @@ func main() {
 
 	brokerConn, brokerGRPCClient, err := brokerclient.NewBrokerServiceClient(cfg)
 	if err != nil {
-		logger.Fatal("create broker grpc client failed", zap.Error(err))
+		logger.Fatal("create brokerservice grpc client failed", zap.Error(err))
 	}
 	defer func() { _ = brokerConn.Close() }()
 
 	brokerClient, err := brokerclient.NewClient(brokerGRPCClient, cfg)
 	if err != nil {
-		logger.Fatal("create broker client failed", zap.Error(err))
+		logger.Fatal("create brokerservice client failed", zap.Error(err))
 	}
 
 	validator := middleware.NewRequestValidator()

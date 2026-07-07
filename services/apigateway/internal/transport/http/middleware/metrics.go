@@ -28,7 +28,7 @@ func NewPrometheusMetrics(serviceName string) *PrometheusMetrics {
 
 	requestsTotal := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Namespace: "broker",
+			Namespace: "brokerservice",
 			Subsystem: serviceName,
 			Name:      "http_requests_total",
 			Help:      "Total number of HTTP requests.",
@@ -38,7 +38,7 @@ func NewPrometheusMetrics(serviceName string) *PrometheusMetrics {
 
 	requestDuration := prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Namespace: "broker",
+			Namespace: "brokerservice",
 			Subsystem: serviceName,
 			Name:      "http_request_duration_seconds",
 			Help:      "HTTP request duration in seconds.",

@@ -32,7 +32,7 @@ func (d *Deps) Validate() error {
 	case d.Auth == nil:
 		return errors.New("auth handler is required")
 	case d.Broker == nil:
-		return errors.New("broker handler is required")
+		return errors.New("brokerservice handler is required")
 	case d.Config == nil:
 		return errors.New("config is required")
 	case d.Logger == nil:

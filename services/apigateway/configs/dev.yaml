@@ -116,7 +116,7 @@ auth_grpc:
   address: authservice:50051
 
 broker_grpc:
-  address: broker:50052
+  address: brokerservice:50052
 
 database:
   redis:
