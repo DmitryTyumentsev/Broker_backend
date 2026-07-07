@@ -12,24 +12,29 @@ business:
   context_timeout: 5s
   request_timeout: 8s
   operation_timeout: 5s
+
   access_token_secret: "local-access-secret-change-me-32-bytes-minimum"
   access_token_issuer: "authservice"
+
   auth_rate_limit:
     enabled: true
     limit: 20
     window: 1m
     prefix: "rl:auth"
+
   default_rate_limit:
     enabled: true
     limit: 120
     window: 1m
     prefix: "rl:api"
+
   idempotency:
     enabled: true
     ttl: 24h
     header: "Idempotency-Key"
     lock_prefix: "idem:api"
     max_response_bytes: 262144
+
   authz:
     roles:
       - superadmin
@@ -50,6 +55,10 @@ business:
         - broker_team_lead
         - broker_team_member
 
+      developer.admin.access:
+        - superadmin
+        - developer_admin
+
       customer_fixation.create:
         - agency_owner
         - broker_team_lead
@@ -69,8 +78,6 @@ business:
         - developer_admin
         - account_manager
         - sales_manager
-  # а зачем ставим тире? например в поле header тут выше строка идет в кавычках, а тут тире. Как это работает, в чем логика?
-
 
 http:
   cors:
@@ -97,6 +104,7 @@ http:
       - Retry-After
     allow_credentials: true
     max_age_seconds: 600
+
   security_headers:
     enabled: true
 
@@ -104,6 +112,7 @@ observability:
   metrics:
     enabled: true
     path: "/metrics"
+
   tracing:
     enabled: true
     service_name: "apigateway"
@@ -113,6 +122,9 @@ observability:
 
 auth_grpc:
   address: localhost:50051
+
+broker_grpc:
+  address: localhost:50052
 
 database:
   redis:

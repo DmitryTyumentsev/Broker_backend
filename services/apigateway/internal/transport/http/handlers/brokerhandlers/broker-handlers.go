@@ -5,6 +5,7 @@ import (
 	"Broker_backend/services/apigateway/internal/transport/http/dto/brokerdto"
 	"Broker_backend/services/apigateway/internal/transport/http/httperr"
 	"Broker_backend/services/apigateway/internal/transport/http/middleware"
+	"errors"
 	"fmt"
 
 	validate "github.com/go-playground/validator/v10"
@@ -23,6 +24,17 @@ func NewBrokerHandler(logger *zap.Logger, client *brokerclient.Client, validator
 		logger:    logger,
 		client:    client,
 		validator: validator,
+	}
+}
+
+func (h *BrokerHandler) Validate() error {
+	switch {
+	case h == nil:
+		return errors.New("broker handler is nil")
+	case h.brokerclient == nil:
+		return errors.New("broker client is required")
+	default:
+		return h.brokerclient.Validate()
 	}
 }
 

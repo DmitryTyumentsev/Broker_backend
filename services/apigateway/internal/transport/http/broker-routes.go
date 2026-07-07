@@ -10,9 +10,25 @@ import (
 )
 
 func registerBrokerRoutes(r fiber.Router, h *handlers.Deps) {
-	broker := r.Group(
-		"/brokers",
-		middleware.RequirePermission(h.Authz, permissions.CustomerFixationCreate),
+	brokers := r.Group("/brokers")
+
+	registerCustomerFixationRoutes(brokers, h)
+}
+
+func registerCustomerFixationRoutes(brokers fiber.Router, h *handlers.Deps) {
+	customerFixations := brokers.Group("/customer-fixation")
+
+	createCustomerFixation(customerFixations, h)
+}
+
+func createCustomerFixation(r fiber.Router, h *handlers.Deps) {
+	postJSON[brokerdto.ConnectCustomerRequest](
+		r,
+		"/",
+		h.Validator,
+		[]fiber.Handler{
+			middleware.RequirePermission(h.Authz, permissions.CustomerFixationCreate),
+		},
+		h.Broker.ConnectCustomer,
 	)
-	postJSON[brokerdto.ConnectCustomerRequest](broker, "/connect-customer", h.Validator, h.Broker.ConnectCustomer)
 }

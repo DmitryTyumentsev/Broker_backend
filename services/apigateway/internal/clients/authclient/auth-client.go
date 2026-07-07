@@ -20,7 +20,11 @@ type Client struct {
 
 func NewAuthServiceClient(cfg *config.Config) (*grpc.ClientConn, authv1.AuthServiceClient, error) {
 	if cfg == nil {
-		return nil, nil, fmt.Errorf("config is nil")
+		return nil, nil, errors.New("config is nil")
+	}
+
+	if cfg.AuthGRPC.Address == "" {
+		return nil, nil, errors.New("auth_grpc.address is required")
 	}
 
 	conn, err := grpc.NewClient(
@@ -35,30 +39,24 @@ func NewAuthServiceClient(cfg *config.Config) (*grpc.ClientConn, authv1.AuthServ
 }
 
 func NewClient(auth authv1.AuthServiceClient, cfg *config.Config) (*Client, error) {
-	if auth == nil {
-		return nil, errors.New("auth grpc client is nil")
-	}
-
-	if cfg == nil {
-		return nil, errors.New("config is nil")
-	}
-
-	if cfg.OperationTimeout() <= 0 {
-		return nil, errors.New("operation timeout must be positive")
-	}
-
-	return &Client{
+	client := &Client{
 		auth:   auth,
 		config: cfg,
-	}, nil
+	}
+
+	if err := client.Validate(); err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }
 
-func (c *Client) Validate[T any]() error {
+func (c *Client) Validate() error {
 	switch {
 	case c == nil:
 		return errors.New("client is nil")
 	case c.auth == nil:
-		return errors.New("grpc client is nil")
+		return errors.New("auth grpc client is nil")
 	case c.config == nil:
 		return errors.New("config is nil")
 	case c.config.OperationTimeout() <= 0:
@@ -120,8 +118,8 @@ func (c *Client) Logout(
 	return c.auth.Logout(ctx, req)
 }
 
-func contextWithTimeout[T any](parent context.Context) (context.Context, context.CancelFunc, error) { //есть идея вытащить этот метод и Validate в общие и передавать Client разный через дженерик. Попробовал реализовать - не получилось. Расскажи сначала по самой задумке - как делают на реальных проектах и второй вопрос - как выглядит это в коде? нужно чтобы было по продовым практикам реальных проектов
-	if err := T.Validate(); err != nil {
+func (c *Client) contextWithTimeout(parent context.Context) (context.Context, context.CancelFunc, error) {
+	if err := c.Validate(); err != nil {
 		return nil, nil, err
 	}
 

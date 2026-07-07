@@ -36,8 +36,6 @@ func RequireRole(allowedRoles ...string) fiber.Handler {
 	}
 }
 
-// RBAC оставляем для обратной совместимости.
-// Новый код лучше писать через RequireRole или RequirePermission.
 func RBAC(allowedRoles ...string) fiber.Handler {
 	return RequireRole(allowedRoles...)
 }
