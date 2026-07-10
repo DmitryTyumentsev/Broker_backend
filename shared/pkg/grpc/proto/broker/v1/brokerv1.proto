@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package v1;
 
-option go_package = "brokerservice/v1;brokerv1";
+option go_package = "broker/v1;brokerv1";
 
 service BrokerService{
   rpc CreateCustomerFixation(ConnectCustomerRequest) returns (ConnectCustomerResponse);

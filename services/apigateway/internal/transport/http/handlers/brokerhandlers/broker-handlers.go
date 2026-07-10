@@ -37,10 +37,8 @@ func (h *BrokerHandler) Validate() error {
 	}
 }
 
-func (h *BrokerHandler) CreateFixationCustomer(c *fiber.Ctx) error {
-	const op = "handlers.brokerhandlers.CreateFixationCustomer" //аудит аксесс логи, трейс еще что-то где пишу? или они вообще каждый вопрос через миддлвары уже фиксируют? и второй вопрос - стоит ли здесь в хендлере использовать op? если да то где?
-
-	bodyDTO, ok := middleware.ValidatedBody[brokerdto.ConnectCustomerRequest](c) //писать if !ok правильно? ведь в ok может записаться true или false и смысл тогда теряется?
+func (h *BrokerHandler) CreateFixationCustomer(c *fiber.Ctx) error { //Верно понял что согласно моему миддлвару аксесс лог, каждый(вообще каждый) вызов всех методов из цепочки очень подробно записывается и трейсится ещё плюсом?
+	bodyDTO, ok := middleware.ValidatedBody[brokerdto.ConnectCustomerRequest](c)
 	if ok == false {
 		h.logger.Error("middleware.ValidatedBody error: type dto didn't match with c.Locals(validatedBodyKey)")
 		return c.JSON(httperr.WriteBadRequest(c, "invalid request"))
@@ -52,13 +50,22 @@ func (h *BrokerHandler) CreateFixationCustomer(c *fiber.Ctx) error {
 		ManagerID:  bodyDTO.ManagerID,
 	}
 
-	ctx := c.UserContext()
+	ctx := c.UserContext() //что у нас будет внутри ctx? у нас был *fiber.Ctx в котором конфиги, данные. А в context.Context и то и то уйдет? что в нем будет?
 	protoResp, err := h.client.CreateFixationCustomer(ctx, protoDTO)
 	if err != nil {
-		h.logger.Error("client.CreateFixationCustomer error", zap.Error(err)) //какой формат у ошибок в больших проектах в таких ситуациях пишут? стоит ли логировать то что пришло от клиента?
+		middleware.AuditLog(
+			c,
+			h.logger,
+			"create fixation customer is failed",
+			zap.Error(err), //стоит ли так писать в аудит логах и почему?
+			zap.String("customer_id", bodyDTO.CustomerID),
+			zap.String("broker_id", bodyDTO.BrokerID),
+			zap.String("manager_id", bodyDTO.ManagerID),
+		)
+		h.logger.Error("client.CreateFixationCustomer error", zap.Error(err)) //какой формат у ошибок в больших проектах в таких ситуациях пишут? что тут писать и зачем если у нас такой подробный access logger? как на больших проектах принято? и второй вопрос - как тут правильнее писать по уровню ошибки - это warning или error? тут же может быть как бизнесово ошибка так и технически. По какому принципу выбираем уровень логирования на ошибку?
 		return err
 	}
-	resp := &brokerdto.ConnectCustomerResponse{
+	resp := &brokerdto.ConnectCustomerResponse{ //стоит ли возвращать структуру в таком и подобных кейсах?
 		ManagerLastName:   protoResp.ManagerLastName,
 		ManagerFirstName:  protoResp.ManagerFirstName,
 		ManagerMiddleName: protoResp.ManagerMiddleName,

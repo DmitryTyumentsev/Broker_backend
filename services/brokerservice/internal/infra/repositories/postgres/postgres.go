@@ -1,0 +1,32 @@
+package postgres
+
+import (
+	"Broker_backend/services/brokerservice/internal/config"
+	"context"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type Postgres struct {
+	pool *pgxpool.Pool
+	cfg  *config.Config
+}
+
+func NewPostgres(db *pgxpool.Pool, cfg *config.Config) *Postgres {
+	return &Postgres{
+		pool: db,
+		cfg:  cfg,
+	}
+}
+
+func (p *Postgres) DB() *pgxpool.Pool {
+	return p.pool
+}
+
+func (p *Postgres) WriteWithTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, p.cfg.Database.Postgres.WriteTimeout)
+}
+
+func (p *Postgres) ReadWithTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, p.cfg.Database.Postgres.ReadTimeout)
+}

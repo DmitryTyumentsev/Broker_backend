@@ -1,10 +1,10 @@
-package auth
+package sharedauth
 
 import (
+	sharedauth "Broker_backend/shared/pkg/authz"
 	"context"
 	"strings"
 
-	sharedauth "Broker_backend/shared/pkg/auth"
 	"Broker_backend/shared/pkg/requestctx"
 
 	"go.opentelemetry.io/otel"

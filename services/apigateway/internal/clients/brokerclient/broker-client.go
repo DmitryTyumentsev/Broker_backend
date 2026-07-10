@@ -1,18 +1,89 @@
 package brokerclient
 
 import (
-	"Broker_backend/services/apigateway/internal/transport/http/dto/brokerdto"
+	"Broker_backend/services/apigateway/internal/config"
+	grpcauth "Broker_backend/shared/pkg/grpc/auth"
 	"context"
+	"errors"
+	"fmt"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
+// эталон ли больших проектов мой текущий auth-client.go? что мне нужно знать оттуда чтобы быть готовым к собесам на миддл+ ? спрашивают ли вообще это?
 type Client struct {
-	grpc brokerv1.BrokerService //вижу что в authclient у меня совсем по другому тут, делается коннект отдельно к grpc и тд. Что мне нужно знать и понимать в этом? как должен быть устроен brokerclient(более важный и точный вопрос)?
+	broker brokerv1.BrokerServiceClient
+	config *config.Config
 }
 
-func (c *Client) CreateFixationCustomer(ctx context.Context, protoDTO *brokerv1.ConnectCustomerRequest) (*brokerdto.ConnectCustomerResponse, error) {
-	protoResp, err := c.grpc.CreateFixationCustomer(ctx, protoDTO)
-	if err != nil {
-		return nil, err // немного запутался - где мапер ошибки? и если на шаг назад - а что нам вообще приходить должно? я так понял что к нам приходит ошибка в виде status.Error и мы должны ее мапить, так? а где это у меня? и какой там контекст передается?
+func NewBrokerServiceClient(cfg *config.Config) (*grpc.ClientConn, brokerv1.BrokerServiceClient, error) {
+	if cfg == nil {
+		return nil, nil, errors.New("config is nil")
 	}
-	return protoResp, nil
+
+	if cfg.BrokerGRPC.Address == "" {
+		return nil, nil, errors.New("broker_grpc.address is required")
+	}
+
+	conn, err := grpc.NewClient(
+		"passthrough:///"+cfg.BrokerGRPC.Address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create broker service client: %w", err)
+	}
+
+	return conn, brokerv1.NewBrokerServiceClient(conn), nil
+}
+
+func NewClient(broker brokerv1.BrokerServiceClient, cfg *config.Config) (*Client, error) {
+	client := &Client{
+		broker: broker,
+		config: cfg,
+	}
+
+	if err := client.Validate(); err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
+func (c *Client) Validate() error {
+	switch {
+	case c == nil:
+		return errors.New("client is nil")
+	case c.broker == nil:
+		return errors.New("broker grpc client is nil")
+	case c.config == nil:
+		return errors.New("config is nil")
+	case c.config.OperationTimeout() <= 0:
+		return errors.New("operation timeout must be positive")
+	default:
+		return nil
+	}
+}
+
+func (c *Client) contextWithTimeout(parent context.Context) (context.Context,
+	context.CancelFunc, error) {
+	if err := c.Validate(); err != nil {
+		return nil, nil, err
+	}
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(parent, c.config.OperationTimeout())
+	ctx = grpcauth.InjectOutgoingContext(ctx) //поправить и там внутри тоже
+	return ctx, cancel, nil
+}
+
+func (c *Client) CreateFixationCustomer(ctx context.Context, req *brokerv1.ConnectCustomerRequest) (
+	*brokerv1.ConnectCustomerResponse, error) {
+	ctx, cancel, err := c.contextWithTimeout(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer cancel()
+	return c.broker.CreateFixationCustomer(ctx, req)
 }
