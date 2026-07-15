@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func postJSON[T any](
+func postJSON[T any]( //добавь миддлвар на get
 	router fiber.Router,
 	path string,
 	validator middleware.RequestValidator,

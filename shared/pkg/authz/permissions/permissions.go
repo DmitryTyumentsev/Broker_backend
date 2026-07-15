@@ -6,7 +6,7 @@ const (
 
 	CustomerFixationCreate = "customer_fixation.create"
 	CustomerFixationRead   = "customer_fixation.read"
-	CustomerFixationManage = "customer_fixation.manage"
+	CustomerFixationUpdate = "customer_fixation.update"
 )
 
 var All = []string{
@@ -14,7 +14,7 @@ var All = []string{
 	DeveloperAdminAccess,
 	CustomerFixationCreate,
 	CustomerFixationRead,
-	CustomerFixationManage,
+	CustomerFixationUpdate,
 }
 
 func Known(permission string) bool {

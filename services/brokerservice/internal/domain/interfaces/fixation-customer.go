@@ -2,17 +2,17 @@ package interfaces
 
 import (
 	"Broker_backend/services/brokerservice/internal/domain/entity"
+	"time"
 )
 
 type FixationCustomerRepository interface {
-	SaveFixationCustomer(brokerID entity.BrokerID, managerID entity.ManagerID, customerID entity.CustomerID) error
-	EditFixationCustomer(brokerID entity.BrokerID, managerID entity.ManagerID, customerID entity.CustomerID) error
-	DeleteFixationCustomer(brokerID entity.BrokerID, managerID entity.ManagerID) error
-	FindManagerByCustomerID(customerID entity.CustomerID) (entity.ManagerID, error) //под вопросом надо ли
+	SaveFixationCustomer(uuid string, expiresAT, fixedAt *time.Time, status string, brokerID entity.BrokerID, fixedBy entity.FixedBy, managerID entity.ManagerID, customerID entity.CustomerID) error
+	UpdateFixationCustomer(brokerID entity.BrokerID, managerID entity.ManagerID, customerID entity.CustomerID) error
+	FreeFixationCustomer(brokerID entity.BrokerID, managerID entity.ManagerID) error
+	SelectStatusByCustomerID(customerID entity.CustomerID) (string, error) //под вопросом надо ли
 }
 
-type FixationCustomerIssue interface {
-	CreateFixationCustomer(brokerID entity.BrokerID, managerID entity.ManagerID, customerID entity.CustomerID) error
-	//IsFixationAvailable(customer entity.CustomerID, roleManager string) bool
-	IsRaceFixation(customerID entity.CustomerID, managerID entity.ManagerID) bool //надо защититься от гонок чтобы одновременно двое не могли фиксировать кастомера. Так ли вообще делают проверку(выносят в интерфейс отдельный на это метод)?
+type FixationCustomerService interface { //принято ли делить интерфейсы в сервисном уровне отдельно на Issue, Check и тд или просто когда фичю пилишь - создаешь интерфейс под сервис и под репо?
+	CreateFixationCustomer(brokerID entity.BrokerID, fixedBy entity.FixedBy, managerID entity.ManagerID, customerID entity.CustomerID) error
+	CheckStatusCustomer(customerID entity.CustomerID) (string, error)
 }

@@ -38,7 +38,7 @@ func (h *BrokerHandler) Validate() error {
 }
 
 func (h *BrokerHandler) CreateFixationCustomer(c *fiber.Ctx) error { //Верно понял что согласно моему миддлвару аксесс лог, каждый(вообще каждый) вызов всех методов из цепочки очень подробно записывается и трейсится ещё плюсом?
-	bodyDTO, ok := middleware.ValidatedBody[brokerdto.ConnectCustomerRequest](c)
+	bodyDTO, ok := middleware.ValidatedBody[brokerdto.FixationCustomerRequest](c)
 	if ok == false {
 		h.logger.Error("middleware.ValidatedBody error: type dto didn't match with c.Locals(validatedBodyKey)")
 		return c.JSON(httperr.WriteBadRequest(c, "invalid request"))

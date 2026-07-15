@@ -33,7 +33,6 @@ business:
   authz:
     roles:
       - superadmin
-      - developer_admin
       - account_manager
       - sales_manager
       - agency_owner
@@ -43,7 +42,6 @@ business:
     permissions:
       api.protected.access:
         - superadmin
-        - developer_admin
         - account_manager
         - sales_manager
         - agency_owner
@@ -52,27 +50,26 @@ business:
 
       developer.admin.access:
         - superadmin
-        - developer_admin
 
       customer_fixation.create:
+        - superadmin
+        - account_manager
+        - sales_manager
         - agency_owner
         - broker_team_lead
         - broker_team_member
 
       customer_fixation.read:
         - superadmin
-        - developer_admin
         - account_manager
         - sales_manager
         - agency_owner
         - broker_team_lead
         - broker_team_member
 
-      customer_fixation.manage:
+      customer_fixation.update:
         - superadmin
-        - developer_admin
         - account_manager
-        - sales_manager
 
 http:
   cors:
