@@ -38,6 +38,8 @@ type BusinessConfig struct {
 	AccessTokenType   string `mapstructure:"access_token_type"`
 	AccessTokenSecret string `mapstructure:"access_token_secret"`
 	AccessTokenIssuer string `mapstructure:"access_token_issuer"`
+
+	FixationDuration time.Duration `mapstructure:"fixation_duration"` //посмотри надо ли поправить этот файл под брокерсервис, если да - поправь чтоб мне просто копировать-вставить осталось
 }
 
 type ObservabilityConfig struct {

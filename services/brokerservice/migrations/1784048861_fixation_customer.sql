@@ -1,18 +1,17 @@
 -- +goose Up
 create table if not exists fixation_customers(
     id uuid primary key default gen_random_uuid(),
-    expires_at timestamptz not null, --под вопросом нужно ли поле. Как делают - правда ли крепят фиксированно на условные 60 дней и дальше забирают сделку?
     fixed_at timestamptz not null default now(),
+    expires_at timestamptz, --стоит ли делать правило в миграции что expires_at должен быть задан если статус любой кроме converted? верно же понял что надо написать это в юзкейсе и плюсом тут?
     status text not null,
     broker_id uuid,
     fixed_by uuid,
-    manager_id uuid,
+    fix_for uuid,
     customer_id uuid references customers(id) on delete cascade,
     constraint fixation_customers_status_check
-        check(fixation_customers.status IN('free', 'active', 'closed') )
+        check(status IN('active', 'converted', 'expired', 'removed') ),
+    constraint fixation_customers_customer_id_unique unique(customer_id)
 );
-
-create unique index fixation_customers_status_idx on fixation_customers(status);
 
 -- +goose Down
 drop table if exists fixation_customers;

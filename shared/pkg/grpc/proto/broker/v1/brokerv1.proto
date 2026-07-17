@@ -5,17 +5,19 @@ package v1;
 option go_package = "broker/v1;brokerv1";
 
 service BrokerService{
-  rpc CreateCustomerFixation(ConnectCustomerRequest) returns (ConnectCustomerResponse);
+  rpc CreateCustomerFixation(FixationCustomerRequest) returns (FixationCustomerResponse);
 }
 
-message ConnectCustomerRequest{
-  string customer_id = 1;
-  string broker_id = 2;
-  string manager_id = 3;
+message FixationCustomerRequest{
+  string broker_id = 1;
+  string customer_id = 2;
+  string fix_for = 3;
+  string fixed_by = 4;
 }
 
-message ConnectCustomerResponse{
-  string manager_last_name = 1;
-  string manager_first_name = 2;
-  string manager_middle_name = 3;
+message FixationCustomerResponse{
+  string fixation_id = 1;
+  string status = 2;
+  uint64 fixed_at = 3; //какой тип правильно поставить? не нашел data/time
+  uint64 expires_at = 4;
 }

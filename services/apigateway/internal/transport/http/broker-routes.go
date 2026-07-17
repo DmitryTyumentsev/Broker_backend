@@ -37,7 +37,7 @@ func createCustomerFixation(r fiber.Router, h *handlers.Deps) {
 
 func readCustomerFixation(r fiber.Router, h *handlers.Deps) {
 	get(
-		"/$customer_id",
+		"/:customer_id",
 		[]fiber.Handler{
 			middleware.RequirePermission(h.Authz, permissions.CustomerFixationRead),
 		},

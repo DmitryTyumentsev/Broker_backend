@@ -1,20 +1,27 @@
 package entity
 
-import "time"
+const (
+	StatusActive    = "active" //верно же в папке entity держать константы в файле по фиче?
+	StatusConverted = "converted"
+	StatusExpired   = "expired"
+	StatusRemoved   = "removed"
+)
 
 type BrokerID string
 type CustomerID string
-type ManagerID string
+type FixedBy string
+type FixFor string
 
-type ConnectCustomerRequest struct {
-	CustomerID CustomerID
+type FixationCustomerRequest struct {
 	BrokerID   BrokerID
-	ManagerID  ManagerID
-	CreatedAT  *time.Time
+	CustomerID CustomerID
+	FixFor     FixFor
+	FixedBy    FixedBy
 }
 
-type ConnectCustomerResponse struct {
-	ManagerLastName   string
-	ManagerFirstName  string
-	ManagerMiddleName string
+type FixationCustomerResponse struct {
+	FixationID string
+	Status     string
+	FixedAt    string
+	ExpiresAt  string
 }

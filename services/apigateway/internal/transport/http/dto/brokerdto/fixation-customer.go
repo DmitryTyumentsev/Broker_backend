@@ -1,12 +1,15 @@
 package brokerdto
 
-type FixationCustomerRequest struct {
-	CustomerID string `json:"customer_id" validate:"required,uuid4"` //мешают ли для мапингу приватные типы, если да - почему?
-	ManagerID  string `json:"manager_id" validate:"required,uuid4"`  //мы должны ManagerID вытащить из принципала, а CustomerID из query параметра? как вообще в body попадают данные? допустим когда есть ui какой-то и с ui отправляют, как в случае моего проекта
+type FixationCustomerRequest struct { //если на шаг назад - dto это место куда парсим body или место куда парсим и body и квери параметры?
+	BrokerID   string `json:"broker_id" validate:"required,uuid6"`
+	CustomerID string `json:"customer_id" validate:"required,uuid6"` //мешают ли для мапингу приватные типы, если да - почему?
+	FixFor     string `json:"fix_for" validate:"required,fix_for"`
+	//какое вообще правило - когда кладу в бади а когда в квери параметры? вот например есть customer_id - мне его куда класть?
 }
 
-//type ConnectCustomerResponse struct { //верно понял что мы ничего не должны возвращать кроме ошибки или http 201? флоу такой - свободный клиент(кастомер), ты его закрепляешь за собой, видишь свои фио на кастомере что он за тобой. Мне надо возвращать фио при удачном закреплении или нет? как принято делать?
-//	ManagerLastName   string `json:"manager_last_name"`
-//	ManagerFirstName  string `json:"manager_first_name"`
-//	ManagerMiddleName string `json:"manager_middle_name"`
-//}
+type FixationCustomerResponse struct {
+	FixationID string `json:"fixation_id" validate:"required,uuid6"` //тут будет срабатывать валидация? смущает что в хендлерах если верно понимаю, срабатывает только один раз в начале валидатор, покажи прав ли я, миддлвар или другое что-то у меня валидацию делает
+	Status     string `json:"status" validate:"required,status"`
+	FixedAt    string `json:"fixed_at" validate:"required,fixed_at"`
+	ExpiresAt  string `json:"expires_at" validate:"required,expires_at"`
+}

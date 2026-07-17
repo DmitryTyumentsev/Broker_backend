@@ -5,8 +5,6 @@ import (
 	"Broker_backend/services/brokerservice/internal/infra/repositories/postgres"
 	"context"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type Repository struct {
@@ -19,14 +17,14 @@ func NewRepository(pg *postgres.Postgres) *Repository {
 	}
 }
 
-func (r *Repository) SaveFixationCustomer(ctx context.Context, uuid string, expiresAt *time.Time, fixedAt *time.Time, status string, brokerID entity.BrokerID, fixedBy entity.fixedBy, managerID entity.ManagerID, customerID entity.CustomerID) error { //как сделать чтобы юзкейс видел вызов этого метода? как принято делать?
+func (r *Repository) SaveFixationCustomer(ctx context.Context, id string, fixedAt *time.Time, expiresAt *time.Time, status string, brokerID entity.BrokerID, fixedBy entity.FixedBy, fixFor entity.FixFor, customerID entity.CustomerID) error { //как сделать чтобы юзкейс видел вызов этого метода? как принято делать?
 	const op = "postgres.fixationcustomer.SaveFixationCustomer"
 	ctx, cancel := r.pg.WriteWithTimeout(ctx)
 	defer cancel()
 
-	query := `INSERT INTO customers(uuid, expires_at, fixed_at, status, broker_id, fixed_by, manager_id, customer_id) VALUES($1, $2, $3, $4, $5, $6, $7, $8)`
-
-	_, err := r.pg.DB().Exec(ctx, query, uuid, expiresAt, fixedAt, status, brokerID, fixedBy, managerID, customerID)
+	query := `INSERT INTO fixation_customers(id, fixed_at, expires_at, status, broker_id, fixed_by, fix_for, customer_id) VALUES($1, $2, $3, $4, $5, $6, $7, $8)`
+	//верно понял что надо перед вставкой проверить что фиксации нет? как это правильно сделать - сделать метод check в юзкейсах отдельный который будет делать select или сделать в этом методе select и insert транзакцией?
+	_, err := r.pg.DB().Exec(ctx, query, id, expiresAt, fixedAt, status, brokerID, fixedBy, fixFor, customerID)
 	if err != nil {
 		return postgres.MapError(op, err)
 	}
@@ -34,15 +32,17 @@ func (r *Repository) SaveFixationCustomer(ctx context.Context, uuid string, expi
 	return nil
 }
 
-//func (r *Repository) UpdateFixationCustomer(ctx context.Context, brokerID entity.BrokerID, managerID entity.ManagerID, customerID entity.CustomerID, now *time.Time) error { //как сделать чтобы юзкейс видел вызов этого метода? как принято делать?
+//func (r *Repository) UpdateFixationCustomer(ctx context.Context, brokerID entity.BrokerID, userID entity.UserID, customerID entity.CustomerID, now *time.Time) error { //как сделать чтобы юзкейс видел вызов этого метода? как принято делать?
 //	const op = "postgres.fixationcustomer.UpdateFixationCustomer" //есть ли смысл в моем случае писать op? стоит убрать его из мапера и в целом не использовать их?
 //	ctx, cancel := r.pg.WriteWithTimeout(ctx)
 //	defer cancel()
 //
-//	query := `UPDATE customers SET broker_id = $1 AND manager_id = $2 AND updated_at = $3 WHERE customer_id = $4`
+//	query := `UPDATE customers SET broker_id = $1, user_id = $2, updated_at = $3 WHERE customer_id = $4`
 //
-//	tag, err := r.pg.DB().Exec(ctx, query, brokerID, managerID, now, customerID) //не понимаю почему r.pg.DB() а не просто r.pg, r.pg же и есть *postgres.Postgres, почему вот так у меня и правильно ли так делать и почему?
-//	if tag.RowsAffected() == 0 || err != nil {
+//	tag, err := r.pg.DB().Exec(ctx, query, brokerID, userID, now, customerID) //не понимаю почему r.pg.DB() а не просто r.pg, r.pg же и есть *postgres.Postgres, почему вот так у меня и правильно ли так делать и почему?
+//	if tag.RowsAffected() == 0{
+//return domain.ErrNoRows
+//}	if err != nil {
 //		return postgres.MapError(op, err)
 //	}
 //
