@@ -78,8 +78,8 @@ func (c *Client) contextWithTimeout(parent context.Context) (context.Context,
 	return ctx, cancel, nil
 }
 
-func (c *Client) CreateFixationCustomer(ctx context.Context, req *brokerv1.ConnectCustomerRequest) (
-	*brokerv1.ConnectCustomerResponse, error) {
+func (c *Client) CreateFixationCustomer(ctx context.Context, req *brokerv1.FixationCustomerRequest) (
+	*brokerv1.FixationCustomerResponse, error) {
 	ctx, cancel, err := c.contextWithTimeout(ctx)
 	if err != nil {
 		return nil, err

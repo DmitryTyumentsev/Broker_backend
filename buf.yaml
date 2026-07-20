@@ -1,0 +1,9 @@
+version: v2
+modules:
+  - path: shared/pkg/grpc/proto
+lint:
+  use:
+  - STANDARD
+breaking:
+  use:
+  - FILE

@@ -9,8 +9,7 @@ create table if not exists fixation_customers(
     fix_for uuid,
     customer_id uuid references customers(id) on delete cascade,
     constraint fixation_customers_status_check
-        check(status IN('active', 'converted', 'expired', 'removed') ),
-    constraint fixation_customers_customer_id_unique unique(customer_id)
+        check(status IN('active', 'converted', 'expired', 'removed') )
 );
 
 -- +goose Down

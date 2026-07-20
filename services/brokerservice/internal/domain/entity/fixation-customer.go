@@ -1,5 +1,7 @@
 package entity
 
+import "time"
+
 const (
 	StatusActive    = "active" //верно же в папке entity держать константы в файле по фиче?
 	StatusConverted = "converted"
@@ -22,6 +24,6 @@ type FixationCustomerRequest struct {
 type FixationCustomerResponse struct {
 	FixationID string
 	Status     string
-	FixedAt    string
-	ExpiresAt  string
+	FixedAt    time.Time
+	ExpiresAt  time.Time
 }
