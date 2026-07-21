@@ -28,7 +28,7 @@ func NewHandler(service Service, logger *zap.Logger) *Handler {
 		logger:  logger,
 	}
 }
-func (h *Handler) CreateFixationCustomer(ctx context.Context, req *brokerv1.FixationCustomerRequest,
+func (h *Handler) NewFixationCustomer(ctx context.Context, req *brokerv1.FixationCustomerRequest,
 ) (*brokerv1.FixationCustomerResponse, error) {
 	if h == nil || h.service == nil { //пишут ли проверки ресивера на nil в самом методе как здесь я написал? разве на уровне этого слоя не вешают валидаторы тоже?
 		return nil, status.Error(codes.Unavailable, "broker service is not wired")

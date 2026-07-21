@@ -1,9 +1,15 @@
 package cmd
 
-type FixedBy string
-type CustomerID string
-type FixFor string
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
 type BrokerID string
+type CustomerID string
+type FixedBy string
+type FixFor string
 
 type FixationCustomerRequest struct {
 	BrokerID   BrokerID
@@ -13,8 +19,8 @@ type FixationCustomerRequest struct {
 }
 
 type FixationCustomerResponse struct {
-	FixationID string
+	FixationID uuid.UUID
 	Status     string
-	FixedAt    string
-	ExpiresAt  string
+	FixedAt    time.Time
+	ExpiresAt  time.Time
 }

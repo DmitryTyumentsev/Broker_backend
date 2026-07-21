@@ -37,7 +37,7 @@ func (h *BrokerHandler) Validate() error {
 	}
 }
 
-func (h *BrokerHandler) CreateFixationCustomer(c *fiber.Ctx) error { //Верно понял что согласно моему миддлвару аксесс лог, каждый(вообще каждый) вызов всех методов из цепочки очень подробно записывается и трейсится ещё плюсом?
+func (h *BrokerHandler) NewFixationCustomer(c *fiber.Ctx) error { //Верно понял что согласно моему миддлвару аксесс лог, каждый(вообще каждый) вызов всех методов из цепочки очень подробно записывается и трейсится ещё плюсом?
 	bodyDTO, ok := middleware.ValidatedBody[brokerdto.FixationCustomerRequest](c)
 	if ok == false {
 		h.logger.Error("middleware.ValidatedBody error: type dto didn't match with c.Locals(validatedBodyKey)")
@@ -55,7 +55,7 @@ func (h *BrokerHandler) CreateFixationCustomer(c *fiber.Ctx) error { //Верн�
 	}
 
 	ctx := c.UserContext() //что у нас будет внутри ctx? у нас был *fiber.Ctx в котором конфиги, данные. А в context.Context и то и то уйдет? что в нем будет?
-	protoResp, err := h.client.CreateFixationCustomer(ctx, protoDTO)
+	protoResp, err := h.client.NewFixationCustomer(ctx, protoDTO)
 	if err != nil {
 		middleware.AuditLog(
 			c,
@@ -66,7 +66,7 @@ func (h *BrokerHandler) CreateFixationCustomer(c *fiber.Ctx) error { //Верн�
 			zap.String("customer_id", bodyDTO.CustomerID),
 			zap.String("fix_for", bodyDTO.FixFor),
 		)
-		h.logger.Error("client.CreateFixationCustomer error", zap.Error(err)) //какой формат у ошибок в больших проектах в таких ситуациях пишут? что тут писать и зачем если у нас такой подробный access logger? как на больших проектах принято? и второй вопрос - как тут правильнее писать по уровню ошибки - это warning или error? тут же может быть как бизнесово ошибка так и технически. По какому принципу выбираем уровень логирования на ошибку?
+		h.logger.Error("client.NewFixationCustomer error", zap.Error(err)) //какой формат у ошибок в больших проектах в таких ситуациях пишут? что тут писать и зачем если у нас такой подробный access logger? как на больших проектах принято? и второй вопрос - как тут правильнее писать по уровню ошибки - это warning или error? тут же может быть как бизнесово ошибка так и технически. По какому принципу выбираем уровень логирования на ошибку?
 		return err
 	}
 	//почему надо ставить отдельно c.Set("Location", endpoint + ID) ? каждый раз ли это пишут в хендлере отдельно? и по самой логике не очень понял для чего возвращать слово Location и эндпоинт?

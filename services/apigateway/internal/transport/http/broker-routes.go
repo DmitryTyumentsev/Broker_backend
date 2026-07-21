@@ -31,7 +31,7 @@ func createCustomerFixation(r fiber.Router, h *handlers.Deps) {
 		[]fiber.Handler{
 			middleware.RequirePermission(h.Authz, permissions.CustomerFixationCreate),
 		},
-		h.Broker.CreateFixationCustomer,
+		h.Broker.NewFixationCustomer,
 	)
 }
 

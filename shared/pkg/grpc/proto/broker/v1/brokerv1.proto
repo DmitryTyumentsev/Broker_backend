@@ -5,7 +5,7 @@ package broker.v1;
 import "google/protobuf/timestamp.proto";
 
 service BrokerService{
-  rpc CreateCustomerFixation(FixationCustomerRequest) returns (FixationCustomerResponse);
+  rpc NewFixationCustomer(FixationCustomerRequest) returns (FixationCustomerResponse);
 }
 
 message FixationCustomerRequest{

@@ -1,12 +1,18 @@
 package entity
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type Status string
 
 const (
-	StatusActive    = "active" //верно же в папке entity держать константы в файле по фиче?
-	StatusConverted = "converted"
-	StatusExpired   = "expired"
-	StatusRemoved   = "removed"
+	StatusActive    Status = "active"
+	StatusConverted Status = "converted"
+	StatusExpired   Status = "expired"
+	StatusRemoved   Status = "removed"
 )
 
 type BrokerID string
@@ -22,8 +28,8 @@ type FixationCustomerRequest struct {
 }
 
 type FixationCustomerResponse struct {
-	FixationID string
-	Status     string
+	FixationID uuid.UUID
+	Status     Status
 	FixedAt    time.Time
 	ExpiresAt  time.Time
 }
