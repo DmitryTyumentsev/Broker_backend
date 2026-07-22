@@ -23,7 +23,7 @@ func (p *Postgres) DB() *pgxpool.Pool {
 	return p.pool
 }
 
-func (p *Postgres) WriteWithTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+func (p *Postgres) WriteWithTimeout(ctx context.Context) (context.Context, context.CancelFunc) { //я трою над этими тремя методами, стоит делать интерфейс или нет, не понимаю. Мне тут лучше в Querier интерфейс добавить эти три метода или в структуру Querier добавить поле cfg а Postgres удалить? как рассуждать, как делать? об этом я и говорю что не понимаю, часто ступор такой в таких ситуациях. Не понимаю мне надо такие кейсы лайвкодом отрабатывать и параллельно фичами или теории не хватает или другой какой-то вариант
 	return context.WithTimeout(ctx, p.cfg.Database.Postgres.WriteTimeout)
 }
 

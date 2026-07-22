@@ -40,3 +40,7 @@ func (m *TxManager) Querier(ctx context.Context) Querier {
 	}
 	return m.pool
 }
+
+func NewTxManager(pool *pgxpool.Pool) *TxManager {
+	return &TxManager{pool: pool}
+}

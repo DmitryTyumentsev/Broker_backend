@@ -3,10 +3,10 @@ syntax = "proto3";
 package auth.v1;
 
 service AuthService {
-  rpc Register(RegisterRequest) returns (TokenPairResponse);
-  rpc Login(LoginRequest) returns (TokenPairResponse);
-  rpc Refresh(RefreshRequest) returns (TokenPairResponse);
-  rpc Logout(RefreshRequest) returns (LogoutResponse);
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Refresh(RefreshRequest) returns (RefreshResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
 }
 
 message RegisterRequest {
@@ -35,7 +35,19 @@ message TokenPairResponse {
   int64 expires_in_sec = 3;
 }
 
-message LogoutResponse {
-  bool all_device = 1;
-  string device_id = 2;
+message RegisterResponse {
+  string access_token = 1;
+  string refresh_token = 2;
 }
+message LoginResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+}
+message RefreshResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+}
+message LogoutRequest {
+  string refresh_token = 1;
+}
+message LogoutResponse {}
