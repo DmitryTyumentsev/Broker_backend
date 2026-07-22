@@ -19,8 +19,8 @@ func (s *Service) NewFixationCustomer(ctx context.Context, brokerID cmd.BrokerID
 	if err != nil {
 		return nil, err //тут же ок отдать просто err? моя логика - так как в мапере такой ошибки нет, это будет 500, а текст я смогу тут посмотреть, самого err мне хватит думаю
 	}
-	now := s.clock.Now()
-	expiresAt := now.Add(s.cfg.Business.FixationDuration)
+	fixedAt := s.clock.Now()
+	expiresAt := fixedAt.Add(s.cfg.Business.FixationDuration)
 
 	reqEntity := &entity.FixationCustomerRequest{
 		BrokerID:   entity.BrokerID(brokerID), // вот и ошибка с типами. Это в продолжение вопроса из пакета cmd про типы - где уместно вешать а где нет. Оставлю ошибку так чтобы ты мог увидеть кейс и объяснить. с одной стороны надо не спутать случайно переменные с одним типом чтобы подставить в базу корректно, с другой такая ошибка. верно понял что правильно тут создать только под entity типы потому что идем в постгрю и там важен порядок а в cmd без разницы так как конвертируем дальше?
@@ -29,14 +29,14 @@ func (s *Service) NewFixationCustomer(ctx context.Context, brokerID cmd.BrokerID
 		FixedBy:    entity.FixedBy(fixedBy),
 	}
 
-	if err := s.fixations.Insert(ctx, fixationID, now, expiresAt, entity.StatusActive, reqEntity.BrokerID, reqEntity.FixedBy, reqEntity.FixFor, reqEntity.CustomerID); err != nil {
+	if err := s.fixations.Insert(ctx, fixationID, fixedAt, expiresAt, entity.StatusActive, reqEntity.BrokerID, reqEntity.FixedBy, reqEntity.FixFor, reqEntity.CustomerID); err != nil {
 		return nil, err
 	}
 
 	respEntity := &entity.FixationCustomerResponse{ //юзкейс должен отдавать в хендлер entity или cmdResp?
 		FixationID: fixationID,
-		FixedAt:    now,
-		ExpiresAt:  expiresAt,
+		FixedAt:    entity.FixedAt(fixedAt),
+		ExpiresAt:  entity.ExpiresAt(expiresAt),
 		Status:     entity.StatusActive,
 	}
 

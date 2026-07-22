@@ -3,7 +3,7 @@ create table if not exists refresh_sessions(
     session_id bigserial primary key,
     refresh_token_hash text not null,
     device_id text not null,
-    created_at timestamptz not null default now(),
+    created_at timestamptz not null default fixedAt(),
     expires_at timestamptz not null,
     revoked_at timestamptz,
     replaced_by_refresh_token_hash text,

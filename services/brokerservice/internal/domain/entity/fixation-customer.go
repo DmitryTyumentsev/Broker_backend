@@ -8,17 +8,20 @@ import (
 
 type Status string
 
+type BrokerID string
+type CustomerID string
+type FixedBy string
+type FixFor string
+
+type FixedAt time.Time
+type ExpiresAt time.Time
+
 const (
 	StatusActive    Status = "active"
 	StatusConverted Status = "converted"
 	StatusExpired   Status = "expired"
 	StatusRemoved   Status = "removed"
 )
-
-type BrokerID string
-type CustomerID string
-type FixedBy string
-type FixFor string
 
 type FixationCustomerRequest struct {
 	BrokerID   BrokerID
@@ -30,6 +33,6 @@ type FixationCustomerRequest struct {
 type FixationCustomerResponse struct {
 	FixationID uuid.UUID
 	Status     Status
-	FixedAt    time.Time
-	ExpiresAt  time.Time
+	FixedAt    FixedAt
+	ExpiresAt  ExpiresAt
 }

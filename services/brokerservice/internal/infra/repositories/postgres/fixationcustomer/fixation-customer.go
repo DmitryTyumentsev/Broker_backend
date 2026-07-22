@@ -4,7 +4,6 @@ import (
 	"Broker_backend/services/brokerservice/internal/domain/entity"
 	"Broker_backend/services/brokerservice/internal/infra/repositories/postgres"
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -19,14 +18,14 @@ func NewRepository(pg *postgres.Postgres) *Repository {
 	}
 }
 
-func (r *Repository) Insert(ctx context.Context, fixationID uuid.UUID, now, expiresAt time.Time, statusActive entity.Status, brokerID entity.BrokerID, fixedBy entity.FixedBy, fixFor entity.FixFor, customerID entity.CustomerID) error { //как сделать чтобы юзкейс видел вызов этого метода? как принято делать?
+func (r *Repository) Insert(ctx context.Context, fixationID uuid.UUID, fixedAt entity.FixedAt, expiresAt entity.ExpiresAt, statusActive entity.Status, brokerID entity.BrokerID, fixedBy entity.FixedBy, fixFor entity.FixFor, customerID entity.CustomerID) error { //как сделать чтобы юзкейс видел вызов этого метода? как принято делать?
 	const op = "postgres.fixationcustomer.SaveFixationCustomer"
 	ctx, cancel := r.pg.WriteWithTimeout(ctx)
 	defer cancel()
 
 	query := `INSERT INTO fixation_customers(id, fixed_at, expires_at, status, broker_id, fixed_by, fix_for, customer_id) VALUES($1, $2, $3, $4, $5, $6, $7, $8)`
 	//верно понял что надо перед вставкой проверить что фиксации нет? как это правильно сделать - сделать метод check в юзкейсах отдельный который будет делать select или сделать в этом методе select и insert транзакцией?
-	_, err := r.pg.DB().Exec(ctx, query, fixationID, expiresAt, now, statusActive, brokerID, fixedBy, fixFor, customerID)
+	_, err := r.pg.DB().Exec(ctx, query, fixationID, fixedAt, expiresAt, statusActive, brokerID, fixedBy, fixFor, customerID)
 	if err != nil {
 		return postgres.MapError(op, err)
 	}

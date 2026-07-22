@@ -1,7 +1,7 @@
 -- +goose Up
 create table if not exists fixation_customers(
     id uuid primary key default gen_random_uuid(),
-    fixed_at timestamptz not null default now(),
+    fixed_at timestamptz not null default fixedAt(),
     expires_at timestamptz, --стоит ли делать правило в миграции что expires_at должен быть задан если статус любой кроме converted? верно же понял что надо написать это в юзкейсе и плюсом тут?
     Status text not null,
     broker_id uuid,

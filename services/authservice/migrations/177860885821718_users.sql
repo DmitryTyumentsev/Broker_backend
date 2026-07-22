@@ -7,7 +7,7 @@ create table if not exists users(
     last_name varchar(64) not null,
     first_name varchar(64) not null,
     middle_name varchar(64),
-    created_at timestamptz not null default now(),
+    created_at timestamptz not null default fixedAt(),
     updated_at timestamptz,
 
     constraint users_user_role_check check(

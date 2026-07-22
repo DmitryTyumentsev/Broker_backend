@@ -5,17 +5,17 @@ package broker.v1;
 import "google/protobuf/timestamp.proto";
 
 service BrokerService{
-  rpc NewFixationCustomer(FixationCustomerRequest) returns (FixationCustomerResponse);
+  rpc NewFixationCustomer(NewFixationCustomerRequest) returns (NewFixationCustomerResponse);
 }
 
-message FixationCustomerRequest{
+message NewFixationCustomerRequest{
   string broker_id = 1;
   string customer_id = 2;
   string fix_for = 3;
   string fixed_by = 4;
 }
 
-message FixationCustomerResponse{
+message NewFixationCustomerResponse{
   string fixation_id = 1;
   string status = 2;
   google.protobuf.Timestamp fixed_at = 3;
