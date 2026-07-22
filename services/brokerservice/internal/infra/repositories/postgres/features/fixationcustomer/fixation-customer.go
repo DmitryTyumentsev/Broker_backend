@@ -4,6 +4,7 @@ import (
 	"Broker_backend/services/brokerservice/internal/domain/entity"
 	"Broker_backend/services/brokerservice/internal/infra/repositories/postgres"
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -16,8 +17,8 @@ func NewRepository(tx *postgres.TxManager) *Repository {
 	return &Repository{tx: tx}
 }
 
-func (r *Repository) Insert(ctx context.Context, fixationID uuid.UUID, fixedAt entity.FixedAt, expiresAt entity.ExpiresAt, statusActive entity.Status, brokerID entity.BrokerID, fixedBy entity.FixedBy, fixFor entity.FixFor, customerID entity.CustomerID) error { //как сделать чтобы юзкейс видел вызов этого метода? как принято делать?
-	const op = "postgres.features.SaveFixationCustomer"
+func (r *Repository) Insert(ctx context.Context, fixationID uuid.UUID, fixedAt, expiresAt time.Time, statusActive entity.Status, brokerID entity.BrokerID, fixedBy entity.FixedBy, fixFor entity.FixFor, customerID entity.CustomerID) error { //ты уверен что верным решением было убрать отсюда отдельный тип у fixedAt и expiresAt? точно ли принято так делать? просто не понимаю, неужели только для строк и чисел стоит делать типизированное. и еще раз - тут стоит просто entity на вход отдавать или отдельно каждый параметр выписывать как я сейчас сделал? объясни логику пж
+	const op = "postgres.features.Insert"
 	ctx, cancel := r.tx.WriteWithTimeout(ctx)
 	defer cancel()
 

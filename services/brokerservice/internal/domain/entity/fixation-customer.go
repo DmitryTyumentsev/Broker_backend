@@ -23,14 +23,11 @@ const (
 	StatusRemoved   Status = "removed"
 )
 
-type FixationCustomerRequest struct {
+type FixationCustomer struct {
 	BrokerID   BrokerID
 	CustomerID CustomerID
 	FixFor     FixFor
 	FixedBy    FixedBy
-}
-
-type FixationCustomerResponse struct {
 	FixationID uuid.UUID
 	Status     Status
 	FixedAt    FixedAt
