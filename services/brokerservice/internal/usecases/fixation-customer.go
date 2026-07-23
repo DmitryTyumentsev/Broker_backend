@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (s *Service) NewFixationCustomer(ctx context.Context, brokerID cmd.BrokerID, customerID cmd.CustomerID, fixFor cmd.FixFor, fixedBy cmd.FixedBy) (*cmd.FixationCustomerResponse, error) {
+func (s *Service) NewFixationCustomer(ctx context.Context, cmdFixationCustomer *cmd.FixationCustomerRequest) (*entity.FixationCustomer, error) {
 	//как лучше сделать - поделить на NewFixation/ExpiredFixation/ConvertFixation/RemovedFixation ? так принято делать в таких и подобных кейсах?
 	if s == nil {
 		return nil, fmt.Errorf("service not init") //надо ли проверять ресивер на nil? у меня же есть ensureDeps()
@@ -22,23 +22,20 @@ func (s *Service) NewFixationCustomer(ctx context.Context, brokerID cmd.BrokerID
 	fixedAt := s.clock.Now()
 	expiresAt := fixedAt.Add(s.cfg.Business.FixationDuration)
 
-	reqEntity := &entity.FixationCustomer{
-		BrokerID:   entity.BrokerID(brokerID),
-		CustomerID: entity.CustomerID(customerID),
-		FixFor:     entity.FixFor(fixFor),
-		FixedBy:    entity.FixedBy(fixedBy),
-	}
-
-	if err := s.fixations.Insert(ctx, fixationID, fixedAt, expiresAt, entity.StatusActive, reqEntity.BrokerID, reqEntity.FixedBy, reqEntity.FixFor, reqEntity.CustomerID); err != nil {
-		return nil, err
-	}
-
-	respEntity := &entity.FixationCustomer{ //юзкейс должен отдавать в хендлер entity или cmdResp? давай еще раз тут, верно ли чтобы наш хендлер получил entity, не понимаю логику до конца между хендлером нашего сервиса и его юзкейсом
+	fixationCustomer := entity.FixationCustomer{
+		BrokerID:   cmdFixationCustomer.BrokerID,
+		CustomerID: cmdFixationCustomer.CustomerID,
+		FixFor:     cmdFixationCustomer.FixFor,
+		FixedBy:    cmdFixationCustomer.FixedBy,
 		FixationID: fixationID,
-		FixedAt:    entity.FixedAt(fixedAt),
-		ExpiresAt:  entity.ExpiresAt(expiresAt),
+		FixedAt:    fixedAt,
+		ExpiresAt:  expiresAt,
 		Status:     entity.StatusActive,
 	}
 
-	return respEntity, nil
+	if err := s.fixations.Insert(ctx, fixationCustomer); err != nil {
+		return nil, err
+	}
+
+	return &fixationCustomer, nil
 }

@@ -1,13 +1,26 @@
+# buf.gen.yaml — local-плагины вместо remote.
+#
+# remote: выполняет генерацию на серверах Buf Schema Registry —
+# отсюда 403, BSR требует авторизации. Это платная фича, валидная
+# для команд, которые уже на BSR.
+#
+# local: вызывает бинарник у тебя на машине. Так делает большинство
+# Go-проектов: без сети, без токенов, работает в закрытом контуре.
+# Бинарники ставит `make tools` с зафиксированными версиями.
+
 version: v2
+
 managed:
   enabled: true
   override:
-  - file_option: go_package_prefix
-    value: Broker_backend/shared/pkg/grpc/gen
+    - file_option: go_package_prefix
+      value: Broker_backend/shared/pkg/grpc/gen
+
 plugins:
-  - remote: buf.build/protocolbuffers/go
+  - local: protoc-gen-go
     out: shared/pkg/grpc/gen
     opt: paths=source_relative
-  - remote: buf.build/grpc/go
+
+  - local: protoc-gen-go-grpc
     out: shared/pkg/grpc/gen
     opt: paths=source_relative

@@ -4,9 +4,6 @@ import (
 	"Broker_backend/services/brokerservice/internal/domain/entity"
 	"Broker_backend/services/brokerservice/internal/infra/repositories/postgres"
 	"context"
-	"time"
-
-	"github.com/google/uuid"
 )
 
 type Repository struct {
@@ -17,14 +14,14 @@ func NewRepository(tx *postgres.TxManager) *Repository {
 	return &Repository{tx: tx}
 }
 
-func (r *Repository) Insert(ctx context.Context, fixationID uuid.UUID, fixedAt, expiresAt time.Time, statusActive entity.Status, brokerID entity.BrokerID, fixedBy entity.FixedBy, fixFor entity.FixFor, customerID entity.CustomerID) error { //ты уверен что верным решением было убрать отсюда отдельный тип у fixedAt и expiresAt? точно ли принято так делать? просто не понимаю, неужели только для строк и чисел стоит делать типизированное. и еще раз - тут стоит просто entity на вход отдавать или отдельно каждый параметр выписывать как я сейчас сделал? объясни логику пж
+func (r *Repository) Insert(ctx context.Context, fixationCustomer entity.FixationCustomer) error {
 	const op = "postgres.features.Insert"
 	ctx, cancel := r.tx.WriteWithTimeout(ctx)
 	defer cancel()
 
 	query := `INSERT INTO fixation_customers(id, fixed_at, expires_at, status, broker_id, fixed_by, fix_for, customer_id) VALUES($1, $2, $3, $4, $5, $6, $7, $8)`
 	//верно понял что надо перед вставкой проверить что фиксации нет? как это правильно сделать - сделать метод check в юзкейсах отдельный который будет делать select или сделать в этом методе select и insert транзакцией?
-	_, err := r.tx.Querier(ctx).Exec(ctx, query, fixationID, fixedAt, expiresAt, statusActive, brokerID, fixedBy, fixFor, customerID)
+	_, err := r.tx.Querier(ctx).Exec(ctx, query, fixationCustomer.FixationID, fixationCustomer.FixedAt, fixationCustomer.ExpiresAt, fixationCustomer.Status, fixationCustomer.BrokerID, fixationCustomer.FixedBy, fixationCustomer.FixFor, fixationCustomer.CustomerID)
 	if err != nil {
 		return postgres.MapError(op, err)
 	}

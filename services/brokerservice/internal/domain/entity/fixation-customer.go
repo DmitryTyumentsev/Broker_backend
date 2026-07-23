@@ -8,14 +8,6 @@ import (
 
 type Status string
 
-type BrokerID string
-type CustomerID string
-type FixedBy string
-type FixFor string
-
-type FixedAt time.Time
-type ExpiresAt time.Time
-
 const (
 	StatusActive    Status = "active"
 	StatusConverted Status = "converted"
@@ -24,12 +16,12 @@ const (
 )
 
 type FixationCustomer struct {
-	BrokerID   BrokerID
-	CustomerID CustomerID
-	FixFor     FixFor
-	FixedBy    FixedBy
+	BrokerID   string
+	CustomerID string
+	FixFor     string
+	FixedBy    string
 	FixationID uuid.UUID
 	Status     Status
-	FixedAt    FixedAt
-	ExpiresAt  ExpiresAt
+	FixedAt    time.Time
+	ExpiresAt  time.Time
 }

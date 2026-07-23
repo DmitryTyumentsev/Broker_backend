@@ -17,7 +17,15 @@ message NewFixationCustomerRequest{
 
 message NewFixationCustomerResponse{
   string fixation_id = 1;
-  string status = 2;
+  FixationStatus status = 2; //немного не понял зачем сделали отдельно тип и нигде не навесили конкретное значение из него
   google.protobuf.Timestamp fixed_at = 3;
   google.protobuf.Timestamp expires_at = 4;
+}
+
+enum FixationStatus{
+  FIXATION_STATUS_ACTIVE = 0;
+  FIXATION_STATUS_UNSPECIFIED = 1;
+  FIXATION_STATUS_CONVERTED = 2;
+  FIXATION_STATUS_EXPIRED = 3;
+  FIXATION_STATUS_REMOVED = 4;
 }

@@ -14,7 +14,7 @@ import (
 
 // ты написал что тут нужен интерфейс так как база потребитель. я видимо не совсем понимаю что означает потребитель. в моей картине потребитель - тот кто потребляет, запрашивает данные. есть юзкейс который вызывает метод в постгре. потребитель юзкейс который вызывает постгрю или потребитель постгря которая получает данные от юзкейса? они же друг для друга оба потребители - друг от друга получают данные, друг другу отдают их. или надо ставить интерфейс если хотим пойти в слой ниже? а потребитель причем тут?
 type FixationRepository interface {
-	Insert(ctx context.Context, fixationID uuid.UUID, now, expiresAt time.Time, statusActive entity.Status, brokerID entity.BrokerID, fixedBy entity.FixedBy, fixFor entity.FixFor, customerID entity.CustomerID) error //лучше просто entity передавать или отдельно каждое поле выписывать?
+	Insert(ctx context.Context, fixationCustomer entity.FixationCustomer) error
 	ActiveByCustomer(ctx context.Context, customerID uuid.UUID) (entity.FixationCustomerResponse, error)
 }
 
