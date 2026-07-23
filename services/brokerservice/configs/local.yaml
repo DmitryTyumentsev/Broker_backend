@@ -21,8 +21,8 @@ database:
     host: "127.0.0.1"
     port: 5432
     database_name: "broker"
-    username: "broker"
-    password: "broker"
+    username: "postgres"
+    password: "postgres"
     ssl_mode: "disable"
 
     migrations_path: "services/brokerservice/migrations"

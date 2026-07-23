@@ -16,8 +16,6 @@ func NewRepository(tx *postgres.TxManager) *Repository {
 
 func (r *Repository) Insert(ctx context.Context, fixationCustomer entity.FixationCustomer) error {
 	const op = "postgres.features.Insert"
-	ctx, cancel := r.tx.WriteWithTimeout(ctx)
-	defer cancel()
 
 	query := `INSERT INTO fixation_customers(id, fixed_at, expires_at, status, broker_id, fixed_by, fix_for, customer_id) VALUES($1, $2, $3, $4, $5, $6, $7, $8)`
 	//верно понял что надо перед вставкой проверить что фиксации нет? как это правильно сделать - сделать метод check в юзкейсах отдельный который будет делать select или сделать в этом методе select и insert транзакцией?
