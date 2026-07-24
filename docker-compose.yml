@@ -1,4 +1,35 @@
+# docker-compose.yml — вся инфраструктура для локальной разработки.
+#
+#   docker compose up -d          поднять
+#   docker compose logs -f        смотреть логи
+#   docker compose down           остановить
+#   docker compose down -v        остановить И стереть данные
+#
+# UI после запуска:
+#   Jaeger (трейсы)      http://localhost:16686
+#   Prometheus (метрики) http://localhost:9090
+#   Grafana (дашборды)   http://localhost:3000   admin/admin
+
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: broker_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: broker
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # healthcheck нужен, чтобы `docker compose up` не отдавал управление
+    # раньше, чем база готова принимать соединения
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U broker -d broker"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   redis:
     image: redis:7.4-alpine
     container_name: broker_redis
@@ -7,6 +38,47 @@ services:
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Jaeger — куда OTel-экспортёр из твоего кода шлёт трейсы.
+  # В конфиге сервисов otlp_endpoint: localhost:4317 — это сюда.
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    container_name: broker_jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"   # web UI
+      - "4317:4317"     # OTLP gRPC — сюда шлёт приложение
+      - "4318:4318"     # OTLP HTTP
+
+  # Prometheus — забирает метрики с /metrics твоего gateway.
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    container_name: broker_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+
+  # Grafana — рисует графики по данным Prometheus.
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: broker_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    depends_on:
+      - prometheus
 
 volumes:
+  postgres_data:
   redis_data:

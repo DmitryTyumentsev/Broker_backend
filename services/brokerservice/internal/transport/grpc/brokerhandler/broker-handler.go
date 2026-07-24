@@ -2,7 +2,7 @@ package brokerhandler
 
 import (
 	"Broker_backend/services/brokerservice/internal/domain/entity"
-	"Broker_backend/services/brokerservice/internal/usecases/cmd"
+	"Broker_backend/services/brokerservice/internal/usecases"
 	brokerv1 "Broker_backend/shared/pkg/grpc/gen/broker/v1"
 	"context"
 
@@ -13,7 +13,7 @@ import (
 )
 
 type Service interface {
-	NewFixationCustomer(ctx context.Context, dtoFixationCustomer *cmd.FixationCustomerRequest) (*entity.FixationCustomer, error)
+	NewFixationCustomer(ctx context.Context, dtoFixationCustomer *usecases.FixationCustomerRequest) (*entity.FixationCustomer, error)
 }
 type Handler struct {
 	brokerv1.UnimplementedBrokerServiceServer
@@ -36,7 +36,7 @@ func (h *Handler) NewFixationCustomer(ctx context.Context, req *brokerv1.NewFixa
 		return nil, status.Error(codes.Unavailable, "broker service is not wired")
 	}
 
-	cmdFixationCustomer := &cmd.FixationCustomerRequest{ //как принято называть их - дто или cmd или command struct? обрати внимание что это сам сервис а не апи гейтвей
+	cmdFixationCustomer := &usecases.FixationCustomerRequest{ //как принято называть их - дто или cmd или command struct? обрати внимание что это сам сервис а не апи гейтвей
 		BrokerID:   req.BrokerId,
 		CustomerID: req.CustomerId,
 		FixFor:     req.FixFor,

@@ -1,0 +1,24 @@
+# deploy/prometheus.yml
+#
+# Prometheus работает по pull-модели: он сам ходит на /metrics
+# приложения и забирает цифры. Приложение никуда ничего не шлёт.
+
+global:
+  scrape_interval: 15s      # как часто опрашивать
+  evaluation_interval: 15s  # как часто пересчитывать правила алертов
+
+scrape_configs:
+  - job_name: 'apigateway'
+    metrics_path: '/metrics'
+    static_configs:
+      # host.docker.internal — так контейнер достучится до сервиса,
+      # запущенного на хосте через `make run`.
+      # Если запускаешь gateway тоже в compose — замени на имя сервиса.
+      - targets: ['host.docker.internal:8081']
+        labels:
+          service: 'apigateway'
+
+  # Prometheus умеет мониторить сам себя — удобно для проверки, что он жив
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

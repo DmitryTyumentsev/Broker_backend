@@ -2,14 +2,13 @@ package usecases
 
 import (
 	"Broker_backend/services/brokerservice/internal/domain/entity"
-	"Broker_backend/services/brokerservice/internal/usecases/cmd"
 	"context"
 	"fmt"
 
 	"github.com/google/uuid"
 )
 
-func (s *Service) NewFixationCustomer(ctx context.Context, cmdFixationCustomer *cmd.FixationCustomerRequest) (*entity.FixationCustomer, error) {
+func (s *Service) NewFixationCustomer(ctx context.Context, cmdFixationCustomer *FixationCustomerRequest) (*entity.FixationCustomer, error) {
 	//как лучше сделать - поделить на NewFixation/ExpiredFixation/ConvertFixation/RemovedFixation ? так принято делать в таких и подобных кейсах?
 	if s == nil {
 		return nil, fmt.Errorf("service not init") //надо ли проверять ресивер на nil? у меня же есть ensureDeps()

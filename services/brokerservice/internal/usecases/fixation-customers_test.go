@@ -7,26 +7,14 @@ import (
 	"github.com/google/uuid"
 )
 
-const (
-	countGorutines = 10
-)
-
-type MockFixationCustomer struct {
-	CustomerID entity.CustomerID
-	BrokerID   entity.BrokerID
-	ManagerID  entity.ManagerID
+type MockNewFixationCustomer struct {
+	fixationCustomer entity.FixationCustomer
 }
 
-func TestCreateFixationCustomer(t *testing.T) { //начал писать тест и понял что не понял зачем и на что я его пишу. На что писать тест? как?
-	mock := &MockFixationCustomer{
-		CustomerID: entity.CustomerID(uuid.NewString()),
-		BrokerID:   entity.BrokerID(uuid.NewString()),
-		ManagerID:  "",
-	}
+func TestNewFixationCustomer(t *testing.T) {
+	mock := &MockNewFixationCustomer{
+		fixationCustomer: entity.FixationCustomer{
 
-	for i := 0; i < countGorutines; i++ {
-		go func() {
-
-		}()
+		}
 	}
 }

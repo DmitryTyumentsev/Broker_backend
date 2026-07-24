@@ -1,0 +1,65 @@
+# .golangci.yml — конфиг линтеров.
+# Запуск: golangci-lint run
+#
+# Что бы он поймал в твоём коде без моего участия:
+#   staticcheck  → пустой if !ok {}, недостижимый код
+#   errcheck     → отброшенный CommandTag, необработанные ошибки
+#   gosimple     → if ok == false вместо if !ok
+#   ineffassign  → присваивания, которые никто не читает
+#   unused       → мёртвый код (WriteWithTimeout, ReadWithTimeout)
+
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    # --- база, включена по умолчанию, перечисляю явно ---
+    - errcheck      # необработанные ошибки
+    - govet         # подозрительные конструкции
+    - ineffassign   # бесполезные присваивания
+    - staticcheck   # большой набор проверок (включает gosimple)
+    - unused        # неиспользуемый код
+
+    # --- важные дополнительные ---
+    - bodyclose     # незакрытый http.Response.Body
+    - contextcheck  # потерянный context
+    - errorlint     # == вместо errors.Is, %v вместо %w
+    - noctx         # HTTP-запросы без context
+    - rowserrcheck  # незакрытый sql.Rows / непроверенный rows.Err()
+    - sqlclosecheck # незакрытые sql.Rows и sql.Stmt
+    - nilerr        # return nil при ненулевой ошибке ← ловит твой баг с RowsAffected
+    - durationcheck # умножение двух Duration
+    - makezero      # make([]T, n) с последующим append
+
+    # --- стиль ---
+    - misspell      # опечатки в английских словах
+    - unconvert     # ненужные конверсии типов
+    - wastedassign
+
+linters-settings:
+  errcheck:
+    # Не ругаться на явно отброшенные ошибки вида `_ = f.Close()`
+    check-blank: false
+  errorlint:
+    errorf: true      # требовать %w вместо %v при обёртке
+    asserts: true     # ругаться на err.(*MyError) вместо errors.As
+    comparison: true  # ругаться на err == ErrFoo вместо errors.Is
+
+issues:
+  exclude-rules:
+    # В тестах допускаем неполную обработку ошибок
+    - path: _test\.go
+      linters:
+        - errcheck
+        - bodyclose
+  # По умолчанию golangci-lint показывает максимум 3 однотипных проблемы.
+  # На первом прогоне хочется увидеть всё.
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+  # Сгенерированный код не проверяем
+  exclude-dirs:
+    - shared/pkg/grpc/gen

@@ -1,0 +1,122 @@
+# .github/workflows/ci.yml
+#
+# Тот самый «пайплайн» из цитаты. Запускается на каждый push и PR.
+# Красный CI → нельзя смёржить. Это и есть автоматический code review.
+
+name: CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+
+# Отменять предыдущий прогон, если запушили новый коммит в ту же ветку —
+# незачем тратить раннеры на устаревший код.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Сборка и статический анализ ────────────────────────────────────
+  build:
+    name: Build & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true          # кеш модулей: следующий прогон быстрее
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Verify go.mod is tidy
+        # Если кто-то добавил импорт и не сделал go mod tidy — CI покраснеет.
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+
+      - name: Check formatting
+        # gofmt -l печатает файлы, которые надо отформатировать.
+        # Непустой вывод → падаем.
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "Не отформатированы:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Build
+        run: go build ./...
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+  # ── Тесты ──────────────────────────────────────────────────────────
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Unit tests
+        # -race обязателен: ловит гонки, которые иначе всплывут в проде.
+        run: go test -race -short ./...
+
+      - name: Integration tests
+        # testcontainers сам поднимет Postgres — Docker на раннере есть.
+        run: go test -race ./...
+
+      - name: Coverage
+        run: |
+          go test -short -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out | tail -1
+
+  # ── Безопасность ───────────────────────────────────────────────────
+  security:
+    name: Vulnerability scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: govulncheck
+        # Умнее обычных сканеров: проверяет не «есть ли уязвимая версия
+        # в зависимостях», а «вызывается ли уязвимая функция из твоего кода».
+        uses: golang/govulncheck-action@v1
+
+  # ── Контракт proto ─────────────────────────────────────────────────
+  proto:
+    name: Proto lint & compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # buf breaking нужна вся история, не последний коммит
+
+      - uses: bufbuild/buf-setup-action@v1
+
+      - name: Lint proto
+        uses: bufbuild/buf-lint-action@v1
+
+      # Проверка обратной совместимости контракта.
+      # ВКЛЮЧАТЬ, когда контракт уже опубликован (есть клиенты на старой версии).
+      # Пока фича не в проде — только шумит, поэтому закомментировано.
+      #
+      # - name: Check breaking changes
+      #   uses: bufbuild/buf-breaking-action@v1
+      #   with:
+      #     against: 'https://github.com/${{ github.repository }}.git#branch=master'

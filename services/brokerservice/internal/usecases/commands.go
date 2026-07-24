@@ -1,4 +1,4 @@
-package cmd
+package usecases
 
 type FixationCustomerRequest struct {
 	BrokerID   string
