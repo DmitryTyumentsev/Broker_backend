@@ -69,7 +69,7 @@ func (c *Client) Validate() error {
 func (c *Client) Register(
 	ctx context.Context,
 	req *authv1.RegisterRequest,
-) (*authv1.TokenPairResponse, error) {
+) (*authv1.RegisterResponse, error) {
 	ctx, cancel, err := c.contextWithTimeout(ctx)
 	if err != nil {
 		return nil, err
@@ -82,7 +82,7 @@ func (c *Client) Register(
 func (c *Client) Login(
 	ctx context.Context,
 	req *authv1.LoginRequest,
-) (*authv1.TokenPairResponse, error) {
+) (*authv1.LoginResponse, error) {
 	ctx, cancel, err := c.contextWithTimeout(ctx)
 	if err != nil {
 		return nil, err
@@ -95,7 +95,7 @@ func (c *Client) Login(
 func (c *Client) Refresh(
 	ctx context.Context,
 	req *authv1.RefreshRequest,
-) (*authv1.TokenPairResponse, error) {
+) (*authv1.RefreshResponse, error) {
 	ctx, cancel, err := c.contextWithTimeout(ctx)
 	if err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ func (c *Client) Refresh(
 
 func (c *Client) Logout(
 	ctx context.Context,
-	req *authv1.RefreshRequest,
+	req *authv1.LogoutRequest,
 ) (*authv1.LogoutResponse, error) {
 	ctx, cancel, err := c.contextWithTimeout(ctx)
 	if err != nil {

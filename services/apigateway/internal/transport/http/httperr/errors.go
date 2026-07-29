@@ -26,6 +26,30 @@ func WriteGRPCError(c *fiber.Ctx, err error) error {
 	})
 }
 
+func WriteHTTPError(c *fiber.Ctx, err error) error {
+	if err == nil {
+		return nil
+	}
+
+	code, ok := status.FromError(err) //надо для http такое из ctx вытащить
+	if !ok {
+		return WriteInternal(c)
+	}
+
+	switch code {
+	case fiber.StatusConflict:
+		return c.Status(fiber.StatusConflict).JSON(dto.ErrorResponse{
+			Code:    fiber.StatusConflict,
+			Message: st.Message(),
+		})
+	}
+
+	return c.Status(httpStatus).JSON(dto.ErrorResponse{
+		Code:    httpStatus,
+		Message: st.Message(),
+	})
+}
+
 func grpcCodeToHTTPStatus(code codes.Code) int {
 	switch code {
 	case codes.InvalidArgument:

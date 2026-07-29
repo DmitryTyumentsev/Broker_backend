@@ -2,12 +2,14 @@
 # ===== общие =====
 # ----- папки -----
 go.mod
+подсказки
 
 # ----- файлы -----
 shared/configs/dev.env
 shared/configs/local.env
 shared/configs/dev.yaml
 shared/configs/local.yaml
+подсказки/.
 
 # ===== отдельно сервисы =====
 

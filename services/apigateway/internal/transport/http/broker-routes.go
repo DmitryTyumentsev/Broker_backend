@@ -12,19 +12,18 @@ import (
 func registerBrokerRoutes(r fiber.Router, h *handlers.Deps) {
 	brokers := r.Group("/brokers")
 
-	registerCustomerFixationRoutes(brokers, h)
+	registerFixationCustomerRoutes(brokers, h)
 }
 
-func registerCustomerFixationRoutes(brokers fiber.Router, h *handlers.Deps) {
-	customerFixations := brokers.Group("/customer-fixation")
+func registerFixationCustomerRoutes(brokers fiber.Router, h *handlers.Deps) {
+	customerFixations := brokers.Group("/fixation-customer")
 
-	createCustomerFixation(customerFixations, h)
-	readCustomerFixation(customerFixations, h)
+	newCustomerFixation(customerFixations, h)
 	updateCustomerFixation(customerFixations, h)
 }
 
-func createCustomerFixation(r fiber.Router, h *handlers.Deps) {
-	postJSON[brokerdto.FixationCustomerRequest](
+func newCustomerFixation(r fiber.Router, h *handlers.Deps) {
+	postJSON[brokerdto.FixationRequest](
 		r,
 		"/",
 		h.Validator,
@@ -35,18 +34,18 @@ func createCustomerFixation(r fiber.Router, h *handlers.Deps) {
 	)
 }
 
-func readCustomerFixation(r fiber.Router, h *handlers.Deps) {
-	get(
-		"/:customer_id",
-		[]fiber.Handler{
-			middleware.RequirePermission(h.Authz, permissions.CustomerFixationRead),
-		},
-		h.Broker.ReadFixationCustomer,
-	)
-}
+// func readCustomerFixation(r fiber.Router, h *handlers.Deps) {
+// 	get(
+// 		"/:customer_id",
+// 		[]fiber.Handler{
+// 			middleware.RequirePermission(h.Authz, permissions.CustomerFixationRead),
+// 		},
+// 		h.Broker.ReadFixationCustomer,
+// 	)
+// }
 
 func updateCustomerFixation(r fiber.Router, h *handlers.Deps) {
-	patchJSON[brokerdto.FixationCustomerRequest](
+	patchJSON[brokerdto.FixationRequest](
 		r,
 		"/",
 		h.Validator,

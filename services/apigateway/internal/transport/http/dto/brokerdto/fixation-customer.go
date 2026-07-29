@@ -1,15 +1,22 @@
 package brokerdto
 
-type FixationCustomerRequest struct { //если на шаг назад - dto это место куда парсим body или место куда парсим и body и квери параметры?
-	BrokerID   string `json:"broker_id" validate:"required,uuid"`
-	CustomerID string `json:"customer_id" validate:"required,uuid"` //мешают ли для мапингу приватные типы, если да - почему?
-	FixFor     string `json:"fix_for" validate:"required"`
-	//какое вообще правило - когда кладу в бади а когда в квери параметры? вот например есть customer_id - мне его куда класть?
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type FixationRequest struct { //верно ли на разные методы(new и update например) использовать одни и те же dto добавив поля для совместного использования? например из-за update, добавил в FixationRequest поле FixationIDNew которое не нужно ручке new-fixation
+	Phone         string    `json:"phone" validate:"required"`
+	FixFor        uuid.UUID `json:"fix_for" validate:"required,uuid"`
+	ProjectID     uuid.UUID `json:"project_id" validate:"required,uuid"`
+	FixationIDOld uuid.UUID `json:"fixation_id_old" validate:"uuid"`
+	//какое вообще правило - когда кладу в бади а когда в квери параметры? и dto = body? квери параметры добавляют в dto или нет? ответишь и тут на оба вопроса
 }
 
-type FixationCustomerResponse struct {
-	FixationID string `json:"fixation_id" validate:"required,uuid"` //тут будет срабатывать валидация? смущает что в хендлерах если верно понимаю, срабатывает только один раз в начале валидатор, покажи прав ли я, миддлвар или другое что-то у меня валидацию делает
-	Status     string `json:"status" validate:"required"`
-	FixedAt    string `json:"fixed_at" validate:"required"`
-	ExpiresAt  string `json:"expires_at" validate:"required"`
+type FixationResponse struct {
+	FixationIDNew uuid.UUID `json:"fixation_id_new" validate:"required,uuid"` //тут будет срабатывать валидация? смущает что в хендлерах если верно понимаю, срабатывает только один раз в начале валидатор, покажи прав ли я, миддлвар или другое что-то у меня валидацию делает
+	//Status        string    `json:"status" validate:"required"`//нужно ли нам для ответа в new и update ручках поле status? убрал его потому что мне кажется оно не нужно в ответе, объясни как принято делать, как правильно
+	FixedAt   time.Time `json:"fixed_at" validate:"required"`
+	ExpiresAt time.Time `json:"expires_at"`
 }

@@ -75,6 +75,8 @@ business:
       customer_fixation.update:
         - superadmin
         - account_manager
+        - broker_team_lead
+        - agency_owner
 
 http:
   cors:

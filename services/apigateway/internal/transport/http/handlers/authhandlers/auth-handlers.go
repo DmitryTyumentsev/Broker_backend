@@ -118,13 +118,11 @@ func (h *AuthHandler) Logout(ctx *fiber.Ctx) error {
 		return httperr.WriteBadRequest(ctx, "validated request is missing")
 	}
 
-	grpcReq := &authv1.RefreshRequest{
+	grpcReq := &authv1.LogoutRequest{
 		RefreshToken: req.RefreshToken,
-		DeviceId:     req.DeviceID,
 	}
 
-	resp, err := h.authClient.Logout(ctx.UserContext(), grpcReq)
-	if err != nil {
+	if _, err := h.authClient.Logout(ctx.UserContext(), grpcReq); err != nil {
 		h.logger.Warn("logout grpc failed", zap.Error(err))
 		middleware.AuditLog(ctx, h.logger, "auth.logout.failed", zap.String("device_id", req.DeviceID))
 		return httperr.WriteGRPCError(ctx, err)
@@ -132,9 +130,9 @@ func (h *AuthHandler) Logout(ctx *fiber.Ctx) error {
 
 	middleware.AuditLog(ctx, h.logger, "auth.logout.succeeded", zap.String("device_id", req.DeviceID))
 
+	// proto LogoutResponse теперь пустой, поэтому device_id берём из запроса, all_device отдаём false.
 	return ctx.Status(fiber.StatusOK).JSON(authdto.LogoutResponse{
-		AllDevice: resp.AllDevice,
-		DeviceID:  resp.DeviceId,
+		DeviceID: req.DeviceID,
 	})
 }
 
@@ -186,14 +184,16 @@ func httpToGRPCRegister(req authdto.RegisterRequest) *authv1.RegisterRequest {
 	}
 }
 
-func grpcToHTTPTokenPair(resp *authv1.TokenPairResponse) authdto.TokenPairResponse {
-	if resp == nil {
-		return authdto.TokenPairResponse{}
-	}
+// tokenPair объединяет Register/Login/RefreshResponse — у всех есть только access/refresh токены.
+// expires_in_sec из proto убрали, поэтому в DTO оно теперь всегда 0.
+type tokenPair interface {
+	GetAccessToken() string
+	GetRefreshToken() string
+}
 
+func grpcToHTTPTokenPair(resp tokenPair) authdto.TokenPairResponse {
 	return authdto.TokenPairResponse{
-		Access:       resp.AccessToken,
-		Refresh:      resp.RefreshToken,
-		ExpiresInSec: resp.ExpiresInSec,
+		Access:  resp.GetAccessToken(),
+		Refresh: resp.GetRefreshToken(),
 	}
 }

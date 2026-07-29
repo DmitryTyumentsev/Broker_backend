@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -18,7 +20,8 @@ const (
 )
 
 type AccessTokenClaims struct {
-	UserID    string
+	BrokerID  uuid.UUID
+	UserID    uuid.UUID
 	DeviceID  string
 	Role      string
 	TokenType string
@@ -46,6 +49,7 @@ type accessTokenHeader struct {
 }
 
 type accessTokenPayload struct {
+	BrokerID  string `json:"broker_id"`
 	Subject   string `json:"sub"`
 	DeviceID  string `json:"device_id"`
 	Role      string `json:"role"`
@@ -135,7 +139,8 @@ func (v *AccessTokenVerifier) validSignature(parts []string) bool {
 func (v *AccessTokenVerifier) validateClaims(claims AccessTokenClaims) error {
 	now := v.now().UTC()
 
-	if strings.TrimSpace(claims.UserID) == "" ||
+	if claims.BrokerID == "" ||
+		claims.UserID == "" ||
 		strings.TrimSpace(claims.DeviceID) == "" ||
 		strings.TrimSpace(claims.Role) == "" ||
 		claims.TokenType != AccessTokenKind {
@@ -159,7 +164,8 @@ func (v *AccessTokenVerifier) validateClaims(claims AccessTokenClaims) error {
 
 func payloadToClaims(payload accessTokenPayload) AccessTokenClaims {
 	return AccessTokenClaims{
-		UserID:    strings.TrimSpace(payload.Subject),
+		BrokerID:  payload.BrokerID,
+		UserID:    payload.Subject,
 		DeviceID:  strings.TrimSpace(payload.DeviceID),
 		Role:      strings.TrimSpace(payload.Role),
 		TokenType: strings.TrimSpace(payload.TokenType),
