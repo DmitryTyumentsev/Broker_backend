@@ -2,7 +2,7 @@ package usecases
 
 import "github.com/google/uuid"
 
-type FixationCustomerRequest struct {
+type FixationRequest struct {
 	BrokerID   uuid.UUID
 	CustomerID uuid.UUID
 	FixFor     uuid.UUID

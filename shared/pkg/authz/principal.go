@@ -14,7 +14,7 @@ type contextKey string
 const principalContextKey contextKey = "principal"
 
 type Principal struct {
-	BrokerID uuid.UUID
+	AgencyID uuid.UUID
 	UserID   uuid.UUID
 	DeviceID string
 	Role     string
@@ -22,7 +22,7 @@ type Principal struct {
 
 func PrincipalFromAccessTokenClaims(claims sharedjwt.AccessTokenClaims) Principal {
 	return Principal{
-		BrokerID: claims.BrokerID,
+		AgencyID: claims.AgencyID,
 		UserID:   claims.UserID,
 		DeviceID: strings.TrimSpace(claims.DeviceID),
 		Role:     strings.TrimSpace(claims.Role),
@@ -30,8 +30,8 @@ func PrincipalFromAccessTokenClaims(claims sharedjwt.AccessTokenClaims) Principa
 }
 
 func (p Principal) Valid() bool {
-	return p.BrokerID != "" &&
-		p.UserID != "" &&
+	return p.AgencyID != uuid.Nil &&
+		p.UserID != uuid.Nil &&
 		strings.TrimSpace(p.DeviceID) != "" &&
 		strings.TrimSpace(p.Role) != ""
 }

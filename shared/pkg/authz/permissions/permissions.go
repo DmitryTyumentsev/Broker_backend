@@ -4,17 +4,13 @@ const (
 	APIProtectedAccess   = "api.protected.access"
 	DeveloperAdminAccess = "developer.admin.access"
 
-	CustomerFixationCreate = "customer_fixation.create"
-	CustomerFixationRead   = "customer_fixation.read"
-	CustomerFixationUpdate = "customer_fixation.update"
+	FixationNew = "fixation.new"
 )
 
 var All = []string{
 	APIProtectedAccess,
 	DeveloperAdminAccess,
-	CustomerFixationCreate,
-	CustomerFixationRead,
-	CustomerFixationUpdate,
+	FixationNew,
 }
 
 func Known(permission string) bool {

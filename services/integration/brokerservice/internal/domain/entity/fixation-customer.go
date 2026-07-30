@@ -16,7 +16,7 @@ const (
 )
 
 type FixationCustomer struct {
-	BrokerID      uuid.UUID
+	AgencyID      uuid.UUID
 	PhoneHash     string
 	FixFor        uuid.UUID
 	FixedBy       uuid.UUID

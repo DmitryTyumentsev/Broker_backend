@@ -12,46 +12,23 @@ import (
 func registerBrokerRoutes(r fiber.Router, h *handlers.Deps) {
 	brokers := r.Group("/brokers")
 
-	registerFixationCustomerRoutes(brokers, h)
+	registerFixationRoutes(brokers, h)
 }
 
-func registerFixationCustomerRoutes(brokers fiber.Router, h *handlers.Deps) {
-	customerFixations := brokers.Group("/fixation-customer")
+func registerFixationRoutes(brokers fiber.Router, h *handlers.Deps) {
+	fixations := brokers.Group("/fixations")
 
-	newCustomerFixation(customerFixations, h)
-	updateCustomerFixation(customerFixations, h)
+	newFixation(fixations, h)
 }
 
-func newCustomerFixation(r fiber.Router, h *handlers.Deps) {
+func newFixation(r fiber.Router, h *handlers.Deps) {
 	postJSON[brokerdto.FixationRequest](
 		r,
 		"/",
 		h.Validator,
 		[]fiber.Handler{
-			middleware.RequirePermission(h.Authz, permissions.CustomerFixationCreate),
+			middleware.RequirePermission(h.Authz, permissions.FixationNew),
 		},
-		h.Broker.NewFixationCustomer,
-	)
-}
-
-// func readCustomerFixation(r fiber.Router, h *handlers.Deps) {
-// 	get(
-// 		"/:customer_id",
-// 		[]fiber.Handler{
-// 			middleware.RequirePermission(h.Authz, permissions.CustomerFixationRead),
-// 		},
-// 		h.Broker.ReadFixationCustomer,
-// 	)
-// }
-
-func updateCustomerFixation(r fiber.Router, h *handlers.Deps) {
-	patchJSON[brokerdto.FixationRequest](
-		r,
-		"/",
-		h.Validator,
-		[]fiber.Handler{
-			middleware.RequirePermission(h.Authz, permissions.CustomerFixationUpdate),
-		},
-		h.Broker.UpdateFixationCustomer,
+		h.Broker.NewFixation,
 	)
 }

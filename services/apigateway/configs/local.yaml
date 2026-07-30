@@ -39,43 +39,39 @@ business:
     roles:
       - superadmin
       - account_manager
-      - sales_manager
       - agency_owner
-      - broker_team_lead
-      - broker_team_member
+      - agency_team_lead
+      - agency_team_member
 
     permissions:
       api.protected.access:
         - superadmin
         - account_manager
-        - sales_manager
         - agency_owner
-        - broker_team_lead
-        - broker_team_member
+        - agency_team_lead
+        - agency_team_member
 
       developer.admin.access:
         - superadmin
 
-      customer_fixation.create:
+      fixation.new:
         - superadmin
         - account_manager
-        - sales_manager
         - agency_owner
-        - broker_team_lead
-        - broker_team_member
+        - agency_team_lead
+        - agency_team_member
 
       customer_fixation.read:
         - superadmin
         - account_manager
-        - sales_manager
         - agency_owner
-        - broker_team_lead
-        - broker_team_member
+        - agency_team_lead
+        - agency_team_member
 
       customer_fixation.update:
         - superadmin
         - account_manager
-        - broker_team_lead
+        - agency_team_lead
         - agency_owner
 
 http:

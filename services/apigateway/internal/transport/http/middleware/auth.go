@@ -16,6 +16,7 @@ type contextKey string
 const (
 	claimsLocalKey = "auth.claims"
 
+	agencyIDContextKey contextKey = "auth.agency_id"
 	userIDContextKey   contextKey = "auth.user_id"
 	deviceIDContextKey contextKey = "auth.device_id"
 	roleContextKey     contextKey = "auth.role"
@@ -86,7 +87,7 @@ func contextWithClaims(parent context.Context, claims sharedjwt.AccessTokenClaim
 	if parent == nil {
 		parent = context.Background()
 	}
-
+	ctx := context.WithValue(parent, agencyIDContextKey, claims.AgencyID)
 	ctx := context.WithValue(parent, userIDContextKey, claims.UserID)
 	ctx = context.WithValue(ctx, deviceIDContextKey, claims.DeviceID)
 	ctx = context.WithValue(ctx, roleContextKey, claims.Role)
