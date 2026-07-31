@@ -1,9 +1,9 @@
 package grpc
 
 import (
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/dto/fixationdto" //то есть тут я не могу вызвать потому что dto в интернал, а в хендлере не могу вызвать entity потому что entity в интернал? и как правильно сделать?
-	"Broker_backend/services/integration/fixationservice/internal/domain/entity"
 	brokerv1 "Broker_backend/gen/broker/v1"
+	"Broker_backend/services/integration/fixationservice/internal/domain/entity"
+	"Broker_backend/services/integration/partnerapi/internal/transport/http/dto/fixationdto" //то есть тут я не могу вызвать потому что dto в интернал, а в хендлере не могу вызвать entity потому что entity в интернал? и как правильно сделать?
 	"context"
 	"net/http"
 

@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	grpcauth "Broker_backend/shared/pkg/grpc/auth"
 	authv1 "Broker_backend/gen/auth/v1"
+	grpcauth "Broker_backend/shared/pkg/grpc/auth"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

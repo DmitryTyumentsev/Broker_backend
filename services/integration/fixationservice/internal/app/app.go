@@ -11,10 +11,10 @@ package app
 
 import (
 	"Broker_backend/services/integration/fixationservice/internal/config"
-	"Broker_backend/shared/pkg/clock"
 	"Broker_backend/services/integration/fixationservice/internal/repository/postgres"
 	grpctransport "Broker_backend/services/integration/fixationservice/internal/transport/grpc"
 	"Broker_backend/services/integration/fixationservice/internal/usecase"
+	"Broker_backend/shared/pkg/clock"
 	"context"
 	"errors"
 	"fmt"

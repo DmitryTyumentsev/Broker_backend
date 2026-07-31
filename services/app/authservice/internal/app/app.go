@@ -2,14 +2,14 @@ package app
 
 import (
 	"Broker_backend/services/app/authservice/internal/config"
-	"Broker_backend/shared/pkg/clock"
+	jwt2 "Broker_backend/services/app/authservice/internal/infra/security/jwt"
+	"Broker_backend/services/app/authservice/internal/infra/security/passwordhasher"
 	"Broker_backend/services/app/authservice/internal/repository/postgres"
 	"Broker_backend/services/app/authservice/internal/repository/postgres/sessions"
 	"Broker_backend/services/app/authservice/internal/repository/postgres/users"
-	jwt2 "Broker_backend/services/app/authservice/internal/infra/security/jwt"
-	"Broker_backend/services/app/authservice/internal/infra/security/passwordhasher"
 	grpctransport "Broker_backend/services/app/authservice/internal/transport/grpc"
 	"Broker_backend/services/app/authservice/internal/usecase"
+	"Broker_backend/shared/pkg/clock"
 	"context"
 	"fmt"
 	"net"

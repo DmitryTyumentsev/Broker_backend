@@ -1,9 +1,9 @@
 package fixationclient
 
 import (
+	brokerv1 "Broker_backend/gen/broker/v1"
 	"Broker_backend/services/integration/partnerapi/internal/config"
 	grpcauth "Broker_backend/shared/pkg/grpc/auth"
-	brokerv1 "Broker_backend/gen/broker/v1"
 	"context"
 	"errors"
 	"fmt"

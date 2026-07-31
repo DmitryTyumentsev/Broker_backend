@@ -21,7 +21,7 @@ type Config struct {
 	HTTP          HTTPConfig          `mapstructure:"http"`
 	Observability ObservabilityConfig `mapstructure:"observability"`
 	AuthGRPC      AuthGRPCConfig      `mapstructure:"auth_grpc"`
-	FixationGRPC    FixationGRPCConfig    `mapstructure:"fixation_grpc"`
+	FixationGRPC  FixationGRPCConfig  `mapstructure:"fixation_grpc"`
 	Database      DatabaseConfig      `mapstructure:"database"`
 }
 

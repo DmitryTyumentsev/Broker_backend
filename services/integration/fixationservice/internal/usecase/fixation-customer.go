@@ -1,9 +1,9 @@
 package usecase
 
 import (
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/dto/fixationdto"
 	"Broker_backend/services/integration/fixationservice/internal/domain"
 	"Broker_backend/services/integration/fixationservice/internal/domain/entity"
+	"Broker_backend/services/integration/partnerapi/internal/transport/http/dto/fixationdto"
 	"Broker_backend/shared/pkg/helpers"
 	"context"
 	"encoding/base64"
@@ -15,6 +15,9 @@ func (s *Service) NewFixation(ctx context.Context, req *fixationdto.FixationRequ
 	//в базе телефон хранится как хэш. если хэшировать - каждый раз хэш будет разный. как мне проверить есть такой номер или нет?
 
 	if isExistsProjectID(ctx, req.ProjectID) == false {
+		return nil, domain.ErrBadRequest
+	}
+	if isUserIDInAgencyID == false {
 		return nil, domain.ErrBadRequest
 	}
 
