@@ -118,7 +118,7 @@ observability:
 auth_grpc:
   address: localhost:50051
 
-broker_grpc:
+fixation_grpc:
   address: localhost:50052
 
 database:

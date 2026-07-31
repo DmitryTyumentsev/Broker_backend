@@ -24,7 +24,7 @@ func main() {
 
 	migrationsDir := strings.TrimSpace(pg.MigrationsPath)
 	if migrationsDir == "" {
-		migrationsDir = filepath.Join("services", "authservice", "migrations")
+		migrationsDir = filepath.Join("migrations", "app")
 	}
 
 	db, err := sql.Open("pgx", dsn)

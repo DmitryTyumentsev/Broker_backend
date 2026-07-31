@@ -17,8 +17,8 @@
 PROTOC_GEN_GO_VERSION      := v1.36.11
 PROTOC_GEN_GO_GRPC_VERSION := v1.5.1
 
-BROKER_SERVICE  := ./services/brokerservice/internal/cmd/brokerservice
-BROKER_MIGRATOR := ./services/brokerservice/internal/cmd/migrations
+FIXATION_SERVICE  := ./services/integration/fixationservice/cmd/fixationservice
+FIXATION_MIGRATOR := ./services/integration/fixationservice/cmd/migrator
 GRPC_ADDR       := localhost:50052
 
 # .PHONY говорит make: это команды, а не имена файлов.
@@ -35,7 +35,7 @@ help:
 	@echo ""
 	@echo "Разработка:"
 	@echo "  make migrate           накатить миграции"
-	@echo "  make run               запустить brokerservice"
+	@echo "  make run               запустить fixationservice"
 	@echo "  make generate          proto -> Go"
 	@echo ""
 	@echo "Проверки:"
@@ -81,10 +81,10 @@ build:
 	go build ./...
 
 run:
-	go run $(BROKER_SERVICE)
+	go run $(FIXATION_SERVICE)
 
 migrate:
-	go run $(BROKER_MIGRATOR)
+	go run $(FIXATION_MIGRATOR)
 
 # ── Проверки ───────────────────────────────────────────────────────────
 fmt:

@@ -14,7 +14,7 @@ scrape_configs:
       # host.docker.internal — так контейнер достучится до сервиса,
       # запущенного на хосте через `make run`.
       # Если запускаешь gateway тоже в compose — замени на имя сервиса.
-      - targets: ['host.docker.internal:8081']
+      - targets: ['host.docker.internal:8080']
         labels:
           service: 'partnerapi'
 

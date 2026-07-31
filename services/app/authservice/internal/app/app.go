@@ -2,20 +2,20 @@ package app
 
 import (
 	"Broker_backend/services/app/authservice/internal/config"
-	"Broker_backend/services/app/authservice/internal/infra/clock"
-	postgres2 "Broker_backend/services/app/authservice/internal/infra/repositories/postgres"
-	"Broker_backend/services/app/authservice/internal/infra/repositories/postgres/sessions"
-	"Broker_backend/services/app/authservice/internal/infra/repositories/postgres/users"
+	"Broker_backend/shared/pkg/clock"
+	"Broker_backend/services/app/authservice/internal/repository/postgres"
+	"Broker_backend/services/app/authservice/internal/repository/postgres/sessions"
+	"Broker_backend/services/app/authservice/internal/repository/postgres/users"
 	jwt2 "Broker_backend/services/app/authservice/internal/infra/security/jwt"
 	"Broker_backend/services/app/authservice/internal/infra/security/passwordhasher"
-	"Broker_backend/services/app/authservice/internal/transport/grpcauthhandler"
-	"Broker_backend/services/app/authservice/internal/usecases"
+	grpctransport "Broker_backend/services/app/authservice/internal/transport/grpc"
+	"Broker_backend/services/app/authservice/internal/usecase"
 	"context"
 	"fmt"
 	"net"
 	"time"
 
-	authv1 "Broker_backend/shared/pkg/grpc/gen/auth/v1"
+	authv1 "Broker_backend/gen/auth/v1"
 	grpcobservability "Broker_backend/shared/pkg/grpc/observability"
 	sharedtracing "Broker_backend/shared/pkg/tracing"
 
@@ -60,13 +60,13 @@ func InitAuthservice() {
 	postgresCtx, cancelPostgres := context.WithTimeout(rootCtx, cfg.Database.Postgres.ConnectTimeout)
 	defer cancelPostgres()
 
-	pool, err := postgres2.NewPool(postgresCtx, cfg)
+	pool, err := postgres.NewPool(postgresCtx, cfg)
 	if err != nil {
 		logger.Fatal("connect postgres failed", zap.Error(err))
 	}
 	defer pool.Close()
 
-	pg := postgres2.NewPostgres(pool, cfg)
+	pg := postgres.NewPostgres(pool, cfg)
 
 	usersRepo := users.NewRepository(pg)
 	sessionsRepo := sessions.NewRepository(pg)
@@ -81,7 +81,7 @@ func InitAuthservice() {
 	refreshTokenService := jwt2.NewRefreshTokenService()
 	realClock := clock.NewRealClock()
 
-	authService := usecases.NewService(
+	authService := usecase.NewService(
 		cfg,
 		logger,
 		usersRepo,
@@ -108,7 +108,7 @@ func InitAuthservice() {
 
 	authv1.RegisterAuthServiceServer(
 		grpcServer,
-		grpcauthhandler.NewHandler(authService, logger),
+		grpctransport.NewHandler(authService, logger),
 	)
 
 	logger.Info("authservice grpc started", zap.String("addr", addr))

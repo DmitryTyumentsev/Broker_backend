@@ -111,8 +111,8 @@ observability:
 auth_grpc:
   address: authservice:50051
 
-broker_grpc:
-  address: brokerservice:50052
+fixation_grpc:
+  address: fixationservice:50052
 
 database:
   redis:

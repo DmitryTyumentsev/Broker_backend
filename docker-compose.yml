@@ -25,7 +25,7 @@ services:
     # healthcheck нужен, чтобы `docker compose up` не отдавал управление
     # раньше, чем база готова принимать соединения
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U broker -d broker"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d broker"]
       interval: 5s
       timeout: 3s
       retries: 10

@@ -21,11 +21,11 @@ type Config struct {
 	HTTP          HTTPConfig          `mapstructure:"http"`
 	Observability ObservabilityConfig `mapstructure:"observability"`
 	AuthGRPC      AuthGRPCConfig      `mapstructure:"auth_grpc"`
-	BrokerGRPC    BrokerGRPCConfig    `mapstructure:"broker_grpc"`
+	FixationGRPC    FixationGRPCConfig    `mapstructure:"fixation_grpc"`
 	Database      DatabaseConfig      `mapstructure:"database"`
 }
 
-type BrokerGRPCConfig struct {
+type FixationGRPCConfig struct {
 	Address string `mapstructure:"address"`
 }
 
@@ -205,8 +205,8 @@ func (c *Config) Validate() error {
 	if strings.TrimSpace(c.AuthGRPC.Address) == "" {
 		return errors.New("auth_grpc.address is required")
 	}
-	if strings.TrimSpace(c.BrokerGRPC.Address) == "" {
-		return errors.New("broker_grpc.address is required")
+	if strings.TrimSpace(c.FixationGRPC.Address) == "" {
+		return errors.New("fixation_grpc.address is required")
 	}
 
 	if c.RedisRequired() {

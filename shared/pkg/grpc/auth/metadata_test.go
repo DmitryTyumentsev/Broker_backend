@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	sharedauth "Broker_backend/shared/pkg/auth"
+	sharedauth "Broker_backend/shared/pkg/authz"
 	"Broker_backend/shared/pkg/requestctx"
 
 	"google.golang.org/grpc"

@@ -14,13 +14,13 @@ managed:
   enabled: true
   override:
     - file_option: go_package_prefix
-      value: Broker_backend/shared/pkg/grpc/gen
+      value: Broker_backend/gen
 
 plugins:
   - local: protoc-gen-go
-    out: shared/pkg/grpc/gen
+    out: gen
     opt: paths=source_relative
 
   - local: protoc-gen-go-grpc
-    out: shared/pkg/grpc/gen
+    out: gen
     opt: paths=source_relative

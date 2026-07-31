@@ -31,7 +31,7 @@ database:
     username: "postgres"
     password: "postgres"
     ssl_mode: "disable"
-    migrations_path: "services/authservice/migrations"
+    migrations_path: "migrations/app"
     migrations_table: "goose_db_version"
     schema_name: "public"
     max_connections: 10

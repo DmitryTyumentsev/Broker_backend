@@ -1,0 +1,40 @@
+environment: local
+
+server:
+  host: 0.0.0.0
+  port: 50052          # gRPC, совпадает с partnerapi fixation_grpc.address
+
+business:
+  context_timeout: 5s
+  fixation_duration: 1440h
+
+observability:
+  tracing:
+    enabled: true
+    service_name: "fixationservice"
+    otlp_endpoint: "localhost:4317"
+    insecure: true
+    sample_ratio: 1
+
+database:
+  postgres:
+    host: "127.0.0.1"
+    port: 5432
+    database_name: "broker"
+    username: "postgres"
+    password: "postgres"
+    ssl_mode: "disable"
+
+    migrations_path: "migrations/integration"
+    migrations_table: "goose_db_version"
+    schema_name: "public"
+
+    max_connections: 20
+    min_connections: 2
+    max_idle_time: 5m
+    max_lifetime: 1h
+    health_check_period: 1m
+
+    connect_timeout: 5s
+    read_timeout: 3s
+    write_timeout: 3s

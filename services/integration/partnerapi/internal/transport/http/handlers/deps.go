@@ -3,7 +3,7 @@ package handlers
 import (
 	"Broker_backend/services/integration/partnerapi/internal/config"
 	"Broker_backend/services/integration/partnerapi/internal/transport/http/handlers/authhandlers"
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/handlers/brokerhandlers"
+	"Broker_backend/services/integration/partnerapi/internal/transport/http/handlers/fixationhandlers"
 	middleware2 "Broker_backend/services/integration/partnerapi/internal/transport/http/middleware"
 	"errors"
 
@@ -14,7 +14,7 @@ import (
 
 type Deps struct {
 	Auth           *authhandlers.AuthHandler
-	Broker         *brokerhandlers.BrokerHandler
+	Broker         *fixationhandlers.BrokerHandler
 	Config         *config.Config
 	Logger         *zap.Logger
 	Redis          *redis.Client
@@ -31,7 +31,7 @@ func (d *Deps) Validate() error {
 	case d.Auth == nil:
 		return errors.New("auth handler is required")
 	case d.Broker == nil:
-		return errors.New("brokerservice handler is required")
+		return errors.New("fixationservice handler is required")
 	case d.Config == nil:
 		return errors.New("config is required")
 	case d.Logger == nil:
