@@ -8,7 +8,7 @@ global:
   evaluation_interval: 15s  # как часто пересчитывать правила алертов
 
 scrape_configs:
-  - job_name: 'apigateway'
+  - job_name: 'partnerapi'
     metrics_path: '/metrics'
     static_configs:
       # host.docker.internal — так контейнер достучится до сервиса,
@@ -16,7 +16,7 @@ scrape_configs:
       # Если запускаешь gateway тоже в compose — замени на имя сервиса.
       - targets: ['host.docker.internal:8081']
         labels:
-          service: 'apigateway'
+          service: 'partnerapi'
 
   # Prometheus умеет мониторить сам себя — удобно для проверки, что он жив
   - job_name: 'prometheus'
