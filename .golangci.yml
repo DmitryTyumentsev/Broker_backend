@@ -62,4 +62,4 @@ issues:
 
   # Сгенерированный код не проверяем
   exclude-dirs:
-    - shared/pkg/grpc/gen
+    - gen

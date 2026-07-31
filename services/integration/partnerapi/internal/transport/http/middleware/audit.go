@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	sharedauth "Broker_backend/shared/pkg/authz"
+	"Broker_backend/shared/pkg/authz"
 
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
@@ -19,7 +19,7 @@ func AuditLog(c *fiber.Ctx, logger *zap.Logger, event string, fields ...zap.Fiel
 		zap.String("user_agent", c.Get(fiber.HeaderUserAgent)),
 	}
 
-	if principal, ok := sharedauth.PrincipalFromContext(c.UserContext()); ok {
+	if principal, ok := authz.PrincipalFromContext(c.UserContext()); ok {
 		baseFields = append(
 			baseFields,
 			zap.String("user_id", principal.UserID),

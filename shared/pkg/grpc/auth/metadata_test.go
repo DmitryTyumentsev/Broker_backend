@@ -1,10 +1,10 @@
-package sharedauth
+package auth
 
 import (
 	"context"
 	"testing"
 
-	sharedauth "Broker_backend/shared/pkg/authz"
+	"Broker_backend/shared/pkg/authz"
 	"Broker_backend/shared/pkg/requestctx"
 
 	"google.golang.org/grpc"
@@ -15,7 +15,7 @@ import (
 
 func TestInjectAndExtractPrincipalMetadata(t *testing.T) {
 	ctx := context.Background()
-	ctx = sharedauth.WithPrincipal(ctx, sharedauth.Principal{
+	ctx = authz.WithPrincipal(ctx, authz.Principal{
 		UserID:   "user-1",
 		DeviceID: "device-1",
 		Role:     "broker_team_member",
@@ -31,7 +31,7 @@ func TestInjectAndExtractPrincipalMetadata(t *testing.T) {
 	incoming := metadata.NewIncomingContext(context.Background(), md)
 	extracted := ExtractIncomingContext(incoming)
 
-	principal, ok := sharedauth.PrincipalFromContext(extracted)
+	principal, ok := authz.PrincipalFromContext(extracted)
 	if !ok {
 		t.Fatal("expected principal in context")
 	}
@@ -83,7 +83,7 @@ func TestAuthUnaryServerInterceptorAllowsPrincipal(t *testing.T) {
 		&grpc.UnaryServerInfo{FullMethod: "/partner.v1.PartnerService/Create"},
 		func(ctx context.Context, req any) (any, error) {
 			called = true
-			if _, ok := sharedauth.PrincipalFromContext(ctx); !ok {
+			if _, ok := authz.PrincipalFromContext(ctx); !ok {
 				t.Fatal("expected principal in handler context")
 			}
 			return nil, nil

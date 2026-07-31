@@ -1,7 +1,7 @@
-package sharedauth
+package auth
 
 import (
-	sharedauth "Broker_backend/shared/pkg/authz"
+	"Broker_backend/shared/pkg/authz"
 	"context"
 	"strings"
 
@@ -33,7 +33,7 @@ func InjectOutgoingContext(ctx context.Context) context.Context {
 		md = metadata.MD{}
 	}
 
-	if principal, ok := sharedauth.PrincipalFromContext(ctx); ok {
+	if principal, ok := authz.PrincipalFromContext(ctx); ok {
 		md.Set(principalUserIDKey, principal.UserID)
 		md.Set(principalDeviceIDKey, principal.DeviceID)
 		md.Set(principalRoleKey, principal.Role)
@@ -57,7 +57,7 @@ func RequirePrincipalUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	) (any, error) {
 		ctx = ExtractIncomingContext(ctx)
 
-		principal, ok := sharedauth.PrincipalFromContext(ctx)
+		principal, ok := authz.PrincipalFromContext(ctx)
 		if !ok || !principal.Valid() {
 			return nil, status.Error(codes.Unauthenticated, "principal is missing")
 		}
@@ -86,13 +86,13 @@ func ExtractIncomingContext(ctx context.Context) context.Context {
 		ctx = requestctx.WithRequestID(ctx, requestID)
 	}
 
-	principal := sharedauth.Principal{
+	principal := authz.Principal{
 		UserID:   firstMetadataValue(md, principalUserIDKey),
 		DeviceID: firstMetadataValue(md, principalDeviceIDKey),
 		Role:     firstMetadataValue(md, principalRoleKey),
 	}
 	if principal.Valid() {
-		ctx = sharedauth.WithPrincipal(ctx, principal)
+		ctx = authz.WithPrincipal(ctx, principal)
 	}
 
 	return ctx

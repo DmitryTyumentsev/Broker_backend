@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	sharedauth "Broker_backend/shared/pkg/authz"
+	"Broker_backend/shared/pkg/authz"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/redis/go-redis/v9"
@@ -139,7 +139,7 @@ func idempotencyStoreKey(prefix string, c *fiber.Ctx, idempotencyKey string) str
 	}
 
 	owner := "anonymous"
-	if principal, ok := sharedauth.PrincipalFromContext(c.UserContext()); ok {
+	if principal, ok := authz.PrincipalFromContext(c.UserContext()); ok {
 		owner = principal.UserID + ":" + principal.DeviceID
 	}
 

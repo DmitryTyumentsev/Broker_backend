@@ -3,7 +3,7 @@ package middleware
 import (
 	"time"
 
-	sharedauth "Broker_backend/shared/pkg/authz"
+	"Broker_backend/shared/pkg/authz"
 
 	"github.com/gofiber/fiber/v2"
 	"go.opentelemetry.io/otel/trace"
@@ -36,7 +36,7 @@ func AccessLog(logger *zap.Logger) fiber.Handler {
 			zap.String("trace_id", traceID(c)),
 		}
 
-		if principal, ok := sharedauth.PrincipalFromContext(c.UserContext()); ok {
+		if principal, ok := authz.PrincipalFromContext(c.UserContext()); ok {
 			fields = append(
 				fields,
 				zap.String("user_id", principal.UserID),

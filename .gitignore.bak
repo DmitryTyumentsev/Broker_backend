@@ -1,0 +1,26 @@
+.idea
+# ===== общие =====
+# ----- папки -----
+go.mod
+подсказки
+
+# ----- файлы -----
+shared/configs/dev.env
+shared/configs/local.env
+shared/configs/dev.yaml
+shared/configs/local.yaml
+подсказки/.
+
+# ===== отдельно сервисы =====
+
+# ===== authclient =====
+# ----- папки -----
+services/auth-service/go.mod
+
+# ----- файлы -----
+services/auth-service/configs/dev.env
+services/auth-service/configs/local.env
+services/auth-service/configs/dev.yaml
+services/auth-service/configs/local.yaml
+_trash/
+*.tgz

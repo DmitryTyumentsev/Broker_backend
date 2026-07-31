@@ -5,7 +5,7 @@ import (
 	"context"
 	"strings"
 
-	sharedauth "Broker_backend/shared/pkg/authz"
+	"Broker_backend/shared/pkg/authz"
 	sharedjwt "Broker_backend/shared/pkg/security/jwt"
 
 	"github.com/gofiber/fiber/v2"
@@ -42,13 +42,13 @@ func Auth(verifier AccessTokenVerifier) fiber.Handler {
 			return httperr.WriteUnauthorized(c, "invalid bearer token")
 		}
 
-		principal := sharedauth.PrincipalFromAccessTokenClaims(claims)
+		principal := authz.PrincipalFromAccessTokenClaims(claims)
 		if !principal.Valid() {
 			return httperr.WriteUnauthorized(c, "invalid bearer token")
 		}
 
 		c.Locals(claimsLocalKey, claims)
-		c.SetUserContext(sharedauth.WithPrincipal(contextWithClaims(c.UserContext(), claims), principal))
+		c.SetUserContext(authz.WithPrincipal(contextWithClaims(c.UserContext(), claims), principal))
 
 		return c.Next()
 	}
@@ -63,12 +63,12 @@ func CurrentClaims(c *fiber.Ctx) (sharedjwt.AccessTokenClaims, bool) {
 	return claims, ok
 }
 
-func CurrentPrincipal(c *fiber.Ctx) (sharedauth.Principal, bool) { //в чем разница между контекстом и принципалом? почему принципал не используется у меня?
+func CurrentPrincipal(c *fiber.Ctx) (authz.Principal, bool) { //в чем разница между контекстом и принципалом? почему принципал не используется у меня?
 	if c == nil {
-		return sharedauth.Principal{}, false
+		return authz.Principal{}, false
 	}
 
-	return sharedauth.PrincipalFromContext(c.UserContext())
+	return authz.PrincipalFromContext(c.UserContext())
 }
 
 func bearerToken(header string) (string, bool) {
