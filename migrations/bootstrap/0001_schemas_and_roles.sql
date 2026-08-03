@@ -1,6 +1,6 @@
 -- Схемы и роли двух контуров. Катится ОДИН РАЗ суперпользователем,
 -- до всех остальных миграций:
---   psql -U postgres -d broker -f migrations/bootstrap/0001_schemas_and_roles.sql
+--   psql -U postgres -d fixation -f migrations/bootstrap/0001_schemas_and_roles.sql
 
 -- +goose Up
 -- +goose StatementBegin

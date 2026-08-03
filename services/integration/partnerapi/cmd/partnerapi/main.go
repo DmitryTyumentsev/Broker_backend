@@ -6,12 +6,12 @@ import (
 	"Broker_backend/services/integration/partnerapi/internal/clients/fixationclient"
 	"Broker_backend/services/integration/partnerapi/internal/config"
 	redisclient "Broker_backend/services/integration/partnerapi/internal/infra/redis"
-	httprouter "Broker_backend/services/integration/partnerapi/internal/transport/http"
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/dto"
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/handlers"
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/handlers/authhandlers"
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/handlers/fixationhandlers"
-	middleware2 "Broker_backend/services/integration/partnerapi/internal/transport/http/middleware"
+	httprouter "Broker_backend/services/integration/partnerapi/internal/transport"
+	"Broker_backend/services/integration/partnerapi/internal/transport/dto"
+	"Broker_backend/services/integration/partnerapi/internal/transport/handlers"
+	"Broker_backend/services/integration/partnerapi/internal/transport/handlers/authhandlers"
+	"Broker_backend/services/integration/partnerapi/internal/transport/handlers/fixationhandlers"
+	"Broker_backend/services/integration/partnerapi/internal/transport/middleware"
 	"context"
 	"errors"
 	"fmt"
@@ -98,7 +98,7 @@ func main() {
 		logger.Fatal("create authorization policy failed", zap.Error(err))
 	}
 
-	brokerConn, brokerGRPCClient, err := fixationclient.NewBrokerServiceClient(cfg)
+	brokerConn, brokerGRPCClient, err := fixationclient.NewFixationServiceClient(cfg)
 	if err != nil {
 		logger.Fatal("create fixationservice grpc client failed", zap.Error(err))
 	}
@@ -109,12 +109,12 @@ func main() {
 		logger.Fatal("create fixationservice client failed", zap.Error(err))
 	}
 
-	validator := middleware2.NewRequestValidator()
+	validator := middleware.NewRequestValidator()
 
 	authHandler := authhandlers.NewAuthHandler(logger, authClient, validator)
-	brokerHandler := fixationhandlers.NewBrokerHandler(logger, brokerClient, validator)
+	brokerHandler := fixationhandlers.NewFixationHandler(logger, brokerClient, validator)
 
-	metrics := middleware2.NewPrometheusMetrics("partnerapi")
+	metrics := middleware.NewPrometheusMetrics("partnerapi")
 
 	app := fiber.New(fiber.Config{
 		ReadTimeout:           cfg.Server.ReadTimeout,
@@ -127,7 +127,7 @@ func main() {
 
 	if err := httprouter.SetupRouter(app, &handlers.Deps{
 		Auth:           authHandler,
-		Broker:         brokerHandler,
+		Fixation:       brokerHandler,
 		Config:         cfg,
 		Logger:         logger,
 		Redis:          redisClient,

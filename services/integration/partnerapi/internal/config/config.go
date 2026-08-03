@@ -18,7 +18,7 @@ const serviceName = "partnerapi"
 type Config struct {
 	Server        ServerConfig        `mapstructure:"server"`
 	Business      BusinessConfig      `mapstructure:"business"`
-	HTTP          HTTPConfig          `mapstructure:"http"`
+	HTTP          HTTPConfig          `mapstructure:"grpc"`
 	Observability ObservabilityConfig `mapstructure:"observability"`
 	AuthGRPC      AuthGRPCConfig      `mapstructure:"auth_grpc"`
 	FixationGRPC  FixationGRPCConfig  `mapstructure:"fixation_grpc"`
@@ -424,19 +424,19 @@ func validateCORS(cfg CORSConfig) error {
 	}
 
 	if len(nonEmptyStrings(cfg.AllowOrigins)) == 0 {
-		return errors.New("http.cors.allow_origins must contain at least one origin")
+		return errors.New("grpc.cors.allow_origins must contain at least one origin")
 	}
 
 	if len(nonEmptyStrings(cfg.AllowMethods)) == 0 {
-		return errors.New("http.cors.allow_methods must contain at least one method")
+		return errors.New("grpc.cors.allow_methods must contain at least one method")
 	}
 
 	if len(nonEmptyStrings(cfg.AllowHeaders)) == 0 {
-		return errors.New("http.cors.allow_headers must contain at least one header")
+		return errors.New("grpc.cors.allow_headers must contain at least one header")
 	}
 
 	if cfg.MaxAgeSeconds < 0 {
-		return errors.New("http.cors.max_age_seconds must not be negative")
+		return errors.New("grpc.cors.max_age_seconds must not be negative")
 	}
 
 	return nil

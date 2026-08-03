@@ -16,19 +16,41 @@ func NewRepository(tx *TxManager) *Repository {
 	return &Repository{tx: tx}
 }
 
-func (r *Repository) FindActiveFixation(ctx context.Context, phoneHash string, projectID uuid.UUID) (entity.FixationCustomer, error) {
-	var f entity.FixationCustomer
+func (r *Repository) FixationStatusCurrent(ctx context.Context, phoneHash string, projectID uuid.UUID) (entity.Status, error) {
+	const op = "postgres/FixationStatusCurrent"
+	var st entity.Status
+	query := `SELECT f.status from f fixations 
+                where f.phone_hash = $1 and f.project_id = $2 
+                                 order by f.id desc limit 1`
 
-	query := `SELECT `
-	return f, nil
+	err := r.tx.pool.QueryRow(ctx, query, phoneHash, projectID).Scan(&st)
+	if err != nil {
+		return "", MapError(op, err)
+	}
+	return st, nil
 }
 
-func (r *Repository) Insert(ctx context.Context, fixationCustomer entity.FixationCustomer) error {
-	const op = "postgres.fixation.Insert"
+func (r *Repository) IsExistsProjectID(ctx context.Context, projectID uuid.UUID) bool {
+	query := `SELECT 1 FROM f fixations WHERE f.project_id = $1`
+	var count int
+	_ = r.tx.pool.QueryRow(ctx, query, projectID).Scan(&count)
+
+	return count > 0
+}
+
+func (r *Repository) IsUserIDInAgencyID(ctx context.Context, agencyID, userID uuid.UUID) bool {
+	query := `SELECT 1 FROM u app.users WHERE u.agency_id = $1 AND u.user_id = $2`
+	var count int
+	_ = r.tx.pool.QueryRow(ctx, query, agencyID, userID).Scan(&count)
+
+	return count > 0
+}
+
+func (r *Repository) InsertFixation(ctx context.Context, f entity.Fixation) error {
+	const op = "postgres.fixation.InsertFixation"
 
 	query := `INSERT INTO fixations(id, fixed_at, expires_at, status, broker_id, fixed_by, fix_for, project_id, phone_hash) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)`
-	//верно понял что надо перед вставкой проверить что фиксации нет? как это правильно сделать - сделать метод check в юзкейсах отдельный который будет делать select или сделать в этом методе select и insert транзакцией?
-	_, err := r.tx.Querier(ctx).Exec(ctx, query, fixationCustomer.FixationIDNew, fixationCustomer.FixedAt, fixationCustomer.ExpiresAt, fixationCustomer.StatusActive, fixationCustomer.AgencyID, fixationCustomer.FixedBy, fixationCustomer.FixFor, fixationCustomer.ProjectID, fixationCustomer.PhoneHash)
+	_, err := r.tx.Querier(ctx).Exec(ctx, query, f.FixationID, f.FixedAt, f.ExpiresAt, f.Status, f.AgencyID, f.FixedBy, f.FixFor, f.ProjectID, f.PhoneHash)
 	if err != nil {
 		return MapError(op, err)
 	}
@@ -36,26 +58,51 @@ func (r *Repository) Insert(ctx context.Context, fixationCustomer entity.Fixatio
 	return nil
 }
 
-func (r *Repository) Update(ctx context.Context, f entity.FixationCustomer) error {
-	const op = "postgres.fixation.Update"
+func (r *Repository) InsertAudit(ctx context.Context, f entity.Fixation) error {
+	const op = "postgres.fixation.InsertAudit"
 
-	query1 := `UPDATE fixations SET status = $1 WHERE fixation_id = $2`
-	query2 := `INSERT INTO fixations(id, fixed_at, expires_at, status, broker_id, fixed_by, fix_for, project_id, phone_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+	query := `INSERT INTO audit(id, fixed_at, expires_at, status, broker_id, fixed_by, fix_for, project_id, phone_hash) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+	_, err := r.tx.Querier(ctx).Exec(ctx, query, f.FixationID, f.FixedAt, f.ExpiresAt, f.Status, f.AgencyID, f.FixedBy, f.FixFor, f.ProjectID, f.PhoneHash)
+	if err != nil {
+		return MapError(op, err)
+	}
 
-	return r.tx.Do(ctx, func(context.Context) error {
-		tag, err := r.tx.Querier(ctx).Exec(ctx, query1, f.StatusExpired, f.FixationIDOld) //я вставил r и очень удивлен что сюда подставились методы. Это в продолжение вопроса про интерфейсы, вот очередное применение где я не понимаю что как сделали и что как получилось по шагам
-		if tag.RowsAffected() != 1 {
-			return MapError(op, pgx.ErrNoRows)
-		}
-		if err != nil {
-			return MapError(op, err)
-		}
-
-		_, err = r.tx.Querier(ctx).Exec(ctx, query2, f.FixationIDNew, f.FixedAt, f.ExpiresAt, f.StatusActive, f.AgencyID, f.FixedBy, f.FixFor, f.ProjectID, f.PhoneHash)
-		if err != nil {
-			return MapError(op, err)
-		}
-		return nil
-	})
-
+	return nil
 }
+
+func (r *Repository) InsertOutbox(ctx context.Context, f entity.Fixation) error {
+	const op = "postgres.fixation.InsertOutbox"
+
+	query := `INSERT INTO outbox(id, fixed_at, expires_at, status, broker_id, fixed_by, fix_for, project_id, phone_hash) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+	_, err := r.tx.Querier(ctx).Exec(ctx, query, f.FixationID, f.FixedAt, f.ExpiresAt, f.Status, f.AgencyID, f.FixedBy, f.FixFor, f.ProjectID, f.PhoneHash)
+	if err != nil {
+		return MapError(op, err)
+	}
+
+	return nil
+}
+
+//
+//func (r *Repository) Update(ctx context.Context, f entity.Fixation) error {
+//	const op = "postgres.fixation.Update"
+//
+//	query1 := `UPDATE fixations SET status = $1 WHERE fixation_id = $2`
+//	query2 := `INSERT INTO fixations(id, fixed_at, expires_at, status, broker_id, fixed_by, fix_for, project_id, phone_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+//
+//	return r.tx.Do(ctx, func(ctx) error {
+//		tag, err := r.tx.Querier(ctx).Exec(ctx, query1, f.StatusExpired, f.FixationIDOld)
+//		if tag.RowsAffected() != 1 {
+//			return MapError(op, pgx.ErrNoRows)
+//		}
+//		if err != nil {
+//			return MapError(op, err)
+//		}
+//
+//		_, err = r.tx.Querier(ctx).Exec(ctx, query2, f.FixationID, f.FixedAt, f.ExpiresAt, f.StatusActive, f.AgencyID, f.FixedBy, f.FixFor, f.ProjectID, f.PhoneHash)
+//		if err != nil {
+//			return MapError(op, err)
+//		}
+//		return nil
+//	})
+//
+//}

@@ -2,9 +2,9 @@ package authhandlers
 
 import (
 	"Broker_backend/services/integration/partnerapi/internal/clients/authclient"
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/dto/authdto"
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/httperr"
-	middleware2 "Broker_backend/services/integration/partnerapi/internal/transport/http/middleware"
+	"Broker_backend/services/integration/partnerapi/internal/transport/dto/authdto"
+	"Broker_backend/services/integration/partnerapi/internal/transport/grpc/grpcerr"
+	"Broker_backend/services/integration/partnerapi/internal/transport/middleware"
 	"errors"
 
 	authv1 "Broker_backend/gen/auth/v1"
@@ -48,27 +48,27 @@ func (h *AuthHandler) Validate() error {
 }
 
 func (h *AuthHandler) Register(ctx *fiber.Ctx) error {
-	req, ok := middleware2.ValidatedBody[authdto.RegisterRequest](ctx)
+	req, ok := middleware.ValidatedBody[authdto.RegisterRequest](ctx)
 	if !ok {
-		return httperr.WriteBadRequest(ctx, "validated request is missing")
+		return grpcerr.WriteBadRequest(ctx, "validated request is missing")
 	}
 
 	resp, err := h.authClient.Register(ctx.UserContext(), httpToGRPCRegister(req))
 	if err != nil {
 		h.logger.Warn("register grpc failed", zap.Error(err))
-		middleware2.AuditLog(ctx, h.logger, "auth.register.failed", zap.String("email", req.Email))
-		return httperr.WriteGRPCError(ctx, err)
+		middleware.AuditLog(ctx, h.logger, "auth.register.failed", zap.String("email", req.Email))
+		return grpcerr.WriteGRPCError(ctx, err)
 	}
 
-	middleware2.AuditLog(ctx, h.logger, "auth.register.succeeded", zap.String("email", req.Email))
+	middleware.AuditLog(ctx, h.logger, "auth.register.succeeded", zap.String("email", req.Email))
 
 	return ctx.Status(fiber.StatusCreated).JSON(grpcToHTTPTokenPair(resp))
 }
 
 func (h *AuthHandler) Login(ctx *fiber.Ctx) error {
-	req, ok := middleware2.ValidatedBody[authdto.LoginRequest](ctx)
+	req, ok := middleware.ValidatedBody[authdto.LoginRequest](ctx)
 	if !ok {
-		return httperr.WriteBadRequest(ctx, "validated request is missing")
+		return grpcerr.WriteBadRequest(ctx, "validated request is missing")
 	}
 
 	grpcReq := &authv1.LoginRequest{
@@ -80,19 +80,19 @@ func (h *AuthHandler) Login(ctx *fiber.Ctx) error {
 	resp, err := h.authClient.Login(ctx.UserContext(), grpcReq)
 	if err != nil {
 		h.logger.Warn("login grpc failed", zap.Error(err))
-		middleware2.AuditLog(ctx, h.logger, "auth.login.failed", zap.String("email", req.Email))
-		return httperr.WriteGRPCError(ctx, err)
+		middleware.AuditLog(ctx, h.logger, "auth.login.failed", zap.String("email", req.Email))
+		return grpcerr.WriteGRPCError(ctx, err)
 	}
 
-	middleware2.AuditLog(ctx, h.logger, "auth.login.succeeded", zap.String("email", req.Email))
+	middleware.AuditLog(ctx, h.logger, "auth.login.succeeded", zap.String("email", req.Email))
 
 	return ctx.Status(fiber.StatusOK).JSON(grpcToHTTPTokenPair(resp))
 }
 
 func (h *AuthHandler) Refresh(ctx *fiber.Ctx) error {
-	req, ok := middleware2.ValidatedBody[authdto.RefreshRequest](ctx)
+	req, ok := middleware.ValidatedBody[authdto.RefreshRequest](ctx)
 	if !ok {
-		return httperr.WriteBadRequest(ctx, "validated request is missing")
+		return grpcerr.WriteBadRequest(ctx, "validated request is missing")
 	}
 
 	grpcReq := &authv1.RefreshRequest{
@@ -103,19 +103,19 @@ func (h *AuthHandler) Refresh(ctx *fiber.Ctx) error {
 	resp, err := h.authClient.Refresh(ctx.UserContext(), grpcReq)
 	if err != nil {
 		h.logger.Warn("refresh grpc failed", zap.Error(err))
-		middleware2.AuditLog(ctx, h.logger, "auth.refresh.failed", zap.String("device_id", req.DeviceID))
-		return httperr.WriteGRPCError(ctx, err)
+		middleware.AuditLog(ctx, h.logger, "auth.refresh.failed", zap.String("device_id", req.DeviceID))
+		return grpcerr.WriteGRPCError(ctx, err)
 	}
 
-	middleware2.AuditLog(ctx, h.logger, "auth.refresh.succeeded", zap.String("device_id", req.DeviceID))
+	middleware.AuditLog(ctx, h.logger, "auth.refresh.succeeded", zap.String("device_id", req.DeviceID))
 
 	return ctx.Status(fiber.StatusOK).JSON(grpcToHTTPTokenPair(resp))
 }
 
 func (h *AuthHandler) Logout(ctx *fiber.Ctx) error {
-	req, ok := middleware2.ValidatedBody[authdto.LogoutRequest](ctx)
+	req, ok := middleware.ValidatedBody[authdto.LogoutRequest](ctx)
 	if !ok {
-		return httperr.WriteBadRequest(ctx, "validated request is missing")
+		return grpcerr.WriteBadRequest(ctx, "validated request is missing")
 	}
 
 	grpcReq := &authv1.LogoutRequest{
@@ -124,11 +124,11 @@ func (h *AuthHandler) Logout(ctx *fiber.Ctx) error {
 
 	if _, err := h.authClient.Logout(ctx.UserContext(), grpcReq); err != nil {
 		h.logger.Warn("logout grpc failed", zap.Error(err))
-		middleware2.AuditLog(ctx, h.logger, "auth.logout.failed", zap.String("device_id", req.DeviceID))
-		return httperr.WriteGRPCError(ctx, err)
+		middleware.AuditLog(ctx, h.logger, "auth.logout.failed", zap.String("device_id", req.DeviceID))
+		return grpcerr.WriteGRPCError(ctx, err)
 	}
 
-	middleware2.AuditLog(ctx, h.logger, "auth.logout.succeeded", zap.String("device_id", req.DeviceID))
+	middleware.AuditLog(ctx, h.logger, "auth.logout.succeeded", zap.String("device_id", req.DeviceID))
 
 	// proto LogoutResponse теперь пустой, поэтому device_id берём из запроса, all_device отдаём false.
 	return ctx.Status(fiber.StatusOK).JSON(authdto.LogoutResponse{
@@ -137,9 +137,9 @@ func (h *AuthHandler) Logout(ctx *fiber.Ctx) error {
 }
 
 func (h *AuthHandler) Me(ctx *fiber.Ctx) error {
-	claims, ok := middleware2.CurrentClaims(ctx)
+	claims, ok := middleware.CurrentClaims(ctx)
 	if !ok {
-		return httperr.WriteUnauthorized(ctx, "auth context is missing")
+		return grpcerr.WriteUnauthorized(ctx, "auth context is missing")
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(authdto.MeResponse{
@@ -150,12 +150,12 @@ func (h *AuthHandler) Me(ctx *fiber.Ctx) error {
 }
 
 func (h *AuthHandler) AdminPing(ctx *fiber.Ctx) error {
-	claims, ok := middleware2.CurrentClaims(ctx)
+	claims, ok := middleware.CurrentClaims(ctx)
 	if !ok {
-		return httperr.WriteUnauthorized(ctx, "auth context is missing")
+		return grpcerr.WriteUnauthorized(ctx, "auth context is missing")
 	}
 
-	middleware2.AuditLog(ctx, h.logger, "admin.ping")
+	middleware.AuditLog(ctx, h.logger, "admin.ping")
 
 	return ctx.Status(fiber.StatusOK).JSON(authdto.AdminPingResponse{
 		OK:       true,

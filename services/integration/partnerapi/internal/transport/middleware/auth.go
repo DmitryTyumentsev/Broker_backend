@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/httperr"
+	"Broker_backend/services/integration/partnerapi/internal/transport/grpc/grpcerr"
 	"context"
 	"strings"
 
@@ -29,22 +29,22 @@ type AccessTokenVerifier interface {
 func Auth(verifier AccessTokenVerifier) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		if verifier == nil {
-			return httperr.WriteServiceUnavailable(c, "auth verifier is not configured")
+			return grpcerr.WriteServiceUnavailable(c, "auth verifier is not configured")
 		}
 
 		token, ok := bearerToken(c.Get(fiber.HeaderAuthorization))
 		if !ok {
-			return httperr.WriteUnauthorized(c, "missing bearer token")
+			return grpcerr.WriteUnauthorized(c, "missing bearer token")
 		}
 
 		claims, err := verifier.Verify(token)
 		if err != nil {
-			return httperr.WriteUnauthorized(c, "invalid bearer token")
+			return grpcerr.WriteUnauthorized(c, "invalid bearer token")
 		}
 
 		principal := authz.PrincipalFromAccessTokenClaims(claims)
 		if !principal.Valid() {
-			return httperr.WriteUnauthorized(c, "invalid bearer token")
+			return grpcerr.WriteUnauthorized(c, "invalid bearer token")
 		}
 
 		c.Locals(claimsLocalKey, claims)

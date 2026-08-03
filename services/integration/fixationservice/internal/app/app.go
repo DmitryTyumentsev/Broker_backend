@@ -23,7 +23,7 @@ import (
 	"syscall"
 	"time"
 
-	brokerv1 "Broker_backend/gen/broker/v1"
+	brokerv1 "Broker_backend/gen/fixation/v1"
 	grpcobservability "Broker_backend/shared/pkg/grpc/observability"
 	sharedtracing "Broker_backend/shared/pkg/tracing"
 

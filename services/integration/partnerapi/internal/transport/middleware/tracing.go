@@ -27,7 +27,7 @@ func Trace(serviceName string) fiber.Handler {
 			spanName,
 			trace.WithSpanKind(trace.SpanKindServer),
 			trace.WithAttributes(
-				attribute.String("http.request.method", c.Method()),
+				attribute.String("grpc.request.method", c.Method()),
 				attribute.String("url.path", c.Path()),
 				attribute.String("client.address", c.IP()),
 				attribute.String("request.id", CurrentRequestID(c)),
@@ -43,7 +43,7 @@ func Trace(serviceName string) fiber.Handler {
 			statusCode = fiber.StatusInternalServerError
 		}
 
-		span.SetAttributes(attribute.Int("http.response.status_code", statusCode))
+		span.SetAttributes(attribute.Int("grpc.response.status_code", statusCode))
 		if err != nil {
 			span.RecordError(err)
 			span.SetStatus(otelcodes.Error, err.Error())

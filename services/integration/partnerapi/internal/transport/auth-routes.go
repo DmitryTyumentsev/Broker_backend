@@ -1,9 +1,9 @@
-package http
+package transport
 
 import (
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/dto/authdto"
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/handlers"
-	middleware2 "Broker_backend/services/integration/partnerapi/internal/transport/http/middleware"
+	"Broker_backend/services/integration/partnerapi/internal/transport/dto/authdto"
+	"Broker_backend/services/integration/partnerapi/internal/transport/handlers"
+	"Broker_backend/services/integration/partnerapi/internal/transport/middleware"
 	"Broker_backend/shared/pkg/authz/permissions"
 
 	"github.com/gofiber/fiber/v2"
@@ -11,7 +11,7 @@ import (
 
 func registerAuthRoutes(v1 fiber.Router, h *handlers.Deps) {
 	auth := v1.Group("/auth")
-	auth.Use(middleware2.RedisRateLimit(h.Redis, h.Config.Business.AuthRateLimit, h.Logger))
+	auth.Use(middleware.RedisRateLimit(h.Redis, h.Config.Business.AuthRateLimit, h.Logger))
 
 	postJSON[authdto.RegisterRequest](auth, "/register", h.Validator, nil, h.Auth.Register)
 	postJSON[authdto.LoginRequest](auth, "/login", h.Validator, nil, h.Auth.Login)
@@ -24,7 +24,7 @@ func registerAuthProtectedRoutes(protected fiber.Router, h *handlers.Deps) {
 
 	protected.Get(
 		"/admin/ping",
-		middleware2.RequirePermission(h.Authz, permissions.DeveloperAdminAccess),
+		middleware.RequirePermission(h.Authz, permissions.DeveloperAdminAccess),
 		h.Auth.AdminPing,
 	)
 }

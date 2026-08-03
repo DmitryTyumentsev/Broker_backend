@@ -24,7 +24,7 @@ linters:
     - unused        # неиспользуемый код
 
     # --- важные дополнительные ---
-    - bodyclose     # незакрытый http.Response.Body
+    - bodyclose     # незакрытый grpc.Response.Body
     - contextcheck  # потерянный context
     - errorlint     # == вместо errors.Is, %v вместо %w
     - noctx         # HTTP-запросы без context

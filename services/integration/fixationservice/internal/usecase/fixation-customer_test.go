@@ -5,13 +5,13 @@ import (
 )
 
 type MockNewFixationCustomer struct {
-	fixationCustomer entity.FixationCustomer
+	fixationCustomer entity.Fixation
 }
 
 //
 //func TestNewFixationCustomer(t *testing.T) {
 //	mock := &MockNewFixationCustomer{
-//		fixationCustomer: entity.FixationCustomer{
+//		fixationCustomer: entity.Fixation{
 //
 //		}
 //	}

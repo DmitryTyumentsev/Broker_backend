@@ -1,7 +1,7 @@
 package fixationclient
 
 import (
-	brokerv1 "Broker_backend/gen/broker/v1"
+	fixationv1 "Broker_backend/gen/fixation/v1"
 	"Broker_backend/services/integration/partnerapi/internal/config"
 	grpcauth "Broker_backend/shared/pkg/grpc/auth"
 	"context"
@@ -12,13 +12,12 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// эталон ли больших проектов мой текущий auth-client.go? что мне нужно знать оттуда чтобы быть готовым к собесам на миддл+ ? спрашивают ли вообще это?
 type GRPCClient struct {
-	broker brokerv1.BrokerServiceClient
-	config *config.Config
+	fixation fixationv1.FixationServiceClient
+	config   *config.Config
 }
 
-func NewBrokerServiceClient(cfg *config.Config) (*grpc.ClientConn, brokerv1.BrokerServiceClient, error) {
+func NewFixationServiceClient(cfg *config.Config) (*grpc.ClientConn, fixationv1.FixationServiceClient, error) {
 	if cfg == nil {
 		return nil, nil, errors.New("config is nil")
 	}
@@ -32,16 +31,16 @@ func NewBrokerServiceClient(cfg *config.Config) (*grpc.ClientConn, brokerv1.Brok
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("create broker service client: %w", err)
+		return nil, nil, fmt.Errorf("create fixation service client: %w", err)
 	}
 
-	return conn, brokerv1.NewBrokerServiceClient(conn), nil
+	return conn, fixationv1.NewFixationServiceClient(conn), nil
 }
 
-func NewClient(broker brokerv1.BrokerServiceClient, cfg *config.Config) (*GRPCClient, error) {
+func NewClient(fixation fixationv1.FixationServiceClient, cfg *config.Config) (*GRPCClient, error) {
 	client := &GRPCClient{
-		broker: broker,
-		config: cfg,
+		fixation: fixation,
+		config:   cfg,
 	}
 
 	if err := client.Validate(); err != nil {
@@ -55,8 +54,8 @@ func (c *GRPCClient) Validate() error {
 	switch {
 	case c == nil:
 		return errors.New("client is nil")
-	case c.broker == nil:
-		return errors.New("broker grpc client is nil")
+	case c.fixation == nil:
+		return errors.New("fixation grpc client is nil")
 	case c.config == nil:
 		return errors.New("config is nil")
 	case c.config.OperationTimeout() <= 0:
@@ -75,16 +74,16 @@ func (c *GRPCClient) contextWithTimeout(parent context.Context) (context.Context
 		parent = context.Background()
 	}
 	ctx, cancel := context.WithTimeout(parent, c.config.OperationTimeout())
-	ctx = grpcauth.InjectOutgoingContext(ctx) //поправить и там внутри тоже
+	ctx = grpcauth.InjectOutgoingContext(ctx)
 	return ctx, cancel, nil
 }
 
-func (c *GRPCClient) NewFixationCustomer(ctx context.Context, req *brokerv1.NewFixationCustomerRequest) (
-	*brokerv1.NewFixationCustomerResponse, error) {
+func (c *GRPCClient) NewFixation(ctx context.Context, req *fixationv1.NewFixationRequest) (
+	*fixationv1.NewFixationResponse, error) {
 	ctx, cancel, err := c.contextWithTimeout(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer cancel()
-	return c.broker.NewFixationCustomer(ctx, req)
+	return c.fixation.NewFixation(ctx, req)
 }

@@ -1,19 +1,13 @@
-package http
+package transport
 
 import (
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/dto/fixationdto"
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/handlers"
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/middleware"
+	"Broker_backend/services/integration/partnerapi/internal/transport/dto/fixationdto"
+	"Broker_backend/services/integration/partnerapi/internal/transport/handlers"
+	"Broker_backend/services/integration/partnerapi/internal/transport/middleware"
 	"Broker_backend/shared/pkg/authz/permissions"
 
 	"github.com/gofiber/fiber/v2"
 )
-
-func registerBrokerRoutes(r fiber.Router, h *handlers.Deps) {
-	brokers := r.Group("/brokers")
-
-	registerFixationRoutes(brokers, h)
-}
 
 func registerFixationRoutes(brokers fiber.Router, h *handlers.Deps) {
 	fixations := brokers.Group("/fixations")
@@ -29,6 +23,6 @@ func newFixation(r fiber.Router, h *handlers.Deps) {
 		[]fiber.Handler{
 			middleware.RequirePermission(h.Authz, permissions.FixationNew),
 		},
-		h.Broker.NewFixation,
+		h.Fixation.NewFixation,
 	)
 }

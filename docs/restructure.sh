@@ -329,7 +329,7 @@ sed -i -e "s|value: $(esc "$M")/shared/pkg/grpc/gen|value: $M/gen|" \
 sed -i -e "s|host.docker.internal:8081|host.docker.internal:8080|" \
        deploy/prometheus.yml 2>/dev/null && say "prometheus.yml"
 
-sed -i 's|pg_isready -U broker -d broker|pg_isready -U postgres -d broker|' \
+sed -i 's|pg_isready -U fixation -d fixation|pg_isready -U postgres -d fixation|' \
        docker-compose.yml 2>/dev/null && say "docker-compose healthcheck"
 
 # ──────────────────────────────────────────────────────────────────────

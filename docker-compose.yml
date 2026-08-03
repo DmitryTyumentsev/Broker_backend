@@ -17,7 +17,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: broker
+      POSTGRES_DB: fixation
     ports:
       - "5432:5432"
     volumes:
@@ -25,7 +25,7 @@ services:
     # healthcheck нужен, чтобы `docker compose up` не отдавал управление
     # раньше, чем база готова принимать соединения
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d broker"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fixation"]
       interval: 5s
       timeout: 3s
       retries: 10

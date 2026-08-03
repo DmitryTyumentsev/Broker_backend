@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"Broker_backend/services/integration/partnerapi/internal/config"
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/httperr"
+	"Broker_backend/services/integration/partnerapi/internal/transport/grpc/grpcerr"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -35,12 +35,12 @@ func Idempotency(client *redis.Client, cfg config.IdempotencyConfig, logger *zap
 		}
 
 		if client == nil {
-			return httperr.WriteServiceUnavailable(c, "idempotency store is not configured")
+			return grpcerr.WriteServiceUnavailable(c, "idempotency store is not configured")
 		}
 
 		idempotencyKey := strings.TrimSpace(c.Get(cfg.Header))
 		if idempotencyKey == "" {
-			return httperr.WriteBadRequest(c, "idempotency key is required")
+			return grpcerr.WriteBadRequest(c, "idempotency key is required")
 		}
 
 		key := idempotencyStoreKey(cfg.LockPrefix, c, idempotencyKey)
@@ -49,7 +49,7 @@ func Idempotency(client *redis.Client, cfg config.IdempotencyConfig, logger *zap
 		acquired, err := client.SetNX(ctx, key, processingIdempotencyValue, cfg.TTL).Result()
 		if err != nil {
 			logger.Warn("idempotency lock failed", zap.Error(err), zap.String("key", key))
-			return httperr.WriteServiceUnavailable(c, "idempotency store unavailable")
+			return grpcerr.WriteServiceUnavailable(c, "idempotency store unavailable")
 		}
 
 		if !acquired {
@@ -97,19 +97,19 @@ func replayIdempotencyResponse(ctx context.Context, client *redis.Client, c *fib
 	raw, err := client.Get(ctx, key).Bytes()
 	if err != nil {
 		if err == redis.Nil {
-			return httperr.WriteConflict(c, "idempotency request is already processing")
+			return grpcerr.WriteConflict(c, "idempotency request is already processing")
 		}
 
-		return httperr.WriteServiceUnavailable(c, "idempotency store unavailable")
+		return grpcerr.WriteServiceUnavailable(c, "idempotency store unavailable")
 	}
 
 	if string(raw) == processingIdempotencyValue {
-		return httperr.WriteConflict(c, "idempotency request is already processing")
+		return grpcerr.WriteConflict(c, "idempotency request is already processing")
 	}
 
 	var stored idempotencyResponse
 	if err := json.Unmarshal(raw, &stored); err != nil {
-		return httperr.WriteConflict(c, "idempotency request is already processing")
+		return grpcerr.WriteConflict(c, "idempotency request is already processing")
 	}
 
 	for key, value := range stored.Headers {

@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/dto"
+	"Broker_backend/services/integration/partnerapi/internal/transport/dto"
 	"encoding/json"
 	"net/http/httptest"
 	"strings"

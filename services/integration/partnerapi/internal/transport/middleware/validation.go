@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/dto"
+	"Broker_backend/services/integration/partnerapi/internal/transport/dto"
 	"errors"
 	"reflect"
 	"strings"
@@ -21,7 +21,7 @@ func NewRequestValidator() *validate.Validate {
 	validator.RegisterTagNameFunc(jsonTagName)
 
 	return validator
-} //верно понял что *fiber.Ctx нужен для приема запроса только? не понял немного про cli, worker, test, это же все http, транспорт или как? почему *fiber.Ctx не будет у них?
+} //верно понял что *fiber.Ctx нужен для приема запроса только? не понял немного про cli, worker, test, это же все grpc, транспорт или как? почему *fiber.Ctx не будет у них?
 
 func ValidateJSON[T any](validator RequestValidator) fiber.Handler { //в T мы задаем dto. А на вход передаем другой тип. Разве суть дженериков не в том что мы передаем на вход тот же тип что и в T? а то тут два разных типа выходит. Не понимаю зачем нам тогда дженерики вообще, они же задуманы как проверка типа если верно понял?
 	return func(c *fiber.Ctx) error {

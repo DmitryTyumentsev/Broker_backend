@@ -20,8 +20,8 @@ database:
   postgres:
     host: "postgres"
     port: 5432
-    database_name: "broker"
-    username: "broker"
+    database_name: "fixation"
+    username: "fixation"
     password: ""            # берётся из FIXATIONSERVICE_DATABASE_POSTGRES_PASSWORD
     ssl_mode: "disable"
 

@@ -49,7 +49,7 @@ func AccessLog(logger *zap.Logger) fiber.Handler {
 			fields = append(fields, zap.Error(err))
 		}
 
-		logger.Info("http access", fields...)
+		logger.Info("grpc access", fields...)
 		return err
 	}
 }

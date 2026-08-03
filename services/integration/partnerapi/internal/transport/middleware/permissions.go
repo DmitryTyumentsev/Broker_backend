@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/httperr"
+	"Broker_backend/services/integration/partnerapi/internal/transport/grpc/grpcerr"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -16,20 +16,20 @@ func RequirePermission(policy AuthzPolicy, permission string) fiber.Handler {
 
 	return func(c *fiber.Ctx) error {
 		if policy == nil {
-			return httperr.WriteServiceUnavailable(c, "authorization policy is not configured")
+			return grpcerr.WriteServiceUnavailable(c, "authorization policy is not configured")
 		}
 
 		if permission == "" {
-			return httperr.WriteForbidden(c, "permission is not configured")
+			return grpcerr.WriteForbidden(c, "permission is not configured")
 		}
 
 		principal, ok := CurrentPrincipal(c)
 		if !ok {
-			return httperr.WriteUnauthorized(c, "auth context is missing")
+			return grpcerr.WriteUnauthorized(c, "auth context is missing")
 		}
 
 		if !policy.IsAllowed(principal.Role, permission) {
-			return httperr.WriteForbidden(c, "insufficient permissions")
+			return grpcerr.WriteForbidden(c, "insufficient permissions")
 		}
 
 		return c.Next()

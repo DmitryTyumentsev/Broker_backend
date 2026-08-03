@@ -1,46 +1,44 @@
 package grpc
 
 import (
-	brokerv1 "Broker_backend/gen/broker/v1"
-	"Broker_backend/services/integration/fixationservice/internal/domain/entity"
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/dto/fixationdto" //то есть тут я не могу вызвать потому что dto в интернал, а в хендлере не могу вызвать entity потому что entity в интернал? и как правильно сделать?
+	fixationv1 "Broker_backend/gen/fixation/v1"
 	"context"
 	"net/http"
 
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
 type FixationService interface {
-	NewFixation(ctx context.Context, req *fixationdto.FixationRequest, agencyID, userID uuid.UUID) (*entity.FixationCustomer, error)
+	NewFixation(ctx context.Context, req *fixationv1.NewFixationRequest) (
+		*fixationv1.NewFixationResponse, error)
 }
 
 type Handler struct {
-	grpc     brokerv1.UnimplementedBrokerServiceServer
+	grpc     fixationv1.UnimplementedFixationServiceServer
 	http     http.Server
 	fixation FixationService
 	logger   *zap.Logger
 }
 
-func NewHandler(grpc brokerv1.UnimplementedBrokerServiceServer, http http.Server, fixation FixationService, logger *zap.Logger) *Handler {
+func NewHandler(grpc fixationv1.UnimplementedFixationServiceServer, fixation FixationService, logger *zap.Logger) *Handler {
 	if logger == nil {
 		logger = zap.NewNop()
 	}
 	return &Handler{
 		grpc:     grpc,
-		http:     http,
 		fixation: fixation,
 		logger:   logger,
 	}
 }
 
-func (h *Handler) NewFixation(ctx context.Context, req *fixationdto.FixationRequest, agencyID, userID uuid.UUID) (*fixationdto.FixationResponse, error) {
-	entityFixation, err := h.fixation.NewFixation(ctx, req, agencyID, userID)
+func (h *Handler) NewFixation(ctx context.Context, req *fixationv1.NewFixationRequest) (
+	*fixationv1.NewFixationResponse, error) {
+	entityFixation, err := h.fixation.NewFixation(ctx, req)
 	if err != nil {
 		h.logger.Warn("new fixation failed", zap.Error(err))
-		return nil, mapHTTPError(err)
+		return nil, mapGRPCError(err)
 	}
-	resp := &fixationdto.FixationResponse{
+	resp := &fixationv1.NewFixationResponse{
 		FixedAt:   entityFixation.FixedAt,
 		ExpiresAt: entityFixation.ExpiresAt,
 	}

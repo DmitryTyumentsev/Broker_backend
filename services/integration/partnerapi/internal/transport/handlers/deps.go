@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"Broker_backend/services/integration/partnerapi/internal/config"
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/handlers/authhandlers"
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/handlers/fixationhandlers"
-	middleware2 "Broker_backend/services/integration/partnerapi/internal/transport/http/middleware"
+	"Broker_backend/services/integration/partnerapi/internal/transport/handlers/authhandlers"
+	"Broker_backend/services/integration/partnerapi/internal/transport/handlers/fixationhandlers"
+	"Broker_backend/services/integration/partnerapi/internal/transport/middleware"
 	"errors"
 
 	validate "github.com/go-playground/validator/v10"
@@ -14,23 +14,23 @@ import (
 
 type Deps struct {
 	Auth           *authhandlers.AuthHandler
-	Broker         *fixationhandlers.BrokerHandler
+	Fixation       *fixationhandlers.FixationHandler
 	Config         *config.Config
 	Logger         *zap.Logger
 	Redis          *redis.Client
 	Validator      *validate.Validate
-	AccessVerifier middleware2.AccessTokenVerifier
-	Metrics        *middleware2.PrometheusMetrics
-	Authz          middleware2.AuthzPolicy
+	AccessVerifier middleware.AccessTokenVerifier
+	Metrics        *middleware.PrometheusMetrics
+	Authz          middleware.AuthzPolicy
 }
 
 func (d *Deps) Validate() error {
 	switch {
 	case d == nil:
-		return errors.New("http handlers deps are nil")
+		return errors.New("grpc handlers deps are nil")
 	case d.Auth == nil:
 		return errors.New("auth handler is required")
-	case d.Broker == nil:
+	case d.Fixation == nil:
 		return errors.New("fixationservice handler is required")
 	case d.Config == nil:
 		return errors.New("config is required")
@@ -52,7 +52,7 @@ func (d *Deps) Validate() error {
 		return err
 	}
 
-	return d.Broker.Validate()
+	return nil
 }
 
 func (d *Deps) redisRequired() bool {

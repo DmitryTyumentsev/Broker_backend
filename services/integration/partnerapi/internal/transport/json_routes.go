@@ -1,7 +1,7 @@
-package http
+package transport
 
 import (
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/middleware"
+	"Broker_backend/services/integration/partnerapi/internal/transport/middleware"
 
 	"github.com/gofiber/fiber/v2"
 )

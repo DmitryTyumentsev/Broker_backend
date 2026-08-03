@@ -1,37 +1,37 @@
 package fixationhandlers
 
 import (
-	"Broker_backend/services/integration/partnerapi/internal/clients/fixationclient"
-	"Broker_backend/services/integration/partnerapi/internal/transport/http/dto/fixationdto"
+	fixationv1 "Broker_backend/gen/fixation/v1"
+	"Broker_backend/services/integration/partnerapi/internal/transport/dto/fixationdto"
+	"Broker_backend/services/integration/partnerapi/internal/transport/grpc/grpcerr"
 	"Broker_backend/services/integration/partnerapi/internal/transport/http/httperr"
-	middleware2 "Broker_backend/services/integration/partnerapi/internal/transport/http/middleware"
+	middleware2 "Broker_backend/services/integration/partnerapi/internal/transport/middleware"
 	"context"
 
 	validate "github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
-type BrokerHandler struct {
-	logger     *zap.Logger
-	httpClient *fixationclient.HTTPClient
-	validator  *validate.Validate
-	fixation   FixationClient
+type FixationHandler struct {
+	logger    *zap.Logger
+	validator *validate.Validate
+	fixation  FixationClient
 }
 
-func NewBrokerHandler(logger *zap.Logger, validator *validate.Validate) *BrokerHandler {
-	return &BrokerHandler{
+func NewFixationHandler(logger *zap.Logger, validator *validate.Validate) *FixationHandler {
+	return &FixationHandler{
 		logger:    logger,
 		validator: validator,
 	}
 }
 
 type FixationClient interface {
-	NewFixation(ctx context.Context, req *fixationdto.FixationRequest, agencyID, userID uuid.UUID) (*fixationdto.FixationResponse, error)
+	NewFixation(ctx context.Context, req *fixationv1.NewFixationRequest) (
+		*fixationv1.NewFixationResponse, error)
 }
 
-func (h *BrokerHandler) NewFixation(c *fiber.Ctx) error {
+func (h *FixationHandler) NewFixation(c *fiber.Ctx) error {
 	dtoReq, ok := middleware2.ValidatedBody[fixationdto.FixationRequest](c)
 	if !ok {
 		return httperr.WriteBadRequest(c, "invalid request")
@@ -42,17 +42,27 @@ func (h *BrokerHandler) NewFixation(c *fiber.Ctx) error {
 	}
 
 	ctx := c.UserContext() //зачем перекладываем из fiber.Ctx в context.Context? разве нельзя fiber.Ctx дальше передавать?
-
-	dtoResp, err := h.fixation.NewFixation(ctx, &dtoReq, principal.AgencyID, principal.UserID)
+	protoReq := &fixationv1.NewFixationRequest{
+		AgencyId:  principal.AgencyID,
+		FixFor:    principal.UserID,
+		Phone:     dtoReq.Phone,
+		ProjectId: dtoReq.ProjectID,
+	}
+	protoResp, err := h.fixation.NewFixation(ctx, protoReq)
 	if err != nil {
-		return httperr.WriteHTTPError(c, err)
+		return grpcerr.WriteGRPCError(c, err)
+	}
+
+	dtoResp := &fixationdto.FixationResponse{
+		FixedAt:   protoResp.FixedAt,
+		ExpiresAt: protoResp.ExpiresAt,
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(dtoResp)
 }
 
 //
-//func (h *BrokerHandler) Validate() error {
+//func (h *FixationHandler) Validate() error {
 //	switch {
 //	case h == nil:
 //		return errors.New("fixationservice handler is nil")
@@ -63,11 +73,11 @@ func (h *BrokerHandler) NewFixation(c *fiber.Ctx) error {
 //	}
 //}
 //
-//func (h *BrokerHandler) NewFixation(c *fiber.Ctx) error { //Верно понял что согласно моему миддлвару аксесс лог, каждый(вообще каждый) вызов всех методов из цепочки очень подробно записывается и трейсится ещё плюсом?
+//func (h *FixationHandler) NewFixation(c *fiber.Ctx) error { //Верно понял что согласно моему миддлвару аксесс лог, каждый(вообще каждый) вызов всех методов из цепочки очень подробно записывается и трейсится ещё плюсом?
 //	bodyDTO, ok := middleware.ValidatedBody[fixationdto.FixationRequest](c)
 //	if ok == false {
 //		h.logger.Error("middleware.ValidatedBody error: type dto didn't match with c.Locals(validatedBodyKey)")
-//		return c.JSON(httperr.WriteBadRequest(c, "invalid request"))
+//		return c.JSON(grpcerr.WriteBadRequest(c, "invalid request"))
 //	}
 //	principal, ok := middleware.CurrentPrincipal(c) //почитал код, вроде у меня уже есть принципал через middleware.Auth. А как его вытащить, как я сейчас написал? зачем тогда в c клали?
 //	if !ok {
