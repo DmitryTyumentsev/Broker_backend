@@ -1,67 +1,70 @@
 package usecase
 
 import (
-	fixationv1 "Broker_backend/gen/fixation/v1"
 	"Broker_backend/services/integration/fixationservice/internal/domain"
 	"Broker_backend/services/integration/fixationservice/internal/domain/entity"
+	"Broker_backend/services/integration/fixationservice/internal/infra/security"
 	"Broker_backend/shared/pkg/helpers"
 	"context"
-	"encoding/base64"
 
 	"github.com/google/uuid"
 )
 
-func (s *Service) NewFixation(ctx context.Context, req *fixationv1.NewFixationRequest) (*entity.Fixation, error) {
-	//в базе телефон хранится как хэш. если хэшировать - каждый раз хэш будет разный. как мне проверить есть такой номер или нет?
-
-	if s.fixations.IsExistsProjectID(ctx, req.ProjectId) == false {
-		return nil, domain.ErrBadRequest
+func (s *Service) NewFixation(ctx context.Context, req *FixationRequest) (*entity.Fixation, error) {
+	b, err := s.fixations.IsExistsProjectID(ctx, req.ProjectID)
+	if b == false {
+		return nil, err
 	}
-	if s.fixations.IsUserIDInAgencyID(ctx, req.AgencyId, req.FixFor) == false {
-		return nil, domain.ErrForbidden
+	b, err = s.fixations.IsUserIDInAgencyID(ctx, req.AgencyID, req.FixFor)
+	if b == false {
+		return nil, err
 	}
 
 	phone := helpers.NormalizePhoneNumber(req.Phone)
-	phoneHash := base64.StdEncoding.EncodeToString([]byte(phone))
-	fixedAt := s.clock.Now()
-	expiresAt := fixedAt.Add(s.cfg.Business.FixationDuration)
-	fixationID, err := uuid.NewV6() //был uuid v6 в 2020? он работал также как v4 что unix времени не было и рандомно поэтому дробил и двигал страницы дерева в базе?
+	phoneHash, err := security.SignHS256AndEncodeBase64URL(s.cfg, phone)
+	if err != nil {
+		return nil, err
+	}
+	now := s.clock.Now()
+	expiresAt := now.Add(s.cfg.Business.FixationDuration)
+	fixationID, err := uuid.NewV6()
 	if err != nil {
 		return nil, err //тут же ок отдать просто err? моя логика - так как в мапере такой ошибки нет, это будет 500, а текст я смогу тут посмотреть, самого err мне хватит думаю
 	}
 
-	f := entity.Fixation{
-		AgencyID:   req.AgencyId,
+	newFixation := entity.Fixation{
+		AgencyID:   req.AgencyID,
 		PhoneHash:  phoneHash,
 		FixFor:     req.FixFor,
 		FixedBy:    req.FixFor,
 		FixationID: fixationID,
-		FixedAt:    fixedAt,
+		FixedAt:    now,
 		ExpiresAt:  expiresAt,
 		Status:     entity.StatusActive,
-		ProjectID:  req.ProjectId,
+		ProjectID:  req.ProjectID,
 	}
 
 	err = s.tx.Do(ctx, func(txCtx context.Context) error {
-		status, err := s.fixations.FixationCurrentStatus(txCtx, phoneHash, req.ProjectId)
-		switch status {
-		case entity.StatusActive, entity.StatusConverted:
+		fixationFromDB, err := s.fixations.FixationCurrent(txCtx, phoneHash, req.ProjectID)
+		if err != nil {
+			return err
+		}
+		switch fixationFromDB.Status {
+		case entity.StatusConverted:
 			return domain.ErrFixationAlreadyExist
-		case entity.StatusExpired, entity.StatusRemoved:
-			err = s.fixations.InsertFixation(txCtx, f)
-			if err != nil {
-				return domain.ErrBadRequest
+		case entity.StatusActive:
+			if fixationFromDB.ExpiresAt.Before(now) {
+				err = s.fixations.UpdateFixationStatusRemoved(txCtx, entity.StatusRemoved, fixationFromDB.FixationID)
+				if err != nil {
+					return err
+				}
+				err = s.insertFixationList(txCtx, newFixation)
 			}
-			err = s.fixations.InsertAudit(txCtx, f)
-			if err != nil {
-				return domain.ErrBadRequest
-			}
-			err = s.fixations.InsertOutbox(txCtx, f)
-			if err != nil {
-				return domain.ErrBadRequest
-			}
+
+		case entity.StatusExpired, entity.StatusRemoved, entity.StatusNoRows:
+			return s.insertFixationList(txCtx, newFixation)
 		default:
-			return domain.ErrGeneral
+			return err
 		}
 		return nil
 	})
@@ -69,5 +72,21 @@ func (s *Service) NewFixation(ctx context.Context, req *fixationv1.NewFixationRe
 		return nil, err
 	}
 
-	return &f, nil
+	return &newFixation, nil
+}
+
+func (s *Service) insertFixationList(txCtx context.Context, f entity.Fixation) error {
+	err := s.fixations.InsertNewFixation(txCtx, f)
+	if err != nil {
+		return err
+	}
+	err = s.fixations.InsertAudit(txCtx, f)
+	if err != nil {
+		return err
+	}
+	err = s.fixations.InsertOutbox(txCtx, f)
+	if err != nil {
+		return err
+	}
+	return nil
 }

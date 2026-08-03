@@ -35,6 +35,7 @@ type accessTokenHeader struct {
 }
 
 type accessTokenPayload struct {
+	AgencyID  string `json:"agency_id"`
 	Subject   string `json:"sub"`
 	DeviceID  string `json:"device_id"`
 	Role      string `json:"role"`
@@ -49,6 +50,7 @@ type issueAccessTokenInput struct {
 	UserID   string
 	DeviceID string
 	Role     string
+	AgencyID string
 	Now      time.Time
 }
 
@@ -81,6 +83,7 @@ func NewAccessTokenIssuer(
 }
 
 func (i *AccessTokenIssuer) Issue(
+	agencyID string,
 	userID string,
 	deviceID string,
 	role string,
@@ -93,6 +96,7 @@ func (i *AccessTokenIssuer) Issue(
 	}
 
 	input := issueAccessTokenInput{
+		AgencyID: agencyID,
 		UserID:   userID,
 		DeviceID: deviceID,
 		Role:     role,
@@ -111,6 +115,7 @@ func (i *AccessTokenIssuer) Issue(
 	}
 
 	payload := accessTokenPayload{
+		AgencyID:  strings.TrimSpace(input.AgencyID),
 		Subject:   strings.TrimSpace(input.UserID),
 		DeviceID:  strings.TrimSpace(input.DeviceID),
 		Role:      strings.TrimSpace(input.Role),
@@ -139,6 +144,7 @@ func (i *AccessTokenIssuer) Issue(
 
 	i.logger.Debug(
 		"access token issued",
+		zap.String("agency_id", agencyID),
 		zap.String("user_id", payload.Subject),
 		zap.String("device_id", payload.DeviceID),
 		zap.String("role", payload.Role),
@@ -188,6 +194,10 @@ func validateAccessTokenConfig(cfg *config.Config) error {
 }
 
 func validateIssueAccessTokenInput(input issueAccessTokenInput) error {
+	if strings.TrimSpace(input.AgencyID) == "" {
+		return errors.New("agency id is required")
+	}
+
 	if strings.TrimSpace(input.UserID) == "" {
 		return errors.New("user id is required")
 	}

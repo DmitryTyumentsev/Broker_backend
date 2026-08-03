@@ -15,6 +15,7 @@ import (
 )
 
 const (
+	principalAgencyIDKey = "principal-agency-id"
 	principalUserIDKey   = "principal-user-id"
 	principalDeviceIDKey = "principal-device-id"
 	principalRoleKey     = "principal-role"
@@ -34,7 +35,8 @@ func InjectOutgoingContext(ctx context.Context) context.Context {
 	}
 
 	if principal, ok := authz.PrincipalFromContext(ctx); ok {
-		md.Set(principalUserIDKey, principal.UserID)
+		md.Set(principalAgencyIDKey, principal.AgencyID.String())
+		md.Set(principalUserIDKey, principal.UserID.String())
 		md.Set(principalDeviceIDKey, principal.DeviceID)
 		md.Set(principalRoleKey, principal.Role)
 	}
@@ -87,6 +89,7 @@ func ExtractIncomingContext(ctx context.Context) context.Context {
 	}
 
 	principal := authz.Principal{
+		AgencyID: firstMetadataValue(md, principalAgencyIDKey),
 		UserID:   firstMetadataValue(md, principalUserIDKey),
 		DeviceID: firstMetadataValue(md, principalDeviceIDKey),
 		Role:     firstMetadataValue(md, principalRoleKey),

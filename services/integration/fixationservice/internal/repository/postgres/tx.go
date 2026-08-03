@@ -18,7 +18,7 @@ type Querier interface {
 type txKey struct{} // приватный тип ключа — не строка!
 type TxManager struct{ pool *pgxpool.Pool }
 
-func (m *TxManager) Do(ctx context.Context, fn func(context.Context) error) error { //как это работает я не понимаю и верно ли оно написано(принято ли так писать)
+func (m *TxManager) Do(ctx context.Context, fn func(context.Context) error) error {
 	if _, ok := ctx.Value(txKey{}).(pgx.Tx); ok {
 		return fn(ctx) // уже в транзакции — не открываем вложенную
 	}

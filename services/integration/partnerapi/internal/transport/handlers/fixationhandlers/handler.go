@@ -5,11 +5,12 @@ import (
 	"Broker_backend/services/integration/partnerapi/internal/transport/dto/fixationdto"
 	"Broker_backend/services/integration/partnerapi/internal/transport/grpc/grpcerr"
 	"Broker_backend/services/integration/partnerapi/internal/transport/http/httperr"
-	middleware2 "Broker_backend/services/integration/partnerapi/internal/transport/middleware"
+	"Broker_backend/services/integration/partnerapi/internal/transport/middleware"
 	"context"
 
 	validate "github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -19,10 +20,11 @@ type FixationHandler struct {
 	fixation  FixationClient
 }
 
-func NewFixationHandler(logger *zap.Logger, validator *validate.Validate) *FixationHandler {
+func NewFixationHandler(logger *zap.Logger, validator *validate.Validate, fixation FixationClient) *FixationHandler {
 	return &FixationHandler{
 		logger:    logger,
 		validator: validator,
+		fixation:  fixation,
 	}
 }
 
@@ -32,30 +34,36 @@ type FixationClient interface {
 }
 
 func (h *FixationHandler) NewFixation(c *fiber.Ctx) error {
-	dtoReq, ok := middleware2.ValidatedBody[fixationdto.FixationRequest](c)
+	dtoReq, ok := middleware.ValidatedBody[fixationdto.FixationRequest](c)
 	if !ok {
 		return httperr.WriteBadRequest(c, "invalid request")
 	}
-	principal, ok := middleware2.CurrentPrincipal(c)
+	principal, ok := middleware.CurrentPrincipal(c)
 	if !ok {
 		return httperr.WriteBadRequest(c, "invalid request")
 	}
 
 	ctx := c.UserContext() //зачем перекладываем из fiber.Ctx в context.Context? разве нельзя fiber.Ctx дальше передавать?
 	protoReq := &fixationv1.NewFixationRequest{
-		AgencyId:  principal.AgencyID,
-		FixFor:    principal.UserID,
+		AgencyId:  principal.AgencyID.String(),
+		FixFor:    principal.UserID.String(),
 		Phone:     dtoReq.Phone,
-		ProjectId: dtoReq.ProjectID,
+		ProjectId: dtoReq.ProjectID.String(),
 	}
 	protoResp, err := h.fixation.NewFixation(ctx, protoReq)
 	if err != nil {
 		return grpcerr.WriteGRPCError(c, err)
 	}
 
+	fixationID, err := uuid.Parse(protoResp.FixationId)
+	if err != nil {
+		return grpcerr.WriteGRPCError(c, err)
+	}
+
 	dtoResp := &fixationdto.FixationResponse{
-		FixedAt:   protoResp.FixedAt,
-		ExpiresAt: protoResp.ExpiresAt,
+		FixationID: fixationID,
+		FixedAt:    protoResp.FixedAt.AsTime(),
+		ExpiresAt:  protoResp.ExpiresAt.AsTime(),
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(dtoResp)

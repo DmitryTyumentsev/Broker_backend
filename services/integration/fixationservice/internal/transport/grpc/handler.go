@@ -2,15 +2,18 @@ package grpc
 
 import (
 	fixationv1 "Broker_backend/gen/fixation/v1"
+	"Broker_backend/services/integration/fixationservice/internal/domain/entity"
+	"Broker_backend/services/integration/fixationservice/internal/usecase"
 	"context"
 	"net/http"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type FixationService interface {
-	NewFixation(ctx context.Context, req *fixationv1.NewFixationRequest) (
-		*fixationv1.NewFixationResponse, error)
+	NewFixation(ctx context.Context, req *usecase.FixationRequest) (*entity.Fixation, error)
 }
 
 type Handler struct {
@@ -33,15 +36,43 @@ func NewHandler(grpc fixationv1.UnimplementedFixationServiceServer, fixation Fix
 
 func (h *Handler) NewFixation(ctx context.Context, req *fixationv1.NewFixationRequest) (
 	*fixationv1.NewFixationResponse, error) {
-	entityFixation, err := h.fixation.NewFixation(ctx, req)
+	cmdReq, err := convertToUsecaseFixation(req)
+	if err != nil {
+		return nil, mapGRPCError(err)
+	}
+
+	entityFixation, err := h.fixation.NewFixation(ctx, cmdReq)
 	if err != nil {
 		h.logger.Warn("new fixation failed", zap.Error(err))
 		return nil, mapGRPCError(err)
 	}
+
 	resp := &fixationv1.NewFixationResponse{
-		FixedAt:   entityFixation.FixedAt,
-		ExpiresAt: entityFixation.ExpiresAt,
+		FixationId: entityFixation.FixationID.String(),
+		FixedAt:    timestamppb.New(entityFixation.FixedAt),
+		ExpiresAt:  timestamppb.New(entityFixation.ExpiresAt),
 	}
 
 	return resp, nil
+}
+
+func convertToUsecaseFixation(req *fixationv1.NewFixationRequest) (*usecase.FixationRequest, error) {
+	agencyID, err := uuid.Parse(req.AgencyId)
+	if err != nil {
+		return nil, mapGRPCError(err)
+	}
+	fixFor, err := uuid.Parse(req.FixFor)
+	if err != nil {
+		return nil, mapGRPCError(err)
+	}
+	projectID, err := uuid.Parse(req.ProjectId)
+	if err != nil {
+		return nil, mapGRPCError(err)
+	}
+	return &usecase.FixationRequest{
+		AgencyID:  agencyID,
+		FixFor:    fixFor,
+		Phone:     req.Phone,
+		ProjectID: projectID,
+	}, nil
 }

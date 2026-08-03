@@ -3,9 +3,8 @@ package usecase
 import "github.com/google/uuid"
 
 type FixationRequest struct {
-	BrokerID   uuid.UUID
-	CustomerID uuid.UUID
-	FixFor     uuid.UUID
-	FixedBy    uuid.UUID
-	ProjectID  uuid.UUID
+	AgencyID  uuid.UUID
+	FixFor    uuid.UUID
+	Phone     string
+	ProjectID uuid.UUID
 }

@@ -12,14 +12,13 @@ import (
 )
 
 type FixationRepository interface {
-	Insert(ctx context.Context, f entity.Fixation) error
-	Update(ctx context.Context, f entity.Fixation) error
-	IsExistsProjectID(ctx context.Context, projectID uuid.UUID) bool
-	IsUserIDInAgencyID(ctx context.Context, agencyID, userID uuid.UUID) bool
-	FixationCurrentStatus(ctx context.Context, phoneHash string, projectID uuid.UUID) (entity.Status, error)
-	InsertFixation(ctx context.Context, f entity.Fixation) error
+	IsExistsProjectID(ctx context.Context, projectID uuid.UUID) (bool, error)
+	IsUserIDInAgencyID(ctx context.Context, agencyID, userID uuid.UUID) (bool, error)
+	FixationCurrent(ctx context.Context, phoneHash string, projectID uuid.UUID) (*entity.Fixation, error)
+	InsertNewFixation(ctx context.Context, f entity.Fixation) error
 	InsertAudit(ctx context.Context, f entity.Fixation) error
 	InsertOutbox(ctx context.Context, f entity.Fixation) error
+	UpdateFixationStatusRemoved(ctx context.Context, statusRemoved entity.Status, id uuid.UUID) error
 }
 
 type TxManager interface {

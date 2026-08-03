@@ -23,7 +23,7 @@ import (
 	"syscall"
 	"time"
 
-	brokerv1 "Broker_backend/gen/fixation/v1"
+	fixationv1 "Broker_backend/gen/fixation/v1"
 	grpcobservability "Broker_backend/shared/pkg/grpc/observability"
 	sharedtracing "Broker_backend/shared/pkg/tracing"
 
@@ -110,7 +110,7 @@ func Run() error {
 	//  Сюда добавляешь новые зависимости фичи (репозитории, клиенты
 	//  других сервисов, хешеры). Порядок аргументов — как в NewService.
 	// ═══════════════════════════════════════════════════════════════════
-	brokerService := usecase.NewService(
+	fixationService := usecase.NewService(
 		cfg,
 		logger,
 		realClock,    // → интерфейс usecase.Clock
@@ -148,9 +148,9 @@ func Run() error {
 	//  [ФИЧА] 10. Регистрация хендлеров
 	//  Одна строка на каждый новый gRPC-сервис из proto.
 	// ═══════════════════════════════════════════════════════════════════
-	brokerv1.RegisterBrokerServiceServer(
+	fixationv1.RegisterFixationServiceServer(
 		grpcServer,
-		grpctransport.NewHandler(brokerService, logger),
+		grpctransport.NewHandler(fixationService, logger),
 	)
 
 	// ── [БОЙЛЕРПЛЕЙТ] 11. Запуск + graceful shutdown ───────────────────

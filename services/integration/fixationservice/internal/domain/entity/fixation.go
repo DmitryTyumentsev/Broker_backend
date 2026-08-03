@@ -13,6 +13,7 @@ const (
 	StatusConverted Status = "converted"
 	StatusExpired   Status = "expired"
 	StatusRemoved   Status = "removed"
+	StatusNoRows    Status = ""
 )
 
 type Fixation struct {

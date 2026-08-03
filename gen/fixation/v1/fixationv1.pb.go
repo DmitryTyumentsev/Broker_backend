@@ -92,8 +92,9 @@ func (x *NewFixationRequest) GetProjectId() string {
 
 type NewFixationResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	FixedAt       *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=fixed_at,json=fixedAt,proto3" json:"fixed_at,omitempty"`
-	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	FixationId    string                 `protobuf:"bytes,1,opt,name=fixation_id,json=fixationId,proto3" json:"fixation_id,omitempty"`
+	FixedAt       *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=fixed_at,json=fixedAt,proto3" json:"fixed_at,omitempty"`
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -128,6 +129,13 @@ func (*NewFixationResponse) Descriptor() ([]byte, []int) {
 	return file_fixation_v1_fixationv1_proto_rawDescGZIP(), []int{1}
 }
 
+func (x *NewFixationResponse) GetFixationId() string {
+	if x != nil {
+		return x.FixationId
+	}
+	return ""
+}
+
 func (x *NewFixationResponse) GetFixedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.FixedAt
@@ -152,11 +160,13 @@ const file_fixation_v1_fixationv1_proto_rawDesc = "" +
 	"\afix_for\x18\x02 \x01(\tR\x06fixFor\x12\x14\n" +
 	"\x05phone\x18\x03 \x01(\tR\x05phone\x12\x1d\n" +
 	"\n" +
-	"project_id\x18\x04 \x01(\tR\tprojectId\"\x87\x01\n" +
-	"\x13NewFixationResponse\x125\n" +
-	"\bfixed_at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\afixedAt\x129\n" +
+	"project_id\x18\x04 \x01(\tR\tprojectId\"\xa8\x01\n" +
+	"\x13NewFixationResponse\x12\x1f\n" +
+	"\vfixation_id\x18\x01 \x01(\tR\n" +
+	"fixationId\x125\n" +
+	"\bfixed_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\afixedAt\x129\n" +
 	"\n" +
-	"expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt2c\n" +
+	"expires_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt2c\n" +
 	"\x0fFixationService\x12P\n" +
 	"\vNewFixation\x12\x1f.fixation.v1.NewFixationRequest\x1a .fixation.v1.NewFixationResponseB\x9a\x01\n" +
 	"\x0fcom.fixation.v1B\x0fFixationv1ProtoP\x01Z)Broker_backend/gen/fixation/v1;fixationv1\xa2\x02\x03FXX\xaa\x02\vFixation.V1\xca\x02\vFixation\\V1\xe2\x02\x17Fixation\\V1\\GPBMetadata\xea\x02\fFixation::V1b\x06proto3"

@@ -10,12 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-const (
-// constraintUniqueEmail            = "users_email_unique"
-// constraintCheckUserRole          = "users_user_role_check"
-// constraintUniqueRefreshTokenHash = "refresh_sessions_refresh_token_hash_unique"
-)
-
 func MapError(op string, err error) error {
 	if err == nil {
 		return nil
