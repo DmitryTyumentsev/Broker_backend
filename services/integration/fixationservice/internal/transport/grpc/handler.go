@@ -5,7 +5,6 @@ import (
 	"Broker_backend/services/integration/fixationservice/internal/domain/entity"
 	"Broker_backend/services/integration/fixationservice/internal/usecase"
 	"context"
-	"net/http"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -18,7 +17,6 @@ type FixationService interface {
 
 type Handler struct {
 	grpc     fixationv1.UnimplementedFixationServiceServer
-	http     http.Server
 	fixation FixationService
 	logger   *zap.Logger
 }
@@ -59,19 +57,24 @@ func (h *Handler) NewFixation(ctx context.Context, req *fixationv1.NewFixationRe
 func convertToUsecaseFixation(req *fixationv1.NewFixationRequest) (*usecase.FixationRequest, error) {
 	agencyID, err := uuid.Parse(req.AgencyId)
 	if err != nil {
-		return nil, mapGRPCError(err)
+		return nil, err
 	}
 	fixFor, err := uuid.Parse(req.FixFor)
 	if err != nil {
-		return nil, mapGRPCError(err)
+		return nil, err
+	}
+	fixBy, err := uuid.Parse(req.FixBy)
+	if err != nil {
+		return nil, err
 	}
 	projectID, err := uuid.Parse(req.ProjectId)
 	if err != nil {
-		return nil, mapGRPCError(err)
+		return nil, err
 	}
 	return &usecase.FixationRequest{
 		AgencyID:  agencyID,
 		FixFor:    fixFor,
+		FixBy:     fixBy,
 		Phone:     req.Phone,
 		ProjectID: projectID,
 	}, nil

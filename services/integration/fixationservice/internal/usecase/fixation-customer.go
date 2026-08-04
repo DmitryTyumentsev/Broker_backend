@@ -6,16 +6,23 @@ import (
 	"Broker_backend/services/integration/fixationservice/internal/infra/security"
 	"Broker_backend/shared/pkg/helpers"
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 )
 
 func (s *Service) NewFixation(ctx context.Context, req *FixationRequest) (*entity.Fixation, error) {
 	b, err := s.fixations.IsExistsProjectID(ctx, req.ProjectID)
+	if err != nil {
+		return nil, err
+	}
 	if b == false {
 		return nil, err
 	}
 	b, err = s.fixations.IsUserIDInAgencyID(ctx, req.AgencyID, req.FixFor)
+	if err != nil {
+		return nil, err
+	}
 	if b == false {
 		return nil, err
 	}
@@ -27,16 +34,16 @@ func (s *Service) NewFixation(ctx context.Context, req *FixationRequest) (*entit
 	}
 	now := s.clock.Now()
 	expiresAt := now.Add(s.cfg.Business.FixationDuration)
-	fixationID, err := uuid.NewV6()
+	fixationID, err := uuid.NewV7()
 	if err != nil {
-		return nil, err //тут же ок отдать просто err? моя логика - так как в мапере такой ошибки нет, это будет 500, а текст я смогу тут посмотреть, самого err мне хватит думаю
+		return nil, err
 	}
 
 	newFixation := entity.Fixation{
 		AgencyID:   req.AgencyID,
 		PhoneHash:  phoneHash,
 		FixFor:     req.FixFor,
-		FixedBy:    req.FixFor,
+		FixBy:      req.FixBy,
 		FixationID: fixationID,
 		FixedAt:    now,
 		ExpiresAt:  expiresAt,
@@ -53,23 +60,29 @@ func (s *Service) NewFixation(ctx context.Context, req *FixationRequest) (*entit
 		case entity.StatusConverted:
 			return domain.ErrFixationAlreadyExist
 		case entity.StatusActive:
-			if fixationFromDB.ExpiresAt.Before(now) {
-				err = s.fixations.UpdateFixationStatusRemoved(txCtx, entity.StatusRemoved, fixationFromDB.FixationID)
+			if fixationFromDB.ExpiresAt.Before(now) == true || fixationFromDB.ExpiresAt.Equal(now) == true {
+				err = s.fixations.UpdateFixationStatusExpired(txCtx, entity.StatusExpired, fixationFromDB.FixationID)
 				if err != nil {
 					return err
 				}
 				err = s.insertFixationList(txCtx, newFixation)
+				if err != nil {
+					return err
+				}
 			}
+			if fixationFromDB.ExpiresAt.After(now) == true {
+				return domain.ErrFixationAlreadyExist
+			}
+			return nil
 
 		case entity.StatusExpired, entity.StatusRemoved, entity.StatusNoRows:
 			return s.insertFixationList(txCtx, newFixation)
 		default:
-			return err
+			return nil
 		}
-		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("transaction error: %w", err)
 	}
 
 	return &newFixation, nil

@@ -11,4 +11,5 @@ var (
 	ErrForbidden            = errors.New("forbidden")
 	ErrGeneral              = errors.New("internal error")
 	ErrFixationAlreadyExist = errors.New("fixation already exist")
+	ErrConflict             = errors.New("conflict")
 )

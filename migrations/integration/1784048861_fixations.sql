@@ -5,14 +5,14 @@ create table if not exists fixations(
     expires_at timestamptz not null,
     status text not null,
     agency_id uuid not null,
-    fixed_by uuid not null,
+    fix_by uuid not null,
     fix_for uuid not null,
     project_id uuid not null,
     phone_hash text not null,
     constraint fixations_status_check
         check(status IN('active', 'converted', 'expired', 'removed') )
 );
-create index if not exists fixations_phone_hash_agency_id_idx on fixations(phone_hash, agency_id);
+create unique index if not exists fixations_phone_hash_agency_id_idx on fixations(phone_hash, agency_id) where status = 'active';
 
 -- +goose Down
 drop table if exists fixations;

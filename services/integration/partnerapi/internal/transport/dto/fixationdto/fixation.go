@@ -9,6 +9,7 @@ import (
 type FixationRequest struct {
 	Phone     string    `json:"phone" validate:"required"`
 	ProjectID uuid.UUID `json:"project_id" validate:"required,uuid"`
+	FixFor    uuid.UUID `json:"fix_for" validate:"omitempty,uuid"`
 }
 
 type FixationResponse struct {

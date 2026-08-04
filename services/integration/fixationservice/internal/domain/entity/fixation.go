@@ -20,7 +20,7 @@ type Fixation struct {
 	AgencyID   uuid.UUID
 	PhoneHash  string
 	FixFor     uuid.UUID
-	FixedBy    uuid.UUID
+	FixBy      uuid.UUID
 	FixationID uuid.UUID
 	Status     Status
 	ProjectID  uuid.UUID

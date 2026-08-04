@@ -25,6 +25,8 @@ func grpcStatusFromError(err error) (codes.Code, string) {
 		return codes.InvalidArgument, domain.ErrMustBeNotNull.Error()
 	case errors.Is(err, domain.ErrNotUnique):
 		return codes.AlreadyExists, "resource already exists"
+	case errors.Is(err, domain.ErrConflict):
+		return codes.AlreadyExists, "conflict, resource already exists"
 	case errors.Is(err, domain.ErrUnauthenticated):
 		return codes.Unauthenticated, "invalid credentials or token"
 	case errors.Is(err, domain.ErrNotFound):

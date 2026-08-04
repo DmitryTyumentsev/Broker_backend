@@ -9,12 +9,12 @@ import (
 )
 
 func SignHS256AndEncodeBase64URL(cfg *config.Config, v string) (string, error) {
-	secret, err := json.Marshal(cfg.Business.AccessTokenSecret)
+	secretBytes, err := json.Marshal(cfg.Business.HashSecret)
 	if err != nil {
 		return "", err
 	}
 
-	mac := hmac.New(sha256.New, secret)
+	mac := hmac.New(sha256.New, secretBytes)
 
 	_, _ = mac.Write([]byte(v))
 

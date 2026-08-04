@@ -46,7 +46,8 @@ func (h *FixationHandler) NewFixation(c *fiber.Ctx) error {
 	ctx := c.UserContext() //зачем перекладываем из fiber.Ctx в context.Context? разве нельзя fiber.Ctx дальше передавать?
 	protoReq := &fixationv1.NewFixationRequest{
 		AgencyId:  principal.AgencyID.String(),
-		FixFor:    principal.UserID.String(),
+		FixFor:    dtoReq.FixFor.String(),
+		FixBy:     principal.UserID.String(),
 		Phone:     dtoReq.Phone,
 		ProjectId: dtoReq.ProjectID.String(),
 	}

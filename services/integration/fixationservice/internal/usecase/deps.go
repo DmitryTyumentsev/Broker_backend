@@ -18,7 +18,7 @@ type FixationRepository interface {
 	InsertNewFixation(ctx context.Context, f entity.Fixation) error
 	InsertAudit(ctx context.Context, f entity.Fixation) error
 	InsertOutbox(ctx context.Context, f entity.Fixation) error
-	UpdateFixationStatusRemoved(ctx context.Context, statusRemoved entity.Status, id uuid.UUID) error
+	UpdateFixationStatusExpired(ctx context.Context, statusExpired entity.Status, id uuid.UUID) error
 }
 
 type TxManager interface {
@@ -42,14 +42,14 @@ type Service struct {
 //	FullNameByManagerID(managerID domain.ManagerID) (string, error)
 //}
 //type FixationCustomerRepository interface {
-//	SaveActiveFixationCustomer(uuid string, expiresAT, fixedAt *time.Time, statusActive string, brokerID entity.AgencyID, fixedBy entity.FixedBy, fixFor entity.FixFor, customerID entity.CustomerID) error
+//	SaveActiveFixationCustomer(uuid string, expiresAT, fixedAt *time.Time, statusActive string, brokerID entity.AgencyID, fixedBy entity.FixBy, fixFor entity.FixFor, customerID entity.CustomerID) error
 //	UpdateFixationCustomer(brokerID entity.AgencyID, managerID entity.ManagerID, customerID entity.CustomerID) error
 //	FreeFixationCustomer(brokerID entity.AgencyID, managerID entity.ManagerID) error
 //	SelectStatusByCustomerID(customerID entity.CustomerID) (string, error) //под вопросом надо ли
 //}
 //
 //type FixationCustomerService interface { //принято ли делить интерфейсы в сервисном уровне отдельно на Issue, Check и тд или просто когда фичю пилишь - создаешь интерфейс под сервис и под репо?
-//	CreateActiveFixationCustomer(brokerID entity.AgencyID, fixedBy entity.FixedBy, fixFor entity.FixFor, customerID entity.CustomerID) error
+//	CreateActiveFixationCustomer(brokerID entity.AgencyID, fixedBy entity.FixBy, fixFor entity.FixFor, customerID entity.CustomerID) error
 //	CheckStatusCustomer(customerID entity.CustomerID) (string, error)
 //}
 
