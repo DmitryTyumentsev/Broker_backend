@@ -41,7 +41,6 @@ func (h *Handler) NewFixation(ctx context.Context, req *fixationv1.NewFixationRe
 
 	entityFixation, err := h.fixation.NewFixation(ctx, cmdReq)
 	if err != nil {
-		h.logger.Warn("new fixation failed", zap.Error(err))
 		return nil, mapGRPCError(err)
 	}
 
