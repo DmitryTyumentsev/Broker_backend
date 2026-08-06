@@ -37,22 +37,6 @@ type Service struct {
 	tx        TxManager
 }
 
-//type ManagerRepository interface {
-//	RoleByManagerID(managerID domain.ManagerID) (string, error)
-//	FullNameByManagerID(managerID domain.ManagerID) (string, error)
-//}
-//type FixationCustomerRepository interface {
-//	SaveActiveFixationCustomer(uuid string, expiresAT, fixedAt *time.Time, statusActive string, brokerID entity.AgencyID, fixedBy entity.FixBy, fixFor entity.FixFor, customerID entity.CustomerID) error
-//	UpdateFixationCustomer(brokerID entity.AgencyID, managerID entity.ManagerID, customerID entity.CustomerID) error
-//	FreeFixationCustomer(brokerID entity.AgencyID, managerID entity.ManagerID) error
-//	SelectStatusByCustomerID(customerID entity.CustomerID) (string, error) //под вопросом надо ли
-//}
-//
-//type FixationCustomerService interface { //принято ли делить интерфейсы в сервисном уровне отдельно на Issue, Check и тд или просто когда фичю пилишь - создаешь интерфейс под сервис и под репо?
-//	CreateActiveFixationCustomer(brokerID entity.AgencyID, fixedBy entity.FixBy, fixFor entity.FixFor, customerID entity.CustomerID) error
-//	CheckStatusCustomer(customerID entity.CustomerID) (string, error)
-//}
-
 func NewService(
 	cfg *config.Config,
 	logger *zap.Logger,

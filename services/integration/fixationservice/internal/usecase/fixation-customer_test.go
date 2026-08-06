@@ -1,11 +1,9 @@
 package usecase
 
 import (
-	"Broker_backend/services/integration/fixationservice/internal/config"
 	"Broker_backend/services/integration/fixationservice/internal/domain/entity"
 	"context"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -13,10 +11,6 @@ import (
 const (
 	randomPhone = "8(999)999-99-99"
 )
-
-type mockServiceInterface interface {
-	NewFixation(ctx context.Context, req *FixationRequest) (*entity.Fixation, error)
-}
 
 type mockRepo struct {
 	isExistsProjectID           func(ctx context.Context, projectID uuid.UUID) (bool, error)
@@ -26,14 +20,7 @@ type mockRepo struct {
 	insertAudit                 func(ctx context.Context, f entity.Fixation) error
 	insertOutbox                func(ctx context.Context, f entity.Fixation) error
 	updateFixationStatusExpired func(ctx context.Context, statusExpired entity.Status, id uuid.UUID) error
-	clock                       func() time.Time
-	svc mockServiceInterface
 }
-
-//type mockService struct {
-//	repo *mockRepo
-//	cfg  *config.Config
-//}
 
 func TestNewFixation_NoActiveFixation_InsertFixationAuditOutbox(t *testing.T) {
 	repo := &mockRepo{
@@ -43,16 +30,16 @@ func TestNewFixation_NoActiveFixation_InsertFixationAuditOutbox(t *testing.T) {
 		isUserIDInAgencyID: func(context.Context, uuid.UUID, uuid.UUID) (bool, error) {
 			return true, nil
 		},
-		clock: func() time.Time {
-			return time.Now()
-		},
 		fixationCurrent: func(context.Context, string, uuid.UUID) (*entity.Fixation, error) {
 			return &entity.Fixation{
 				Status: entity.StatusNoRows,
 			}, nil
 		},
-		svc:
 	}
+	mockClock := Clock
+	mockTxManager := TxManager
+
+	svc := NewService(nil, nil, mockClock, repo, mockTxManager)
 
 	req := &FixationRequest{
 		AgencyID:  uuid.New(),
@@ -61,7 +48,7 @@ func TestNewFixation_NoActiveFixation_InsertFixationAuditOutbox(t *testing.T) {
 		Phone:     randomPhone,
 		ProjectID: uuid.New(),
 	}
-	expected, err := svc.NewFixation(context.Background(), req) //я не понимаю почему структура svc должна иметь тип *Service чтобы я мог вызвать NewFixation. это же метод у которого
+	expected, err := svc.NewFixation(context.Background(), req)
 	//пишем какие сценарии могут быть:
 	//позитивный(успешная новая фиксация),
 	//позитивный(успешная фиксация быстрее воркера помечает старую фиксацию expired, создает новую),
