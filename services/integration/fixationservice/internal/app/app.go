@@ -150,7 +150,7 @@ func Run() error {
 	// ═══════════════════════════════════════════════════════════════════
 	fixationv1.RegisterFixationServiceServer(
 		grpcServer,
-		grpctransport.NewHandler(fixationService, logger),
+		grpctransport.NewHandler(fixationv1.UnimplementedFixationServiceServer{}, fixationService, logger),
 	)
 
 	// ── [БОЙЛЕРПЛЕЙТ] 11. Запуск + graceful shutdown ───────────────────
