@@ -17,6 +17,10 @@ const (
 	mockHashSecret   = "mock-hash-secret"
 )
 
+var _ FixationRepository = (*mockRepo)(nil)
+var _ TxManager = (*mockTxManager)(nil)
+var _ Clock = (*mockClock)(nil)
+
 type mockRepo struct {
 	isExistsProjectID           func(ctx context.Context, projectID uuid.UUID) (bool, error)
 	isUserIDInAgencyID          func(ctx context.Context, agencyID, userID uuid.UUID) (bool, error)
