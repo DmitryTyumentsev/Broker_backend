@@ -3,8 +3,6 @@ package usecase
 import (
 	"Broker_backend/services/integration/fixationservice/internal/config"
 	"Broker_backend/services/integration/fixationservice/internal/domain/entity"
-	"Broker_backend/services/integration/fixationservice/internal/repository/postgres"
-	"Broker_backend/shared/pkg/clock"
 	"context"
 	"testing"
 	"time"
@@ -14,7 +12,9 @@ import (
 )
 
 const (
-	randomPhone = "8(999)999-99-99"
+	randomPhone      = "8(999)999-99-99"
+	fixationDuration = 24 * time.Hour * 60
+	mockHashSecret   = "mock-hash-secret"
 )
 
 type mockRepo struct {
@@ -25,6 +25,31 @@ type mockRepo struct {
 	insertAudit                 func(ctx context.Context, f entity.Fixation) error
 	insertOutbox                func(ctx context.Context, f entity.Fixation) error
 	updateFixationStatusExpired func(ctx context.Context, statusExpired entity.Status, id uuid.UUID) error
+}
+
+type mockTxManager struct {
+	do func(ctx context.Context, fn func(ctx context.Context) error) error
+}
+
+type mockClock struct {
+	clock func() time.Time
+}
+
+func newMockConfig() *config.Config {
+	return &config.Config{
+		Business: config.BusinessConfig{
+			FixationDuration: fixationDuration,
+			HashSecret:       mockHashSecret,
+		},
+	}
+}
+
+func (m *mockClock) Now() time.Time {
+	return m.clock()
+}
+
+func (m *mockTxManager) Do(ctx context.Context, fn func(ctx context.Context) error) error {
+	return m.do(ctx, fn)
 }
 
 func (m *mockRepo) IsExistsProjectID(ctx context.Context, projectID uuid.UUID) (bool, error) {
@@ -78,14 +103,17 @@ func TestNewFixation_NoActiveFixation_InsertFixationAuditOutbox(t *testing.T) {
 			return nil
 		},
 	}
-	mockClock := &clock.RealClock{}
-	mockTxManager := &postgres.TxManager{}
-
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		t.Fatal(err)
+	now := &mockClock{
+		clock: func() time.Time {
+			return time.Now().UTC()
+		},
 	}
-	svc := NewService(cfg, &zap.Logger{}, mockClock, repo, mockTxManager)
+	tx := &mockTxManager{do: func(ctx context.Context, fn func(ctx context.Context) error) error {
+		return nil
+	}}
+	cfg := newMockConfig()
+
+	svc := NewService(cfg, zap.NewNop(), now, repo, tx)
 
 	req := &FixationRequest{
 		AgencyID:  uuid.New(),
@@ -98,16 +126,36 @@ func TestNewFixation_NoActiveFixation_InsertFixationAuditOutbox(t *testing.T) {
 	if err != nil {
 		t.Errorf("NewFixation failed, %v", err)
 	}
-	if got == &entity.Fixation{
-		AgencyID: req.AgencyID,
-		PhoneHash: req.Phone,//как проверить PhoneHash
-		FixFor:     req.FixFor,
-		FixBy:      req.FixBy,
-		FixationID: fixationID//аналогично как проверить?
-		Status: entity.StatusNoRows,
-		ProjectID:  req.ProjectID,
-		FixedAt:    time.Time// времена как проверить какие?
-		ExpiresAt  time.Time
+	expected := entity.Fixation{
+		AgencyID:  req.AgencyID,
+		FixFor:    req.FixFor,
+		FixBy:     req.FixBy,
+		Status:    entity.StatusNoRows,
+		ProjectID: req.ProjectID,
+	}
+	if got.AgencyID != expected.AgencyID {
+		t.Fatalf("got.agencyID: %v != expected.AgencyID: %v", got.AgencyID, expected.AgencyID)
+	}
+	if got.FixFor != expected.FixFor {
+		t.Fatalf("got.FixFor: %v != expected.FixFor: %v", got.FixFor, expected.FixFor)
+	}
+	if got.FixBy != expected.FixBy {
+		t.Fatalf("got.FixBy: %v != expected.FixBy: %v", got.FixBy, expected.FixBy)
+	}
+	if got.Status != expected.Status {
+		t.Fatalf("got.Status: %v != expected.Status: %v", got.Status, expected.Status)
+	}
+	if got.ProjectID != expected.ProjectID {
+		t.Fatalf("got.ProjectID: %v != expected.ProjectID: %v", got.ProjectID, expected.ProjectID)
+	}
+	if got.PhoneHash == req.Phone || got.PhoneHash == "" {
+		t.Fatalf("phone was not hashed, got.PhoneHash: %v phone: %v", got.PhoneHash, req.Phone)
+	}
+	if got.FixationID == uuid.Nil {
+		t.Fatalf("got.FixationID: %v == uuid.Nil", got.FixationID)
+	}
+	if got.ExpiresAt.Equal(got.FixedAt.Add(cfg.Business.FixationDuration)) {
+		t.Fatalf("inaccurate timing: got.ExpiresAt: %v != got.FixedAt: %v", got.ExpiresAt, got.FixedAt)
 	}
 
 	//пишем какие сценарии могут быть:
