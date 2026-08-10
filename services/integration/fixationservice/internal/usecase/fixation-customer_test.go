@@ -113,7 +113,7 @@ func TestNewFixation_NoActiveFixation_InsertFixationAuditOutbox(t *testing.T) {
 		},
 	}
 	tx := &mockTxManager{do: func(ctx context.Context, fn func(ctx context.Context) error) error {
-		return nil
+		return fn(ctx)
 	}}
 	cfg := newMockConfig()
 
@@ -134,7 +134,7 @@ func TestNewFixation_NoActiveFixation_InsertFixationAuditOutbox(t *testing.T) {
 		AgencyID:  req.AgencyID,
 		FixFor:    req.FixFor,
 		FixBy:     req.FixBy,
-		Status:    entity.StatusNoRows,
+		Status:    entity.StatusActive,
 		ProjectID: req.ProjectID,
 	}
 	if got.AgencyID != expected.AgencyID {
@@ -158,7 +158,7 @@ func TestNewFixation_NoActiveFixation_InsertFixationAuditOutbox(t *testing.T) {
 	if got.FixationID == uuid.Nil {
 		t.Fatalf("got.FixationID: %v == uuid.Nil", got.FixationID)
 	}
-	if got.ExpiresAt.Equal(got.FixedAt.Add(cfg.Business.FixationDuration)) {
+	if !got.ExpiresAt.Equal(got.FixedAt.Add(cfg.Business.FixationDuration)) {
 		t.Fatalf("inaccurate timing: got.ExpiresAt: %v != got.FixedAt: %v", got.ExpiresAt, got.FixedAt)
 	}
 
