@@ -4,6 +4,7 @@ import (
 	"Broker_backend/services/integration/fixationservice/internal/config"
 	"Broker_backend/services/integration/fixationservice/internal/domain/entity"
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -87,37 +88,44 @@ func (m *mockRepo) UpdateFixationStatusExpired(ctx context.Context, statusExpire
 func TestNewFixation_NoActiveFixation_InsertFixationAuditOutbox(t *testing.T) {
 	repo := &mockRepo{
 		isExistsProjectID: func(context.Context, uuid.UUID) (bool, error) {
+			fmt.Println("implement isExistsProjectID")
 			return true, nil
 		},
 		isUserIDInAgencyID: func(context.Context, uuid.UUID, uuid.UUID) (bool, error) {
+			fmt.Println("implement isUserIDInAgencyID")
 			return true, nil
 		},
 		fixationCurrent: func(context.Context, string, uuid.UUID) (*entity.Fixation, error) {
+			fmt.Println("implement fixationCurrent")
 			return &entity.Fixation{
 				Status: entity.StatusNoRows,
 			}, nil
 		},
 		insertNewFixation: func(context.Context, entity.Fixation) error {
+			fmt.Println("implement insertNewFixation")
 			return nil
 		},
 		insertAudit: func(ctx context.Context, f entity.Fixation) error {
+			fmt.Println("implement insertAudit")
 			return nil
 		},
 		insertOutbox: func(ctx context.Context, f entity.Fixation) error {
+			fmt.Println("implement insertOutbox")
 			return nil
 		},
 	}
-	now := &mockClock{
+	now := time.Now().UTC()
+	mockNow := &mockClock{
 		clock: func() time.Time {
-			return time.Now().UTC()
+			return now
 		},
 	}
-	tx := &mockTxManager{do: func(ctx context.Context, fn func(ctx context.Context) error) error {
+	tx := &mockTxManager{do: func(ctx context.Context, fn func(context.Context) error) error {
 		return fn(ctx)
 	}}
 	cfg := newMockConfig()
 
-	svc := NewService(cfg, zap.NewNop(), now, repo, tx)
+	svc := NewService(cfg, zap.NewNop(), mockNow, repo, tx)
 
 	req := &FixationRequest{
 		AgencyID:  uuid.New(),
