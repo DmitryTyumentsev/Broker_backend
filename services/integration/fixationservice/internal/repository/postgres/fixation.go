@@ -11,11 +11,11 @@ import (
 )
 
 type Repository struct {
-	tx *TxManager
+	Tx *TxManager
 }
 
 func NewRepository(tx *TxManager) *Repository {
-	return &Repository{tx: tx}
+	return &Repository{Tx: tx}
 }
 
 func (r *Repository) FixationCurrent(ctx context.Context, phoneHash string, projectID uuid.UUID) (*entity.Fixation, error) {
@@ -25,7 +25,7 @@ func (r *Repository) FixationCurrent(ctx context.Context, phoneHash string, proj
                 WHERE f.phone_hash = $1 AND f.project_id = $2 
                                  ORDER BY f.fixed_at DESC LIMIT 1;`
 
-	err := r.tx.Querier(ctx).QueryRow(ctx, query, phoneHash, projectID).Scan(
+	err := r.Tx.Querier(ctx).QueryRow(ctx, query, phoneHash, projectID).Scan(
 		&f.FixationID,
 		&f.FixedAt,
 		&f.ExpiresAt,
@@ -50,7 +50,7 @@ func (r *Repository) IsExistsProjectID(ctx context.Context, projectID uuid.UUID)
 	const op = "postgres/IsExistsProjectID"
 	query := `SELECT 1 FROM app.projects p WHERE p.id = $1;`
 	var count int
-	err := r.tx.Querier(ctx).QueryRow(ctx, query, projectID).Scan(&count)
+	err := r.Tx.Querier(ctx).QueryRow(ctx, query, projectID).Scan(&count)
 	if err != nil {
 		return false, MapError(op, err)
 	}
@@ -62,7 +62,7 @@ func (r *Repository) IsUserIDInAgencyID(ctx context.Context, agencyID, userID uu
 	const op = "postgres/IsUserIDInAgencyID"
 	query := `SELECT 1 FROM app.users u WHERE u.agency_id = $1 AND u.user_id = $2;`
 	var count int
-	err := r.tx.Querier(ctx).QueryRow(ctx, query, agencyID, userID).Scan(&count)
+	err := r.Tx.Querier(ctx).QueryRow(ctx, query, agencyID, userID).Scan(&count)
 	if err != nil {
 		return false, MapError(op, err)
 	}
@@ -75,7 +75,7 @@ func (r *Repository) InsertNewFixation(ctx context.Context, f entity.Fixation) e
 
 	query := `INSERT INTO fixations(id, fixed_at, expires_at, status, agency_id, fixed_by, fix_for, project_id, phone_hash)
 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9);`
-	_, err := r.tx.Querier(ctx).Exec(ctx, query, f.FixationID, f.FixedAt, f.ExpiresAt, f.Status, f.AgencyID, f.FixBy, f.FixFor, f.ProjectID, f.PhoneHash)
+	_, err := r.Tx.Querier(ctx).Exec(ctx, query, f.FixationID, f.FixedAt, f.ExpiresAt, f.Status, f.AgencyID, f.FixBy, f.FixFor, f.ProjectID, f.PhoneHash)
 	if err != nil {
 		return MapError(op, err)
 	}
@@ -88,7 +88,7 @@ func (r *Repository) InsertAudit(ctx context.Context, f entity.Fixation) error {
 
 	query := `INSERT INTO audit(id, fixed_at, expires_at, status, agency_id, fixed_by, fix_for, project_id, phone_hash)
 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9);`
-	_, err := r.tx.Querier(ctx).Exec(ctx, query, f.FixationID, f.FixedAt, f.ExpiresAt, f.Status, f.AgencyID, f.FixBy, f.FixFor, f.ProjectID, f.PhoneHash)
+	_, err := r.Tx.Querier(ctx).Exec(ctx, query, f.FixationID, f.FixedAt, f.ExpiresAt, f.Status, f.AgencyID, f.FixBy, f.FixFor, f.ProjectID, f.PhoneHash)
 	if err != nil {
 		return MapError(op, err)
 	}
@@ -101,7 +101,7 @@ func (r *Repository) InsertOutbox(ctx context.Context, f entity.Fixation) error 
 
 	query := `INSERT INTO outbox(id, fixed_at, expires_at, status, agency_id, fixed_by, fix_for, project_id, phone_hash) 
 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9);`
-	_, err := r.tx.Querier(ctx).Exec(ctx, query, f.FixationID, f.FixedAt, f.ExpiresAt, f.Status, f.AgencyID, f.FixBy, f.FixFor, f.ProjectID, f.PhoneHash)
+	_, err := r.Tx.Querier(ctx).Exec(ctx, query, f.FixationID, f.FixedAt, f.ExpiresAt, f.Status, f.AgencyID, f.FixBy, f.FixFor, f.ProjectID, f.PhoneHash)
 	if err != nil {
 		return MapError(op, err)
 	}
@@ -113,7 +113,7 @@ func (r *Repository) UpdateFixationStatusExpired(ctx context.Context, statusExpi
 	const op = "postgres.UpdateFixationStatusExpired"
 	query := `UPDATE fixations f SET f.status = $1 WHERE f.id = $2;`
 
-	tag, err := r.tx.Querier(ctx).Exec(ctx, query, statusExpired, id)
+	tag, err := r.Tx.Querier(ctx).Exec(ctx, query, statusExpired, id)
 	if err != nil {
 		return MapError(op, err)
 	}

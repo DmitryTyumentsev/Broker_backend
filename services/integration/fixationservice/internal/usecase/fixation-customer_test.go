@@ -3,12 +3,16 @@ package usecase
 import (
 	"Broker_backend/services/integration/fixationservice/internal/config"
 	"Broker_backend/services/integration/fixationservice/internal/domain/entity"
+	"Broker_backend/services/integration/fixationservice/internal/repository/postgres"
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 )
 
@@ -182,4 +186,68 @@ func TestNewFixation_NoActiveFixation_InsertFixationAuditOutbox(t *testing.T) {
 	//создаем мок структуры под каждый тест, внутри req/entity/pgerrcode
 	//создаем в каждом тесте экземпляры моков, заполняем, вызываем оригинальный метод NewFixation передавая мок в ресивере и на вход метода
 
+}
+
+func TestNewFixation_RaceFixations_ActiveFixationNoRows_OneOfFixationsSuccess(t *testing.T) {
+	cfg := newMockConfig()
+	now := time.Now().UTC()
+	mockNow := &mockClock{
+		clock: func() time.Time {
+			return now
+		},
+	}
+	tx := &mockTxManager{do: func(ctx context.Context, fn func(context.Context) error) error {
+		return fn(ctx)
+	}}
+	originalRepo := &postgres.Repository{
+		Tx: tx,
+	}
+	repo := &mockRepo{
+		isExistsProjectID: func(context.Context, uuid.UUID) (bool, error) {
+			fmt.Println("implement isExistsProjectID")
+			return true, nil
+		},
+		isUserIDInAgencyID: func(context.Context, uuid.UUID, uuid.UUID) (bool, error) {
+			fmt.Println("implement isUserIDInAgencyID")
+			return true, nil
+		},
+		fixationCurrent: func(context.Context, string, uuid.UUID) (*entity.Fixation, error) {
+			fmt.Println("implement fixationCurrent")
+			return &entity.Fixation{
+				Status: entity.StatusNoRows,
+			}, nil
+		},
+		insertNewFixation: func(context.Context, entity.Fixation) error {
+			fmt.Println("implement insertNewFixation")
+			return originalRepo.InsertNewFixation(context.Background(), entity.Fixation{})
+		},
+		insertAudit: func(ctx context.Context, f entity.Fixation) error {
+			fmt.Println("implement insertAudit")
+			return nil
+		},
+		insertOutbox: func(ctx context.Context, f entity.Fixation) error {
+			fmt.Println("implement insertOutbox")
+			return nil
+		},
+	}
+
+	svc := NewService(cfg, zap.NewNop(), mockNow, repo, tx)
+	for i := 0; i < 50; i++ {
+		go func() {
+			fmt.Printf("start goroutine %d/n", i)
+			got, err := svc.NewFixation(context.Background(), req)
+			if got != nil && i != 0 { //почему кстати && а не & ? когда дважды надо ставить знак а когда один раз?
+				t.Errorf("double fixation, i: %d, got: %v", i, *got)
+			}
+			if err != nil { //вообще насколько правильно тут смотреть ошибки постгри и даже конкретной либы
+				var pgErr *pgconn.PgError
+				if errors.As(err, &pgErr) {
+					if pgErr.Code != pgerrcode.UniqueViolation {
+						t.Errorf("wrong error code, err: %v, code: %v", err, pgErr.Code)
+					}
+				}
+			}
+
+		}()
+	}
 }
