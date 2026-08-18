@@ -13,6 +13,16 @@
 #   MinIO (документы)     http://localhost:9001   minioadmin/minioadmin
 #   Монолит (заглушка)    http://localhost:8000
 #
+# ПОРТЫ НА ХОСТЕ намеренно нестандартные: postgres 55432, redis 56379,
+# rabbitmq 55672. Внутри сети compose всё осталось стандартным
+# (postgres:5432, redis:6379, rabbitmq:5672).
+#
+# Причина. У разработчика часто уже есть свой postgres на 5432 — в системе,
+# в WSL, в другом проекте. Тогда сервисы с хоста уходят в него, а сидер
+# и монолит из сети compose — в докеровский. Получаются две базы, и
+# симптомы выглядят необъяснимо: миграции отчитались об успехе, а таблиц
+# «нет». Нестандартный порт делает такое совпадение невозможным.
+#
 # Версии образов подобраны под эпоху проекта (2020–2022), а не под «свежее»:
 # postgres 13, redis 6, rabbitmq 3.9, php 8.0. Стенд, на котором версии
 # новее прода, ловит не те баги.
@@ -30,7 +40,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: broker
     ports:
-      - "5432:5432"
+      - "55432:5432"   # нестандартный порт на хосте: 5432 часто уже занят
     volumes:
       - postgres_data:/var/lib/postgresql/data
     # healthcheck нужен, чтобы зависимые сервисы стартовали не раньше,
@@ -50,7 +60,7 @@ services:
     image: redis:6-alpine
     container_name: broker_redis
     ports:
-      - "6379:6379"
+      - "56379:6379"   # то же самое: локальный redis на 6379 — обычное дело
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
@@ -70,7 +80,7 @@ services:
       RABBITMQ_DEFAULT_USER: broker
       RABBITMQ_DEFAULT_PASS: broker
     ports:
-      - "5672:5672"     # AMQP
+      - "55672:5672"    # AMQP
       - "15672:15672"   # management UI
       - "15692:15692"   # /metrics для prometheus (плагин rabbitmq_prometheus)
     volumes:
@@ -107,8 +117,15 @@ services:
   # ── Трейсы ───────────────────────────────────────────────────────────
   # Куда OTel-экспортёр из сервисов шлёт спаны.
   # В конфигах otlp_endpoint: jaeger:4317 (в compose) / localhost:4317 (с хоста).
+  #
+  # Версия 1.35, а не 1.30: приёмник OTLP появился у Jaeger только в 1.35
+  # (июнь 2022). На 1.30 переменная COLLECTOR_OTLP_ENABLED молча
+  # игнорируется, на 4317 внутри контейнера никто не слушает, и docker
+  # рвёт соединение — в логах сервисов это выглядит как
+  # «traces export: connection reset by peer» каждые несколько секунд.
+  # По эпохе 1.35 тоже 2022 год, так что легенда не страдает.
   jaeger:
-    image: jaegertracing/all-in-one:1.30
+    image: jaegertracing/all-in-one:1.35
     container_name: broker_jaeger
     environment:
       COLLECTOR_OTLP_ENABLED: "true"

@@ -1,0 +1,1174 @@
+{
+  "info": {
+    "name": "ЛК брокера — стенд",
+    "description": "Коллекция для ручных проверок стенда.\n\nПорядок работы:\n1. make up -> make migrate -> make seed\n2. make postman-env — соберёт deploy/postman/broker.postman_environment.json\n   с идентификаторами агентства, проектов и брокеров из текущей базы\n3. Postman -> Import -> оба файла (коллекция и окружение)\n4. Выбрать окружение «ЛК брокера — стенд» в списке справа сверху\n5. Выполнить «Логин» — токен сам сохранится и подставится во все защищённые запросы\n\n«Кто я (/me)» дополнительно перезапишет agencyId и brokerId значениями\nиз принципала текущего токена — на случай, если окружение устарело.\n\nТокен живёт 15 минут. Протух — выполнить «Логин» ещё раз.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "partnerapi",
+      "value": "http://localhost:8080",
+      "description": "Go-контур, публичный edge"
+    },
+    {
+      "key": "monolith",
+      "value": "http://localhost:8000",
+      "description": "PHP-заглушка вместо Laravel"
+    },
+    {
+      "key": "amocrm",
+      "value": "http://localhost:9101",
+      "description": "мок amoCRM"
+    },
+    {
+      "key": "profitbase",
+      "value": "http://localhost:9102",
+      "description": "мок Profitbase"
+    },
+    {
+      "key": "brokerEmail",
+      "value": "broker1@perviy-metr.test",
+      "description": "почта брокера; список печатает make seed"
+    },
+    {
+      "key": "password",
+      "value": "password",
+      "description": "у сидера пароль одинаковый у всех"
+    },
+    {
+      "key": "deviceId",
+      "value": "postman",
+      "description": "устройство: по нему привязывается refresh-сессия"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "description": "заполняется скриптом после логина"
+    },
+    {
+      "key": "refresh",
+      "value": "",
+      "description": "заполняется скриптом после логина"
+    },
+    {
+      "key": "agencyId",
+      "value": "",
+      "description": "из вывода make seed"
+    },
+    {
+      "key": "projectId",
+      "value": "",
+      "description": "активный проект, из вывода make seed"
+    },
+    {
+      "key": "archivedProjectId",
+      "value": "",
+      "description": "архивный проект, из вывода make seed"
+    },
+    {
+      "key": "brokerId",
+      "value": "",
+      "description": "брокер ИЗ ТОГО ЖЕ агентства, что и токен"
+    },
+    {
+      "key": "foreignBrokerId",
+      "value": "",
+      "description": "брокер из ДРУГОГО агентства"
+    },
+    {
+      "key": "phone",
+      "value": "+7 (999) 111-22-33"
+    },
+    {
+      "key": "fixationId",
+      "value": "",
+      "description": "заполняется скриптом после успешной фиксации"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 · Живо ли",
+      "description": "Первое, что смотрим, когда «ничего не работает». Если здесь красно, дальше идти незачем.",
+      "item": [
+        {
+          "name": "partnerapi /healthz",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{partnerapi}}/healthz",
+              "host": [
+                "{{partnerapi}}"
+              ],
+              "path": [
+                "healthz"
+              ]
+            },
+            "description": "Процесс поднялся и слушает порт."
+          }
+        },
+        {
+          "name": "partnerapi /readyz",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{partnerapi}}/readyz",
+              "host": [
+                "{{partnerapi}}"
+              ],
+              "path": [
+                "readyz"
+              ]
+            }
+          }
+        },
+        {
+          "name": "partnerapi /metrics",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{partnerapi}}/metrics",
+              "host": [
+                "{{partnerapi}}"
+              ],
+              "path": [
+                "metrics"
+              ]
+            },
+            "description": "То же самое забирает Prometheus. Полезно, чтобы глазами увидеть счётчики по кодам ответов."
+          }
+        },
+        {
+          "name": "монолит /internal/v1/health",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{monolith}}/internal/v1/health",
+              "host": [
+                "{{monolith}}"
+              ],
+              "path": [
+                "internal",
+                "v1",
+                "health"
+              ]
+            },
+            "description": "Проверяет не только процесс, но и живость базы под ролью app_user."
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 · Авторизация",
+      "description": "Токены выпускает authservice, проверяет их partnerapi. Один выпускающий на весь стенд.",
+      "item": [
+        {
+          "name": "Логин (сохраняет токен)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Токен сразу уезжает в переменную коллекции — руками его",
+                  "// копировать не надо, все защищённые запросы подтянут сами.",
+                  "if (pm.response.code !== 200) {",
+                  "    console.log('логин не прошёл:', pm.response.text());",
+                  "    return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.access) {",
+                  "    pm.collectionVariables.set('token', body.access);",
+                  "}",
+                  "if (body.refresh) {",
+                  "    pm.collectionVariables.set('refresh', body.refresh);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{brokerEmail}}\",\n  \"password\": \"{{password}}\",\n  \"device_id\": \"{{deviceId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{partnerapi}}/api/v1/auth/login",
+              "host": [
+                "{{partnerapi}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Кто я (/me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{partnerapi}}/api/v1/me",
+              "host": [
+                "{{partnerapi}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "Показывает, что именно лежит в принципале: agency_id, user_id, device_id, роль. Отсюда видно, от чьего имени пойдут остальные запросы."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// agencyId и brokerId берём из принципала, а не из вывода make seed:",
+                  "// так они гарантированно совпадают с тем токеном, под которым",
+                  "// сейчас работаешь. Остальные идентификаторы — из окружения,",
+                  "// его собирает `make postman-env`.",
+                  "if (pm.response.code !== 200) { return; }",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.agency_id) { pm.collectionVariables.set(\"agencyId\", body.agency_id); }",
+                  "if (body.user_id)   { pm.collectionVariables.set(\"brokerId\", body.user_id); }",
+                  "",
+                  "console.log(\"agencyId =\", body.agency_id, \"| brokerId =\", body.user_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Обновить токен",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) { return; }",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "if (body.access) { pm.collectionVariables.set('token', body.access); }",
+                  "if (body.refresh) { pm.collectionVariables.set('refresh', body.refresh); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh}}\",\n  \"device_id\": \"{{deviceId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{partnerapi}}/api/v1/auth/refresh",
+              "host": [
+                "{{partnerapi}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Выход",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh}}\",\n  \"device_id\": \"{{deviceId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{partnerapi}}/api/v1/auth/logout",
+              "host": [
+                "{{partnerapi}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Регистрация",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"new-{{$randomInt}}@perviy-metr.test\",\n  \"password\": \"Passw0rd!2024\",\n  \"last_name\": \"Новиков\",\n  \"first_name\": \"Новый\",\n  \"device_id\": \"{{deviceId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{partnerapi}}/api/v1/auth/register",
+              "host": [
+                "{{partnerapi}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Самостоятельная регистрация сейчас упирается в открытый вопрос: агентства у нового пользователя нет, а выпуск токена его требует. См. журнал решений в README."
+          }
+        },
+        {
+          "name": "Ручка только для админа",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{partnerapi}}/api/v1/admin/ping",
+              "host": [
+                "{{partnerapi}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "ping"
+              ]
+            },
+            "description": "Проверка того, что пермишены вообще работают: под брокером сюда пускать не должно."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 · Фиксации",
+      "description": "Горячий путь. Все запросы идут под токеном из «Логина»: agency_id partnerapi берёт из принципала, в теле его нет.\n\nВ каждом ответе есть заголовок X-Request-ID — по нему запрос ищется в логах partnerapi и fixationservice.",
+      "item": [
+        {
+          "name": "Создать фиксацию",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    if (body.fixation_id) {",
+                  "        pm.collectionVariables.set('fixationId', body.fixation_id);",
+                  "    }",
+                  "}",
+                  "",
+                  "console.log('X-Request-ID:', pm.response.headers.get('X-Request-ID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$randomUUID}}",
+                "description": "новый на каждый запуск; чтобы проверить повтор — зафиксируй значение руками"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fix_for\": \"{{brokerId}}\",\n  \"phone\": \"{{phone}}\",\n  \"project_id\": \"{{projectId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{partnerapi}}/api/v1/fixations",
+              "host": [
+                "{{partnerapi}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fixations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Проект, которого нет в app.projects",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$randomUUID}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fix_for\": \"{{brokerId}}\",\n  \"phone\": \"+7 (999) 000-00-01\",\n  \"project_id\": \"{{$randomUUID}}\"\n}"
+            },
+            "url": {
+              "raw": "{{partnerapi}}/api/v1/fixations",
+              "host": [
+                "{{partnerapi}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fixations"
+              ]
+            },
+            "description": "Синтаксически корректный UUID, которого нет в справочнике. Генерируется на месте через {{$randomUUID}} — сеять такое в базу нечего.\n\nЭто шаг 2 из «шагов воспроизведения» тикета B-1."
+          }
+        },
+        {
+          "name": "Архивный проект",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$randomUUID}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fix_for\": \"{{brokerId}}\",\n  \"phone\": \"+7 (999) 000-00-02\",\n  \"project_id\": \"{{archivedProjectId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{partnerapi}}/api/v1/fixations",
+              "host": [
+                "{{partnerapi}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fixations"
+              ]
+            },
+            "description": "Проект в базе есть, статус archived. archivedProjectId берётся из вывода make seed."
+          }
+        },
+        {
+          "name": "Брокер из чужого агентства",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$randomUUID}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fix_for\": \"{{foreignBrokerId}}\",\n  \"phone\": \"+7 (999) 000-00-03\",\n  \"project_id\": \"{{projectId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{partnerapi}}/api/v1/fixations",
+              "host": [
+                "{{partnerapi}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fixations"
+              ]
+            },
+            "description": "Токен от агентства A, fix_for — сотрудник агентства B."
+          }
+        },
+        {
+          "name": "Проект + чужой брокер одновременно",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$randomUUID}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fix_for\": \"{{foreignBrokerId}}\",\n  \"phone\": \"+7 (999) 000-00-04\",\n  \"project_id\": \"{{archivedProjectId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{partnerapi}}/api/v1/fixations",
+              "host": [
+                "{{partnerapi}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fixations"
+              ]
+            },
+            "description": "Два нарушения сразу. Какая ошибка побеждает — это порядок проверок, и он должен быть осознанным, а не случайным."
+          }
+        },
+        {
+          "name": "project_id — не UUID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$randomUUID}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fix_for\": \"{{brokerId}}\",\n  \"phone\": \"+7 (999) 000-00-05\",\n  \"project_id\": \"не-уuid-вовсе\"\n}"
+            },
+            "url": {
+              "raw": "{{partnerapi}}/api/v1/fixations",
+              "host": [
+                "{{partnerapi}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fixations"
+              ]
+            },
+            "description": "Граничный случай из тикета: мусор в поле должен отсекаться раньше, чем запрос дойдёт до базы. Где именно он отсекается — проверь по логам."
+          }
+        },
+        {
+          "name": "Без Idempotency-Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fix_for\": \"{{brokerId}}\",\n  \"phone\": \"+7 (999) 000-00-06\",\n  \"project_id\": \"{{projectId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{partnerapi}}/api/v1/fixations",
+              "host": [
+                "{{partnerapi}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fixations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Повтор с тем же ключом",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "fixed-key-repeat-me",
+                "description": "значение НЕ случайное: смысл в том, чтобы отправить дважды"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fix_for\": \"{{brokerId}}\",\n  \"phone\": \"+7 (999) 000-00-07\",\n  \"project_id\": \"{{projectId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{partnerapi}}/api/v1/fixations",
+              "host": [
+                "{{partnerapi}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fixations"
+              ]
+            },
+            "description": "Отправить два раза подряд. Ключи идемпотентности живут в Redis 24 часа — сменить значение или `make redis-cli` + FLUSHDB."
+          }
+        },
+        {
+          "name": "Без токена",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$randomUUID}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fix_for\": \"{{brokerId}}\",\n  \"phone\": \"+7 (999) 000-00-08\",\n  \"project_id\": \"{{projectId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{partnerapi}}/api/v1/fixations",
+              "host": [
+                "{{partnerapi}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fixations"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 · Монолит /internal/v1",
+      "description": "Контур PHP. Go ходит сюда за справочниками; наружу эти ручки не торчат.",
+      "item": [
+        {
+          "name": "Агентство по id",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{monolith}}/internal/v1/agencies/{{agencyId}}",
+              "host": [
+                "{{monolith}}"
+              ],
+              "path": [
+                "internal",
+                "v1",
+                "agencies",
+                "{{agencyId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Шахматка проекта",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{monolith}}/internal/v1/lots?project_id={{projectId}}&limit=5",
+              "host": [
+                "{{monolith}}"
+              ],
+              "path": [
+                "internal",
+                "v1",
+                "lots"
+              ],
+              "query": [
+                {
+                  "key": "project_id",
+                  "value": "{{projectId}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Уведомление брокеру",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"fixation.created\",\n  \"recipient_id\": \"{{brokerId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{monolith}}/internal/v1/notifications",
+              "host": [
+                "{{monolith}}"
+              ],
+              "path": [
+                "internal",
+                "v1",
+                "notifications"
+              ]
+            },
+            "description": "Отвечает 202: задание принято, письмо ещё не отправлено. Результат — в логах монолита."
+          }
+        },
+        {
+          "name": "Одобрить агентство (шлёт agency.approved)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{monolith}}/internal/v1/agencies/{{agencyId}}/approve",
+              "host": [
+                "{{monolith}}"
+              ],
+              "path": [
+                "internal",
+                "v1",
+                "agencies",
+                "{{agencyId}}",
+                "approve"
+              ]
+            },
+            "description": "Публикует событие в обменник admin.events. Видно в RabbitMQ management: http://localhost:15672"
+          }
+        },
+        {
+          "name": "Сменить тариф (шлёт tariff.changed)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"commission_percent\": 3.5\n}"
+            },
+            "url": {
+              "raw": "{{monolith}}/internal/v1/agencies/{{agencyId}}/tariff",
+              "host": [
+                "{{monolith}}"
+              ],
+              "path": [
+                "internal",
+                "v1",
+                "agencies",
+                "{{agencyId}}",
+                "tariff"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 · Мок amoCRM",
+      "description": "Умеет ломаться по команде. Управление работает даже когда мок «лежит» — иначе поднять его обратно было бы нечем.",
+      "item": [
+        {
+          "name": "Состояние и счётчики",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{amocrm}}/_control/state",
+              "host": [
+                "{{amocrm}}"
+              ],
+              "path": [
+                "_control",
+                "state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Сломать: задержка, 429, 500",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"delay_ms\": 300,\n  \"rate_429\": 0.2,\n  \"retry_after_s\": 5,\n  \"rate_500\": 0.1\n}"
+            },
+            "url": {
+              "raw": "{{amocrm}}/_control",
+              "host": [
+                "{{amocrm}}"
+              ],
+              "path": [
+                "_control"
+              ]
+            },
+            "description": "Доли задаются от 0 до 1. 429 приходит с заголовком Retry-After."
+          }
+        },
+        {
+          "name": "Уронить целиком на 30 секунд",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"down_for_s\": 30\n}"
+            },
+            "url": {
+              "raw": "{{amocrm}}/_control",
+              "host": [
+                "{{amocrm}}"
+              ],
+              "path": [
+                "_control"
+              ]
+            },
+            "description": "Мок РВЁТ соединение, а не отдаёт 503. Это разные аварии: во втором случае у клиента есть HTTP-ответ."
+          }
+        },
+        {
+          "name": "Вернуть как было",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{amocrm}}/_control/reset",
+              "host": [
+                "{{amocrm}}"
+              ],
+              "path": [
+                "_control",
+                "reset"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Создать сделку",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"name\": \"Клиент из ЛК\",\n    \"price\": 5200000,\n    \"status_id\": 142,\n    \"phone\": \"{{phone}}\",\n    \"agency_id\": \"{{agencyId}}\",\n    \"fixation_id\": \"{{fixationId}}\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{amocrm}}/api/v4/leads",
+              "host": [
+                "{{amocrm}}"
+              ],
+              "path": [
+                "api",
+                "v4",
+                "leads"
+              ]
+            },
+            "description": "Тело — МАССИВ даже для одной сделки: так устроен настоящий amoCRM, мок повторяет."
+          }
+        },
+        {
+          "name": "Сделки, изменённые с момента",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{amocrm}}/api/v4/leads?filter[updated_at][from]=0&limit=50",
+              "host": [
+                "{{amocrm}}"
+              ],
+              "path": [
+                "api",
+                "v4",
+                "leads"
+              ],
+              "query": [
+                {
+                  "key": "filter[updated_at][from]",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Пустая выборка отдаёт 204 без тела — тоже как настоящий amoCRM. Курсор следующей страницы приезжает в next_cursor."
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 · Мок Profitbase",
+      "description": "Шахматка и бронь лота. Конфликт брони — штатная работа предметной области, а не отказ.",
+      "item": [
+        {
+          "name": "Состояние и счётчики",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{profitbase}}/_control/state",
+              "host": [
+                "{{profitbase}}"
+              ],
+              "path": [
+                "_control",
+                "state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Вернуть как было",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{profitbase}}/_control/reset",
+              "host": [
+                "{{profitbase}}"
+              ],
+              "path": [
+                "_control",
+                "reset"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Список лотов",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{profitbase}}/api/v4/property?limit=10",
+              "host": [
+                "{{profitbase}}"
+              ],
+              "path": [
+                "api",
+                "v4",
+                "property"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Пагинация по курсору: next_cursor из ответа подставляется в ?cursor="
+          }
+        },
+        {
+          "name": "Бронь лота — агентство A",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Agency-Id",
+                "value": "agency-a"
+              }
+            ],
+            "url": {
+              "raw": "{{profitbase}}/api/v4/property/1/hold",
+              "host": [
+                "{{profitbase}}"
+              ],
+              "path": [
+                "api",
+                "v4",
+                "property",
+                "1",
+                "hold"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Бронь того же лота — агентство B",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Agency-Id",
+                "value": "agency-b"
+              }
+            ],
+            "url": {
+              "raw": "{{profitbase}}/api/v4/property/1/hold",
+              "host": [
+                "{{profitbase}}"
+              ],
+              "path": [
+                "api",
+                "v4",
+                "property",
+                "1",
+                "hold"
+              ]
+            },
+            "description": "Второе агентство на занятый лот. Повтор ТОЙ ЖЕ брони тем же агентством конфликтом не считается — это идемпотентность, а не проигранная гонка."
+          }
+        }
+      ]
+    }
+  ]
+}

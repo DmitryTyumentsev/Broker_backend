@@ -29,6 +29,7 @@ import (
 	"strconv"
 	"syscall"
 
+	sharedlogger "Broker_backend/shared/pkg/logger"
 	sharedjwt "Broker_backend/shared/pkg/security/jwt"
 	sharedtracing "Broker_backend/shared/pkg/tracing"
 
@@ -48,7 +49,7 @@ func Run() error {
 	}
 
 	// ── [БОЙЛЕРПЛЕЙТ] 2. Логгер ────────────────────────────────────────
-	logger, err := newLogger(cfg)
+	logger, err := sharedlogger.New(cfg.Environment)
 	if err != nil {
 		return fmt.Errorf("create logger: %w", err)
 	}
@@ -205,14 +206,6 @@ func Run() error {
 }
 
 // ── [БОЙЛЕРПЛЕЙТ] вспомогательное ─────────────────────────────────────
-
-func newLogger(cfg *config.Config) (*zap.Logger, error) {
-	if cfg.Environment == "local" {
-		return zap.NewDevelopment()
-	}
-
-	return zap.NewProduction() // JSON-формат: его парсит Loki/ELK
-}
 
 // fiberErrorHandler — последний рубеж: всё, что вернулось из цепочки
 // хендлеров как error и никем не записано, превращается в наш JSON.

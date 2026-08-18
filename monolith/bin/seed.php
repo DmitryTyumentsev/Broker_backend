@@ -4,8 +4,12 @@ declare(strict_types=1);
 /**
  * Сидер стенда: данные, на которых видно списки, фильтры и отчёты.
  *
- * 3 агентства, 10 сотрудников, 2 проекта, 200 лотов, 300 фиксаций
- * с разными статусами и разбросом по датам.
+ * Агентства с разными статусами, брокеры в каждом из них, сотрудники
+ * застройщика без агентства вообще, проекты активные и архивные, шахматка
+ * и фиксации за последние полгода с разбросом по статусам и датам.
+ *
+ * Итогов сидер не печатает намеренно: «сколько чего в базе» — это запрос,
+ * который в расследовании пишешь ты, а не подсказка из вывода скрипта.
  *
  * ВАЖНО про подключение. Фиксации лежат в схеме integration, которой
  * владеет Go, и у app_user там только select. Поэтому сидер ходит под
@@ -72,30 +76,44 @@ try {
     }
 
     // ── Сотрудники ───────────────────────────────────────────────────
-    // 8 брокеров по агентствам + 2 сотрудника застройщика без агентства.
+    // Брокеры разложены по РАЗНЫМ агентствам намеренно, включая
+    // заблокированное. Сотрудник одного агентства и сотрудник другого —
+    // это разные входные данные для любой проверки принадлежности,
+    // и без обоих такую проверку нечем проверить.
+    //
     // Пароль у всех один: bcrypt от 'password'. Стенд, не прод.
     $passwordHash = password_hash('password', PASSWORD_BCRYPT);
 
-    $users = [];
+    $slugs = ['perviy-metr', 'kluchi', 'novosel'];
     $roles = ['agency_owner', 'broker_team_lead', 'broker_team_member', 'broker_team_member'];
 
-    for ($i = 0; $i < 8; $i++) {
-        $agency  = $agencies[$i % 2];              // только в два активных
-        $users[] = [
-            'id'            => uuid(),
-            'agency_id'     => $agency['id'],
-            'email'         => sprintf('broker%d@%s.test', $i + 1, $i % 2 === 0 ? 'perviy-metr' : 'kluchi'),
-            'user_role'     => $roles[$i % count($roles)],
-            'password_hash' => $passwordHash,
-            'last_name'     => 'Брокеров',
-            'first_name'    => 'Брокер' . ($i + 1),
-        ];
+    $users = [];
+    $brokerIndex = 0;
+
+    // По несколько брокеров в каждое агентство, включая заблокированное:
+    // тикет из поддержки пришёл именно от него, и войти под его сотрудником
+    // должно быть возможно.
+    foreach ($agencies as $agencyIndex => $agency) {
+        for ($i = 0; $i < 3; $i++) {
+            $brokerIndex++;
+            $users[] = [
+                'id'            => uuid(),
+                'agency_id'     => $agency['id'],
+                'email'         => sprintf('broker%d@%s.test', $brokerIndex, $slugs[$agencyIndex]),
+                'user_role'     => $roles[$i % count($roles)],
+                'password_hash' => $passwordHash,
+                'last_name'     => 'Брокеров',
+                'first_name'    => 'Брокер' . $brokerIndex,
+            ];
+        }
     }
 
-    foreach (['account_manager', 'sales_manager'] as $index => $role) {
+    // Сотрудники застройщика: агентства нет вообще. Отдельный класс входных
+    // данных — не «чужое агентство», а «агентства нет».
+    foreach (['account_manager', 'sales_manager', 'developer_admin'] as $index => $role) {
         $users[] = [
             'id'            => uuid(),
-            'agency_id'     => null,               // сотрудник застройщика
+            'agency_id'     => null,
             'email'         => sprintf('%s@developer.test', $role),
             'user_role'     => $role,
             'password_hash' => $passwordHash,
@@ -113,9 +131,14 @@ try {
     }
 
     // ── Проекты ──────────────────────────────────────────────────────
+    // Статусы разные намеренно. Архивный проект — это отдельное состояние,
+    // а не «удалённый»: строка в базе есть, ссылки на неё живы, продавать
+    // по нему нельзя. Без такой строки в стенде поведение системы на
+    // архивном проекте нечем воспроизвести.
     $projects = [
         ['id' => uuid(), 'name' => 'ЖК «Северная звезда»', 'status' => 'active'],
         ['id' => uuid(), 'name' => 'ЖК «Речной парк»',     'status' => 'active'],
+        ['id' => uuid(), 'name' => 'ЖК «Заречье», очередь 1', 'status' => 'archived'],
     ];
 
     $stmt = $pdo->prepare('insert into app.projects (id, name, status) values (:id, :name, :status)');
@@ -124,8 +147,10 @@ try {
     }
 
     // ── Лоты ─────────────────────────────────────────────────────────
-    // 200 штук, по 100 на проект, с разбросом по корпусам, этажам,
-    // комнатности и статусам — иначе фильтры витрины нечем проверять.
+    // Своя шахматка у каждого проекта, включая архивный: у архивного
+    // проекта лоты никуда не деваются, он просто закрыт для продаж.
+    // Разброс по корпусам, этажам, комнатности и статусам — иначе
+    // фильтры витрины нечем проверять.
     $stmt = $pdo->prepare(
         'insert into app.lots
             (id, project_id, external_id, building, number, floor, rooms, area_m2, price_kopecks, status, synced_at)
@@ -156,13 +181,13 @@ try {
     }
 
     // ── Фиксации ─────────────────────────────────────────────────────
-    // 300 штук за последние полгода. Статусы и даты разные: на отчёте
-    // «сколько фиксаций дошло до сделки» должна быть видна воронка,
-    // а не один столбик.
+    // За последние полгода, по всем агентствам и всем проектам, включая
+    // архивный: фиксация, оформленная до архивации, никуда не исчезает.
+    // Статусы и даты разные — на отчёте «сколько фиксаций дошло до сделки»
+    // должна быть видна воронка, а не один столбик.
     //
-    // Активная фиксация в проекте может быть только одна на телефон —
-    // это держит частичный уникальный индекс. Поэтому телефон у каждой
-    // фиксации свой, и на индекс сидер не наступает.
+    // Телефон у каждой фиксации свой. Сколько чего получилось — считай
+    // сам, это входит в работу.
     $stmt = $pdo->prepare(
         'insert into integration.fixations
             (id, fixed_at, expires_at, status, agency_id, fix_by, fix_for, project_id, phone_hash)
@@ -174,7 +199,9 @@ try {
     // Перекос в active: так выглядит живая база в разгар продаж.
     $fixationStatuses = ['active', 'active', 'active', 'converted', 'expired', 'removed'];
 
-    for ($i = 0; $i < 300; $i++) {
+    $fixationCount = 300 + count($projects) * 7;
+
+    for ($i = 0; $i < $fixationCount; $i++) {
         $broker = $brokers[$i % count($brokers)];
         $status = $fixationStatuses[$i % count($fixationStatuses)];
 
@@ -204,24 +231,35 @@ try {
 
     $pdo->commit();
 
-    Log::line(sprintf(
-        'seed done: agencies=%d users=%d projects=%d lots=%d fixations=%d',
-        count($agencies),
-        count($users),
-        count($projects),
-        200,
-        300
-    ));
+    Log::line('seed done');
 
-    echo "Агентства:\n";
+    // Справочник для ручных проверок. Печатаем состав, а не итоги:
+    // сколько чего в базе — это запрос, который пишешь ты сам.
+    echo "\nАгентства\n";
     foreach ($agencies as $agency) {
-        echo "  {$agency['id']}  {$agency['status']}  {$agency['name']}\n";
+        echo sprintf("  %s  %-8s %s\n", $agency['id'], $agency['status'], $agency['name']);
+
+        foreach ($users as $user) {
+            if ($user['agency_id'] === $agency['id']) {
+                echo sprintf("      %s  %-20s %s\n", $user['id'], $user['user_role'], $user['email']);
+            }
+        }
     }
-    echo "Проекты:\n";
+
+    echo "\nСотрудники застройщика (агентства нет)\n";
+    foreach ($users as $user) {
+        if ($user['agency_id'] === null) {
+            echo sprintf("  %s  %-20s %s\n", $user['id'], $user['user_role'], $user['email']);
+        }
+    }
+
+    echo "\nПроекты\n";
     foreach ($projects as $project) {
-        echo "  {$project['id']}  {$project['name']}\n";
+        echo sprintf("  %s  %-9s %s\n", $project['id'], $project['status'], $project['name']);
     }
-    echo "Логин любого брокера: broker1@perviy-metr.test / password\n";
+
+    echo "\nПароль у всех: password\n";
+    echo "Токен:  make token EMAIL=<почта>\n";
 } catch (\Throwable $e) {
     $pdo->rollBack();
     Log::line('seed failed: ' . $e->getMessage());

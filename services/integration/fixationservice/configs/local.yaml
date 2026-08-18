@@ -30,12 +30,12 @@ observability:
 
 database:
   postgres:
-    dsn: "postgres://go_user:go_user@127.0.0.1:5432/broker?sslmode=disable&search_path=integration,public"
+    dsn: "postgres://go_user:go_user@127.0.0.1:55432/broker?sslmode=disable&search_path=integration,public"
 
     # Дублируется для читаемости и для случая, когда dsn пустой.
     # Приоритет у dsn: если он задан, поля ниже не используются.
     host: "127.0.0.1"
-    port: 5432
+    port: 55432
     database_name: "broker"
     username: "go_user"
     password: "go_user"

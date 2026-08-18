@@ -33,15 +33,15 @@ DB_USER    := postgres
 GRPC_ADDR  := localhost:50052
 HTTP_ADDR  := http://localhost:8080
 
-BOOTSTRAP_DSN := postgres://postgres:postgres@localhost:5432/$(DB_NAME)?sslmode=disable
+BOOTSTRAP_DSN := postgres://postgres:postgres@localhost:55432/$(DB_NAME)?sslmode=disable
 
 # .PHONY говорит make: это команды, а не имена файлов.
 # Без него make увидит файл с таким именем и решит, что делать нечего.
 .PHONY: help tools generate mocks lint fmt vet test test-integration race-fixation cover \
         build run run-auth run-fixation run-partnerapi \
-        migrate migrate-bootstrap migrate-app migrate-integration seed \
+        migrate migrate-bootstrap migrate-app migrate-integration seed show-data db-check postman-env \
         up up-full down down-v logs psql redis-cli rabbit-ui minio-ui \
-        grpc-list grpc-fix check-db reconcile vuln breaking
+        grpc-list grpc-fix check-db reconcile token vuln breaking
 
 # ── Справка ────────────────────────────────────────────────────────────
 help:
@@ -62,6 +62,9 @@ help:
 	@echo "  make migrate-app       migrations/app под app_user"
 	@echo "  make migrate-integration  migrations/integration под go_user"
 	@echo "  make seed              демо-данные: агентства, лоты, фиксации"
+	@echo "  make show-data         кто и что лежит в базе: агентства, сотрудники, проекты"
+	@echo "  make db-check          на какой сервер смотрят хост и compose, что там есть"
+	@echo "  make postman-env       собрать окружение Postman из текущих данных базы"
 	@echo ""
 	@echo "Разработка:"
 	@echo "  make run-partnerapi    запустить partnerapi"
@@ -79,6 +82,7 @@ help:
 	@echo ""
 	@echo "Проверка руками:"
 	@echo "  make grpc-list         какие методы есть на fixationservice"
+	@echo "  make token EMAIL=..    получить access-токен сотрудника"
 	@echo "  make grpc-fix          дёрнуть NewFixation напрямую по gRPC"
 	@echo "  make check-db          что записалось в фиксации"
 	@echo "  make reconcile         сверить наши фиксации с моком amoCRM"
@@ -171,7 +175,13 @@ minio-ui:
 # ── Миграции ───────────────────────────────────────────────────────────
 # Три шага, три владельца, три роли. Порядок обязателен: bootstrap создаёт
 # схемы и роли, под которыми работают остальные два.
+#
+# После миграций — постусловие. Запись в таблице версий goose означает
+# «мигратор считает, что накатил», а не «объекты есть на том сервере,
+# куда пойдут сервисы». Разница вылезает ровно один раз и стоит часа.
 migrate: migrate-bootstrap migrate-app migrate-integration
+	@go run ./tools/dbcheck -dsn "$(BOOTSTRAP_DSN)" \
+	  -require app.users,app.agencies,app.projects,app.lots,integration.fixations,integration.outbox
 
 migrate-bootstrap:
 	BOOTSTRAP_DSN="$(BOOTSTRAP_DSN)" go run $(DB_BOOTSTRAP)
@@ -189,12 +199,58 @@ migrate-integration:
 # Сидер ходит суперпользователем: фиксации лежат в схеме integration,
 # и у app_user там только select. Это осознанное нарушение границы
 # контуров ради стенда.
+#
+# --no-deps: поднимаем ТОЛЬКО контейнер монолита. Без него docker compose
+# потянет за собой всю цепочку depends_on — rabbitmq и три контейнера
+# с миграциями. Миграции к этому моменту уже накачены (`make migrate`),
+# а шина сидеру не нужна вообще.
 seed:
-	docker compose --profile full run --rm \
+	docker compose --profile full run --rm --no-deps \
 	  -e SEED_DB_DSN="pgsql:host=postgres;port=5432;dbname=$(DB_NAME)" \
 	  -e SEED_DB_USER=postgres \
 	  -e SEED_DB_PASSWORD=postgres \
 	  --entrypoint php monolith /app/bin/seed.php
+
+# Сравнение двух точек зрения на базу: с хоста (так ходят мигратор и
+# сервисы, запущенные через make run-*) и из сети compose (так ходят
+# монолит и сидер).
+#
+# Если system_identifier в двух блоках разный — это ДВА разных сервера,
+# и все странности вида «миграции накачены, а таблицы нет» объясняются им.
+db-check:
+	@go run ./tools/dbcheck -label "с хоста: $(BOOTSTRAP_DSN)" -dsn "$(BOOTSTRAP_DSN)"
+	@echo ""
+	@echo "── из сети compose: postgres:5432/$(DB_NAME) ──"
+	@docker compose run --rm --no-deps -e PGPASSWORD=postgres --entrypoint psql postgres \
+	  -h postgres -U postgres -d $(DB_NAME) -X -q -c \
+	  "select current_database() as db, inet_server_addr()::text as server, \
+	          (select system_identifier::text from pg_control_system()) as system_identifier;" \
+	  -c "select schemaname || '.' || tablename as tables from pg_tables \
+	       where schemaname in ('app','integration') order by 1;"
+
+# Окружение Postman из того, что реально лежит в базе.
+# Идентификаторы сидер генерирует заново на каждом прогоне, переносить их
+# руками — шесть copy-paste и один шанс из шести ошибиться.
+#
+# В Postman: Import -> deploy/postman/broker.postman_environment.json,
+# дальше выбрать окружение в списке справа сверху.
+postman-env:
+	@go run ./tools/standenv -dsn "$(BOOTSTRAP_DSN)"
+
+# Что реально лежит в базе: агентства с их сотрудниками и проекты.
+# Первое, что смотрят, когда «логин не проходит» — есть ли вообще
+# пользователь с такой почтой. Вывод `make seed` теряется при закрытии
+# терминала, а эта цель повторяется сколько угодно.
+show-data:
+	@docker compose exec -T postgres psql -U $(DB_USER) -d $(DB_NAME) -X -q -c \
+	  "select a.status as agency, a.name, u.user_role, u.email, u.id \
+	     from app.agencies a join app.users u on u.agency_id = a.id \
+	    order by a.name, u.email;"
+	@docker compose exec -T postgres psql -U $(DB_USER) -d $(DB_NAME) -X -q -c \
+	  "select 'no agency' as agency, '' as name, user_role, email, id \
+	     from app.users where agency_id is null order by email;"
+	@docker compose exec -T postgres psql -U $(DB_USER) -d $(DB_NAME) -X -q -c \
+	  "select status, name, id from app.projects order by status, name;"
 
 # ── Разработка ─────────────────────────────────────────────────────────
 build:
@@ -282,6 +338,16 @@ check-db:
 	docker compose exec postgres psql -U $(DB_USER) -d $(DB_NAME) -c \
 	  "select id, status, fixed_at, expires_at, expires_at > fixed_at as period_ok \
 	     from integration.fixations order by fixed_at desc limit 5;"
+
+# Access-токен сотрудника. Печатает ТОЛЬКО токен — чтобы подставлялось
+# в переменную:
+#
+#   TOKEN=$$(make -s token EMAIL=broker1@perviy-metr.test)
+#
+# Список сотрудников и их агентств печатает `make seed`.
+token:
+	@test -n "$(EMAIL)" || (echo "нужен EMAIL=<почта сотрудника>, список печатает make seed"; exit 1)
+	@go run ./tools/token -url $(HTTP_ADDR) -email "$(EMAIL)" -password "$(or $(PASSWORD),password)"
 
 # Сверка с моком amoCRM: что не доехало, что лишнее, где разошлись статусы.
 reconcile:

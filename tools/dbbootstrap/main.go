@@ -6,7 +6,7 @@
 //
 // Запуск:
 //
-//	BOOTSTRAP_DSN=postgres://postgres:postgres@localhost:5432/broker?sslmode=disable \
+//	BOOTSTRAP_DSN=postgres://postgres:postgres@localhost:55432/broker?sslmode=disable \
 //	  go run ./tools/dbbootstrap
 //
 // Своя таблица версий — public.goose_bootstrap_version. Общая с контурами
@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	defaultDSN       = "postgres://postgres:postgres@localhost:5432/broker?sslmode=disable"
+	defaultDSN       = "postgres://postgres:postgres@localhost:55432/broker?sslmode=disable"
 	versionTableName = "public.goose_bootstrap_version"
 	pingTimeout      = 10 * time.Second
 )

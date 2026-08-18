@@ -127,7 +127,7 @@ fixation_grpc:
 database:
   redis:
     host: "127.0.0.1"
-    port: 6379
+    port: 56379
     password: ""
     db: 0
     dial_timeout: "5s"

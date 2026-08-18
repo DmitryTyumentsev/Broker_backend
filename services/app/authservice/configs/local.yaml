@@ -34,10 +34,10 @@ observability:
 
 database:
   postgres:
-    dsn: "postgres://app_user:app_user@127.0.0.1:5432/broker?sslmode=disable&search_path=app,public"
+    dsn: "postgres://app_user:app_user@127.0.0.1:55432/broker?sslmode=disable&search_path=app,public"
 
     host: "127.0.0.1"
-    port: 5432
+    port: 55432
     database_name: "broker"
     username: "app_user"
     password: "app_user"
@@ -58,7 +58,7 @@ database:
 
   redis:
     host: "127.0.0.1"
-    port: 6379
+    port: 56379
     password: ""
     db: 0
     dial_timeout: "5s"

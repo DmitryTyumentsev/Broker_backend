@@ -109,7 +109,7 @@ func defaultDSN() string {
 		return dsn
 	}
 
-	return "postgres://go_user:go_user@localhost:5432/broker?sslmode=disable&search_path=integration,public"
+	return "postgres://go_user:go_user@localhost:55432/broker?sslmode=disable&search_path=integration,public"
 }
 
 func loadFixations(ctx context.Context, dsn string, since time.Duration) (map[string]fixation, error) {

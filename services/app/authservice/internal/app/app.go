@@ -29,6 +29,7 @@ import (
 
 	authv1 "Broker_backend/gen/auth/v1"
 	grpcobservability "Broker_backend/shared/pkg/grpc/observability"
+	sharedlogger "Broker_backend/shared/pkg/logger"
 	sharedtracing "Broker_backend/shared/pkg/tracing"
 
 	"go.uber.org/zap"
@@ -49,7 +50,7 @@ func Run() error {
 	}
 
 	// ── [БОЙЛЕРПЛЕЙТ] 2. Логгер ────────────────────────────────────────
-	logger, err := newLogger(cfg)
+	logger, err := sharedlogger.New(cfg.Environment)
 	if err != nil {
 		return fmt.Errorf("create logger: %w", err)
 	}
@@ -133,6 +134,7 @@ func Run() error {
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			grpcobservability.TraceUnaryServerInterceptor(cfg.Observability.Tracing.ServiceName),
+			grpcobservability.AccessLogUnaryServerInterceptor(logger), // строка на каждый RPC с request_id
 			recoveryInterceptor(logger), // паника в хендлере не должна ронять сервис
 			unaryContextTimeout(cfg.Business.ContextTimeout),
 		),
@@ -192,14 +194,6 @@ func Run() error {
 }
 
 // ── [БОЙЛЕРПЛЕЙТ] вспомогательное ─────────────────────────────────────
-
-func newLogger(cfg *config.Config) (*zap.Logger, error) {
-	if cfg.Environment == "local" {
-		return zap.NewDevelopment()
-	}
-
-	return zap.NewProduction() // JSON-формат: его парсит Loki/ELK
-}
 
 // unaryContextTimeout ставит потолок на время обработки одного RPC.
 // Клиентский дедлайн приезжает сам (заголовок grpc-timeout); этот —
