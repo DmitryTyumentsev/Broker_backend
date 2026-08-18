@@ -1,12 +1,13 @@
 package auth
 
 import (
+	"Broker_backend/shared/pkg/authz"
 	"context"
 	"strings"
 
-	sharedauth "Broker_backend/shared/pkg/auth"
 	"Broker_backend/shared/pkg/requestctx"
 
+	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -15,6 +16,7 @@ import (
 )
 
 const (
+	principalAgencyIDKey = "principal-agency-id"
 	principalUserIDKey   = "principal-user-id"
 	principalDeviceIDKey = "principal-device-id"
 	principalRoleKey     = "principal-role"
@@ -33,8 +35,9 @@ func InjectOutgoingContext(ctx context.Context) context.Context {
 		md = metadata.MD{}
 	}
 
-	if principal, ok := sharedauth.PrincipalFromContext(ctx); ok {
-		md.Set(principalUserIDKey, principal.UserID)
+	if principal, ok := authz.PrincipalFromContext(ctx); ok {
+		md.Set(principalAgencyIDKey, principal.AgencyID.String())
+		md.Set(principalUserIDKey, principal.UserID.String())
 		md.Set(principalDeviceIDKey, principal.DeviceID)
 		md.Set(principalRoleKey, principal.Role)
 	}
@@ -57,7 +60,7 @@ func RequirePrincipalUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	) (any, error) {
 		ctx = ExtractIncomingContext(ctx)
 
-		principal, ok := sharedauth.PrincipalFromContext(ctx)
+		principal, ok := authz.PrincipalFromContext(ctx)
 		if !ok || !principal.Valid() {
 			return nil, status.Error(codes.Unauthenticated, "principal is missing")
 		}
@@ -86,16 +89,29 @@ func ExtractIncomingContext(ctx context.Context) context.Context {
 		ctx = requestctx.WithRequestID(ctx, requestID)
 	}
 
-	principal := sharedauth.Principal{
-		UserID:   firstMetadataValue(md, principalUserIDKey),
+	principal := authz.Principal{
+		AgencyID: parseUUIDOrNil(firstMetadataValue(md, principalAgencyIDKey)),
+		UserID:   parseUUIDOrNil(firstMetadataValue(md, principalUserIDKey)),
 		DeviceID: firstMetadataValue(md, principalDeviceIDKey),
 		Role:     firstMetadataValue(md, principalRoleKey),
 	}
 	if principal.Valid() {
-		ctx = sharedauth.WithPrincipal(ctx, principal)
+		ctx = authz.WithPrincipal(ctx, principal)
 	}
 
 	return ctx
+}
+
+// parseUUIDOrNil превращает строку метаданных в uuid.
+// Мусор в метаданных не ошибка транспорта: uuid.Nil не пройдёт
+// Principal.Valid(), и запрос отвалится с Unauthenticated выше по цепочке.
+func parseUUIDOrNil(value string) uuid.UUID {
+	id, err := uuid.Parse(value)
+	if err != nil {
+		return uuid.Nil
+	}
+
+	return id
 }
 
 func firstMetadataValue(md metadata.MD, key string) string {

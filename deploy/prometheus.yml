@@ -1,0 +1,45 @@
+# deploy/prometheus.yml
+#
+# Prometheus работает по pull-модели: он сам ходит на /metrics приложения
+# и забирает цифры. Приложение никуда ничего не шлёт.
+#
+# Таргеты записаны по именам сервисов из docker-compose.yml — они
+# резолвятся во внутренней сети compose. Если запускаешь сервис на хосте
+# (обычный режим разработки), раскомментируй host.docker.internal-вариант
+# рядом: из контейнера prometheus в хост так и стучатся.
+
+global:
+  scrape_interval: 15s      # как часто опрашивать
+  evaluation_interval: 15s  # как часто пересчитывать правила алертов
+
+scrape_configs:
+  # ── Единственный Go-сервис с HTTP ────────────────────────────────────
+  # authservice и fixationservice метрик не отдают: они gRPC-only и HTTP-порта
+  # у них нет. Добавлять их сюда бессмысленно — будут вечно down.
+  # Появятся метрики — появится и отдельный порт под /metrics.
+  - job_name: 'partnerapi'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['partnerapi:8080']
+        labels:
+          service: 'partnerapi'
+          contour: 'go'
+      # Вариант для partnerapi, запущенного на хосте через `make run-partnerapi`:
+      # - targets: ['host.docker.internal:8080']
+
+  # ── Шина ─────────────────────────────────────────────────────────────
+  # Плагин rabbitmq_prometheus включён в management-образе по умолчанию,
+  # порт 15692. Отсюда берётся глубина очередей — первый признак того,
+  # что консьюмер встал.
+  - job_name: 'rabbitmq'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['rabbitmq:15692']
+        labels:
+          service: 'rabbitmq'
+
+  # ── Сам prometheus ───────────────────────────────────────────────────
+  # Удобно для проверки, что он вообще жив и конфиг подхватился.
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

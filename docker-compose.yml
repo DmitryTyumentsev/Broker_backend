@@ -1,12 +1,355 @@
+# docker-compose.yml — весь стенд для локальной разработки.
+#
+#   make up        только инфраструктура (база, кэш, шина, хранилище, моки)
+#   make up-full   инфраструктура + монолит + все три Go-сервиса
+#   make down      остановить
+#   make down-v    остановить И стереть данные
+#
+# UI после запуска:
+#   Jaeger (трейсы)       http://localhost:16686
+#   Prometheus (метрики)  http://localhost:9090
+#   Grafana (дашборды)    http://localhost:3000   admin/admin
+#   RabbitMQ (очереди)    http://localhost:15672  broker/broker
+#   MinIO (документы)     http://localhost:9001   minioadmin/minioadmin
+#   Монолит (заглушка)    http://localhost:8000
+#
+# Версии образов подобраны под эпоху проекта (2020–2022), а не под «свежее»:
+# postgres 13, redis 6, rabbitmq 3.9, php 8.0. Стенд, на котором версии
+# новее прода, ловит не те баги.
+
 services:
+  # ── База ─────────────────────────────────────────────────────────────
+  # Одна база, две схемы. Имя базы — broker, и оно одно и то же в compose,
+  # в configs/*.yaml, в makefile и в dockertest-хелпере. Разные имена в
+  # разных местах — самый дешёвый способ потерять полдня.
+  postgres:
+    image: postgres:13-alpine
+    container_name: broker_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: broker
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # healthcheck нужен, чтобы зависимые сервисы стартовали не раньше,
+    # чем база готова принимать соединения. Без него мигратор успевает
+    # ткнуться в ещё не поднявшийся postgres и упасть.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d broker"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── Кэш, лимиты, идемпотентность ─────────────────────────────────────
+  # Общий на два контура, разделён префиксами ключей:
+  #   lk:  сессии и очереди монолита
+  #   go:  лимиты, идемпотентность, кэш Go
   redis:
-    image: redis:7.4-alpine
+    image: redis:6-alpine
     container_name: broker_redis
     ports:
       - "6379:6379"
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── Шина между рантаймами ────────────────────────────────────────────
+  # Монолит публикует admin.events, Go слушает; Go публикует fixation.*,
+  # монолит слушает. Прямых HTTP-вызовов между контурами по этим поводам нет.
+  rabbitmq:
+    image: rabbitmq:3.9-management
+    container_name: broker_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: broker
+      RABBITMQ_DEFAULT_PASS: broker
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # management UI
+      - "15692:15692"   # /metrics для prometheus (плагин rabbitmq_prometheus)
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      # ping проверяет, что нода жива и приложение поднялось,
+      # а не только что порт открыт.
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  # ── Документы ────────────────────────────────────────────────────────
+  # S3-совместимое хранилище. Договоры, акты, сканы — всё, что нельзя
+  # держать в базе и нельзя потерять при пересоздании контейнера.
+  minio:
+    image: minio/minio:RELEASE.2022-02-24T22-12-01Z
+    container_name: broker_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # web-консоль
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── Трейсы ───────────────────────────────────────────────────────────
+  # Куда OTel-экспортёр из сервисов шлёт спаны.
+  # В конфигах otlp_endpoint: jaeger:4317 (в compose) / localhost:4317 (с хоста).
+  jaeger:
+    image: jaegertracing/all-in-one:1.30
+    container_name: broker_jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"   # web UI
+      - "4317:4317"     # OTLP gRPC — сюда шлёт приложение
+      - "4318:4318"     # OTLP HTTP
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:14269/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── Метрики ──────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.33.0
+    container_name: broker_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+
+  grafana:
+    image: grafana/grafana:8.3.4
+    container_name: broker_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    depends_on:
+      - prometheus
+
+  # ── Моки внешних систем ──────────────────────────────────────────────
+  # Главное их свойство — они умеют ломаться по команде. Внешние системы
+  # в проде падают, тормозят и отдают 429; проверять поведение интеграции
+  # можно только на моке, который это воспроизводит.
+  mock-amocrm:
+    build:
+      context: .
+      dockerfile: build/Dockerfile.goservice
+      args:
+        SERVICE_PATH: ./tools/mock-amocrm
+        SERVICE_NAME: mock-amocrm
+    container_name: broker_mock_amocrm
+    environment:
+      MOCK_ADDR: ":9101"
+    ports:
+      - "9101:9101"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:9101/_control/state"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mock-profitbase:
+    build:
+      context: .
+      dockerfile: build/Dockerfile.goservice
+      args:
+        SERVICE_PATH: ./tools/mock-profitbase
+        SERVICE_NAME: mock-profitbase
+    container_name: broker_mock_profitbase
+    environment:
+      MOCK_ADDR: ":9102"
+    ports:
+      - "9102:9102"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:9102/_control/state"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ═══════════════════════════════════════════════════════════════════════
+  #  Всё, что ниже, поднимается только с профилем full: make up-full.
+  #  Обычная разработка — инфраструктура в docker, свой сервис из IDE.
+  # ═══════════════════════════════════════════════════════════════════════
+
+  # ── Миграции ─────────────────────────────────────────────────────────
+  # Три отдельных шага, потому что у них три разных владельца и три разные
+  # роли в базе. Порядок держится через service_completed_successfully:
+  # bootstrap создаёт схемы и роли, и только потом под этими ролями
+  # катятся миграции контуров.
+  migrate-bootstrap:
+    profiles: ["full", "migrate"]
+    build:
+      context: .
+      dockerfile: build/Dockerfile.migrate
+    container_name: broker_migrate_bootstrap
+    command: ["/app/dbbootstrap"]
+    environment:
+      # Суперпользователь: только у него есть права создавать роли и схемы.
+      BOOTSTRAP_DSN: "postgres://postgres:postgres@postgres:5432/broker?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  migrate-app:
+    profiles: ["full", "migrate"]
+    build:
+      context: .
+      dockerfile: build/Dockerfile.migrate
+    container_name: broker_migrate_app
+    command: ["/app/migrator-app"]
+    environment:
+      ENVIRONMENT: dev
+      AUTHSERVICE_DATABASE_POSTGRES_DSN: "postgres://app_user:app_user@postgres:5432/broker?sslmode=disable&search_path=app,public"
+      AUTHSERVICE_BUSINESS_ACCESS_TOKEN_SECRET: "local-access-secret-change-me-32-bytes-minimum"
+    depends_on:
+      migrate-bootstrap:
+        condition: service_completed_successfully
+    restart: "no"
+
+  migrate-integration:
+    profiles: ["full", "migrate"]
+    build:
+      context: .
+      dockerfile: build/Dockerfile.migrate
+    container_name: broker_migrate_integration
+    command: ["/app/migrator-integration"]
+    environment:
+      ENVIRONMENT: dev
+      FIXATIONSERVICE_DATABASE_POSTGRES_DSN: "postgres://go_user:go_user@postgres:5432/broker?sslmode=disable&search_path=integration,public"
+      FIXATIONSERVICE_BUSINESS_HASH_SECRET: "local-phone-hash-secret-change-me"
+    depends_on:
+      migrate-app:
+        condition: service_completed_successfully
+    restart: "no"
+
+  # ── Монолит (заглушка вместо Laravel) ────────────────────────────────
+  monolith:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: build/Dockerfile.monolith
+    container_name: broker_monolith
+    environment:
+      # Монолит ходит в базу под app_user: полные права на app,
+      # только чтение integration. Ровно наоборот к Go.
+      APP_DB_DSN: "pgsql:host=postgres;port=5432;dbname=broker"
+      APP_DB_USER: app_user
+      APP_DB_PASSWORD: app_user
+      APP_AMQP_HOST: rabbitmq
+      APP_AMQP_PORT: "5672"
+      APP_AMQP_USER: broker
+      APP_AMQP_PASSWORD: broker
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      migrate-integration:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8000/internal/v1/health') ? 0 : 1);"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── Go-сервисы ───────────────────────────────────────────────────────
+  authservice:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: build/Dockerfile.goservice
+      args:
+        SERVICE_PATH: ./services/app/authservice/cmd/authservice
+        SERVICE_NAME: authservice
+    container_name: broker_authservice
+    environment:
+      ENVIRONMENT: dev
+      AUTHSERVICE_DATABASE_POSTGRES_DSN: "postgres://app_user:app_user@postgres:5432/broker?sslmode=disable&search_path=app,public"
+      AUTHSERVICE_BUSINESS_ACCESS_TOKEN_SECRET: "local-access-secret-change-me-32-bytes-minimum"
+    ports:
+      - "50051:50051"
+    depends_on:
+      migrate-app:
+        condition: service_completed_successfully
+      jaeger:
+        condition: service_healthy
+
+  fixationservice:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: build/Dockerfile.goservice
+      args:
+        SERVICE_PATH: ./services/integration/fixationservice/cmd/fixationservice
+        SERVICE_NAME: fixationservice
+    container_name: broker_fixationservice
+    environment:
+      ENVIRONMENT: dev
+      FIXATIONSERVICE_DATABASE_POSTGRES_DSN: "postgres://go_user:go_user@postgres:5432/broker?sslmode=disable&search_path=integration,public"
+      FIXATIONSERVICE_BUSINESS_HASH_SECRET: "local-phone-hash-secret-change-me"
+    ports:
+      - "50052:50052"
+    depends_on:
+      migrate-integration:
+        condition: service_completed_successfully
+      jaeger:
+        condition: service_healthy
+
+  partnerapi:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: build/Dockerfile.goservice
+      args:
+        SERVICE_PATH: ./services/integration/partnerapi/cmd/partnerapi
+        SERVICE_NAME: partnerapi
+    container_name: broker_partnerapi
+    environment:
+      ENVIRONMENT: dev
+      PARTNERAPI_BUSINESS_ACCESS_TOKEN_SECRET: "local-access-secret-change-me-32-bytes-minimum"
+    ports:
+      - "8080:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
+      # depends_on без healthcheck у gRPC-соседей: partnerapi создаёт
+      # grpc.NewClient лениво и переживает недоступность соседа —
+      # он ответит 503, а не упадёт на старте. Так и должно быть.
+      authservice:
+        condition: service_started
+      fixationservice:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
 volumes:
+  postgres_data:
   redis_data:
+  rabbitmq_data:
+  minio_data:

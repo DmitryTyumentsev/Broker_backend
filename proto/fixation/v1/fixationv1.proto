@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package fixation.v1;
+
+import "google/protobuf/timestamp.proto";
+
+service FixationService{
+  rpc NewFixation(NewFixationRequest) returns (NewFixationResponse);
+}
+
+message NewFixationRequest{
+  string agency_id = 1;
+  string fix_for = 2;
+  string phone = 3;
+  string project_id = 4;
+  string fix_by = 5;
+}
+
+message NewFixationResponse{
+  string fixation_id = 1;
+  google.protobuf.Timestamp fixed_at = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}

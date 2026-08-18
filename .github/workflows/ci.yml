@@ -1,0 +1,194 @@
+# .github/workflows/ci.yml
+#
+# Запускается на каждый push и PR. Красный CI → нельзя смёржить.
+# Это и есть автоматический code review: он ловит то, на что человек
+# на ревью не смотрит — формат, tidy, гонки, уязвимости.
+#
+# Цели те же, что в makefile: одна точка правды. Если что-то работает
+# локально и падает здесь, значит команды разошлись.
+
+name: CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+
+# Отменять предыдущий прогон, если запушили новый коммит в ту же ветку —
+# незачем тратить раннеры на устаревший код.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: '1.25'
+
+jobs:
+  # ── Сборка и статический анализ ────────────────────────────────────
+  build:
+    name: Build & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true          # кеш модулей: следующий прогон быстрее
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Verify go.mod is tidy
+        # Если кто-то добавил импорт и не сделал go mod tidy — CI покраснеет.
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+
+      - name: Check formatting
+        # gofmt -l печатает файлы, которые надо отформатировать.
+        # Непустой вывод → падаем. gen исключаем: он не наш.
+        run: |
+          unformatted=$(gofmt -l . | grep -v '^gen/' || true)
+          if [ -n "$unformatted" ]; then
+            echo "Не отформатированы:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Build
+        run: go build ./...
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          # Схема конфига v2 — значит и линтер нужен второй мажорной версии.
+          version: v2.1.6
+
+  # ── Тесты ──────────────────────────────────────────────────────────
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Unit tests
+        # -race обязателен: ловит гонки, которые иначе всплывут в проде.
+        # -short пропускает всё, что требует docker.
+        run: go test -race -short ./...
+
+      - name: Integration tests
+        # dockertest сам поднимает postgres:13-alpine — docker на раннере есть.
+        # Именно здесь проверяется поведение частичного уникального индекса
+        # под конкурентной вставкой, а это главное свойство продукта.
+        run: go test -race ./...
+
+      - name: Coverage
+        run: |
+          go test -short -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out | tail -1
+
+  # ── Миграции ───────────────────────────────────────────────────────
+  # Отдельная работа: миграции должны накатываться на чистую базу
+  # в том же порядке и теми же ролями, что в проде. Сломанный порядок
+  # обнаруживается здесь, а не на деплое.
+  migrations:
+    name: Migrations on clean database
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:13-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: broker
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d broker"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Bootstrap (схемы, роли, гранты)
+        env:
+          BOOTSTRAP_DSN: postgres://postgres:postgres@localhost:5432/broker?sslmode=disable
+        run: go run ./tools/dbbootstrap
+
+      - name: migrations/app под app_user
+        env:
+          ENVIRONMENT: local
+          AUTHSERVICE_DATABASE_POSTGRES_DSN: postgres://app_user:app_user@localhost:5432/broker?sslmode=disable&search_path=app,public
+        run: go run ./services/app/authservice/cmd/migrator
+
+      - name: migrations/integration под go_user
+        env:
+          ENVIRONMENT: local
+          FIXATIONSERVICE_DATABASE_POSTGRES_DSN: postgres://go_user:go_user@localhost:5432/broker?sslmode=disable&search_path=integration,public
+        run: go run ./services/integration/fixationservice/cmd/migrator
+
+      - name: Границы контуров держатся
+        # Проверяем не комментарий в миграции, а поведение базы:
+        # go_user не должен уметь писать в app.
+        env:
+          PGPASSWORD: go_user
+        run: |
+          if psql -h localhost -U go_user -d broker \
+               -c "insert into app.projects (id, name) values (gen_random_uuid(), 'boom')" 2>/dev/null; then
+            echo "go_user записал в схему app — граница контуров не работает"
+            exit 1
+          fi
+          echo "go_user получил permission denied на app.projects, как и должен"
+
+  # ── Безопасность ───────────────────────────────────────────────────
+  security:
+    name: Vulnerability scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: govulncheck
+        # Умнее обычных сканеров: проверяет не «есть ли уязвимая версия
+        # в зависимостях», а «вызывается ли уязвимая функция из твоего кода».
+        uses: golang/govulncheck-action@v1
+
+  # ── Контракт proto ─────────────────────────────────────────────────
+  proto:
+    name: Proto lint & compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # buf breaking нужна вся история, не последний коммит
+
+      - uses: bufbuild/buf-setup-action@v1
+
+      - name: Lint proto
+        uses: bufbuild/buf-lint-action@v1
+
+      # Проверка обратной совместимости контракта.
+      # ВКЛЮЧАТЬ, когда контракт уже опубликован (есть клиенты на старой версии).
+      # Пока фича не в проде — только шумит, поэтому закомментировано.
+      #
+      # - name: Check breaking changes
+      #   uses: bufbuild/buf-breaking-action@v1
+      #   with:
+      #     against: 'https://github.com/${{ github.repository }}.git#branch=main'

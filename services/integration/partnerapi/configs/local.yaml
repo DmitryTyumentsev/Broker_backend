@@ -1,0 +1,137 @@
+# partnerapi, локальный запуск: инфраструктура в docker, сервис на хосте.
+#
+# Своей базы у partnerapi нет и не должно быть: это edge. Он ходит в Redis
+# за лимитами и идемпотентностью и по gRPC в authservice/fixationservice.
+#
+# Роли и пермишены обязаны совпадать со справочниками в коде
+# (shared/pkg/authz/roles, shared/pkg/authz/permissions) — иначе сервис
+# упадёт на старте с «unknown role». Это сделано специально: опечатка
+# в правах доступа должна ронять деплой, а не молча пускать не тех.
+
+environment: local
+
+server:
+  host: 0.0.0.0
+  port: 8080
+  read_timeout: 15s
+  write_timeout: 15s
+  idle_timeout: 60s
+  body_limit_bytes: 2097152
+
+business:
+  context_timeout: 5s
+  request_timeout: 8s
+  operation_timeout: 5s
+
+  # Тот же секрет, что у authservice: он подписывает, мы проверяем.
+  access_token_secret: "local-access-secret-change-me-32-bytes-minimum"
+  access_token_issuer: "authservice"
+
+  auth_rate_limit:
+    enabled: true
+    limit: 20
+    window: 1m
+    prefix: "rl:auth"
+
+  default_rate_limit:
+    enabled: true
+    limit: 120
+    window: 1m
+    prefix: "rl:api"
+
+  idempotency:
+    enabled: true
+    ttl: 24h
+    header: "Idempotency-Key"
+    lock_prefix: "idem:api"
+    max_response_bytes: 262144
+
+  authz:
+    roles:
+      - superadmin
+      - developer_admin
+      - account_manager
+      - sales_manager
+      - agency_owner
+      - broker_team_lead
+      - broker_team_member
+
+    permissions:
+      api.protected.access:
+        - superadmin
+        - developer_admin
+        - account_manager
+        - sales_manager
+        - agency_owner
+        - broker_team_lead
+        - broker_team_member
+
+      developer.admin.access:
+        - superadmin
+        - developer_admin
+
+      fixation.new:
+        - superadmin
+        - account_manager
+        - agency_owner
+        - broker_team_lead
+        - broker_team_member
+
+http:
+  cors:
+    enabled: true
+    allow_origins:
+      - "http://localhost:3000"
+      - "http://localhost:5173"
+    allow_methods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - OPTIONS
+    allow_headers:
+      - Authorization
+      - Content-Type
+      - X-Request-ID
+      - Idempotency-Key
+    expose_headers:
+      - X-Request-ID
+      - X-RateLimit-Limit
+      - X-RateLimit-Remaining
+      - Retry-After
+    allow_credentials: true
+    max_age_seconds: 600
+
+  security_headers:
+    enabled: true
+
+observability:
+  metrics:
+    enabled: true
+    path: "/metrics"
+
+  tracing:
+    enabled: true
+    service_name: "partnerapi"
+    otlp_endpoint: "localhost:4317"
+    insecure: true
+    sample_ratio: 1
+
+auth_grpc:
+  address: localhost:50051
+
+fixation_grpc:
+  address: localhost:50052
+
+database:
+  redis:
+    host: "127.0.0.1"
+    port: 6379
+    password: ""
+    db: 0
+    dial_timeout: "5s"
+    read_timeout: "3s"
+    write_timeout: "3s"
+    pool_size: 10
+    min_idle_conns: 2

@@ -23,7 +23,9 @@ func Load(serviceName string, out any) error {
 	v.SetEnvPrefix(strings.ToUpper(strings.NewReplacer("-", "_").Replace(serviceName)))
 
 	v.AddConfigPath(filepath.Join("services", serviceName, "configs"))
-	v.AddConfigPath(filepath.Join("configs"))
+	v.AddConfigPath(filepath.Join("services", "app", serviceName, "configs"))
+	v.AddConfigPath(filepath.Join("services", "integration", serviceName, "configs"))
+	v.AddConfigPath("configs")
 	v.AddConfigPath(".")
 
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
@@ -33,6 +35,8 @@ func Load(serviceName string, out any) error {
 
 	_ = godotenv.Load(".env")
 	_ = godotenv.Load(filepath.Join("services", serviceName, "configs", env+".env"))
+	_ = godotenv.Load(filepath.Join("services", "app", serviceName, "configs", env+".env"))
+	_ = godotenv.Load(filepath.Join("services", "integration", serviceName, "configs", env+".env"))
 
 	if err := v.ReadInConfig(); err != nil {
 		return fmt.Errorf("read config file for service=%s env=%s: %w", serviceName, env, err)

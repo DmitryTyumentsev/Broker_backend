@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -18,7 +20,8 @@ const (
 )
 
 type AccessTokenClaims struct {
-	UserID    string
+	AgencyID  uuid.UUID
+	UserID    uuid.UUID
 	DeviceID  string
 	Role      string
 	TokenType string
@@ -46,6 +49,7 @@ type accessTokenHeader struct {
 }
 
 type accessTokenPayload struct {
+	AgencyID  string `json:"agency_id"`
 	Subject   string `json:"sub"`
 	DeviceID  string `json:"device_id"`
 	Role      string `json:"role"`
@@ -135,7 +139,8 @@ func (v *AccessTokenVerifier) validSignature(parts []string) bool {
 func (v *AccessTokenVerifier) validateClaims(claims AccessTokenClaims) error {
 	now := v.now().UTC()
 
-	if strings.TrimSpace(claims.UserID) == "" ||
+	if claims.AgencyID == uuid.Nil ||
+		claims.UserID == uuid.Nil ||
 		strings.TrimSpace(claims.DeviceID) == "" ||
 		strings.TrimSpace(claims.Role) == "" ||
 		claims.TokenType != AccessTokenKind {
@@ -158,8 +163,17 @@ func (v *AccessTokenVerifier) validateClaims(claims AccessTokenClaims) error {
 }
 
 func payloadToClaims(payload accessTokenPayload) AccessTokenClaims {
+	agencyID, err := uuid.Parse(payload.AgencyID)
+	if err != nil {
+		agencyID = uuid.Nil
+	}
+	userID, err := uuid.Parse(payload.Subject)
+	if err != nil {
+		userID = uuid.Nil
+	}
 	return AccessTokenClaims{
-		UserID:    strings.TrimSpace(payload.Subject),
+		AgencyID:  agencyID,
+		UserID:    userID,
 		DeviceID:  strings.TrimSpace(payload.DeviceID),
 		Role:      strings.TrimSpace(payload.Role),
 		TokenType: strings.TrimSpace(payload.TokenType),

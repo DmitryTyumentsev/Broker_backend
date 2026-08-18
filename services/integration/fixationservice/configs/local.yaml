@@ -1,0 +1,59 @@
+# fixationservice, локальный запуск: инфраструктура в docker, сервис на хосте.
+#
+# ВАЖНО про DSN. Go-контур ходит в базу под ролью go_user, у которой полные
+# права на схему integration и только select на app. Это не украшение:
+# если код случайно попробует писать в app.*, он получит permission denied
+# от базы, а не испортит данные монолита.
+#
+# search_path=integration,public — чтобы неквалифицированные имена таблиц
+# резолвились в свою схему. В самих запросах схему всё равно пишем явно:
+# search_path это подстраховка, а не контракт.
+
+environment: local
+
+server:
+  host: 0.0.0.0
+  port: 50052          # gRPC, совпадает с partnerapi fixation_grpc.address
+
+business:
+  context_timeout: 5s
+  fixation_duration: 1440h    # 60 суток — срок жизни фиксации
+  hash_secret: "local-phone-hash-secret-change-me"
+
+observability:
+  tracing:
+    enabled: true
+    service_name: "fixationservice"
+    otlp_endpoint: "localhost:4317"
+    insecure: true
+    sample_ratio: 1
+
+database:
+  postgres:
+    dsn: "postgres://go_user:go_user@127.0.0.1:5432/broker?sslmode=disable&search_path=integration,public"
+
+    # Дублируется для читаемости и для случая, когда dsn пустой.
+    # Приоритет у dsn: если он задан, поля ниже не используются.
+    host: "127.0.0.1"
+    port: 5432
+    database_name: "broker"
+    username: "go_user"
+    password: "go_user"
+    ssl_mode: "disable"
+
+    migrations_path: "migrations/integration"
+    migrations_table: "goose_db_version"
+    # Своя таблица версий в своей схеме: integration.goose_db_version.
+    # Общая на два контура означала бы, что второй мигратор считает чужие
+    # версии уже накаченными и пропускает свои миграции.
+    schema_name: "integration"
+
+    max_connections: 20
+    min_connections: 2
+    max_idle_time: 5m
+    max_lifetime: 1h
+    health_check_period: 1m
+
+    connect_timeout: 5s
+    read_timeout: 3s
+    write_timeout: 3s
