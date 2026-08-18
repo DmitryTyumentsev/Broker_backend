@@ -1,3 +1,6 @@
+# fixationservice, dev: сервис запущен внутри compose, поэтому хосты —
+# имена сервисов из docker-compose.yml, а не 127.0.0.1.
+
 environment: dev
 
 server:
@@ -7,27 +10,30 @@ server:
 business:
   context_timeout: 5s
   fixation_duration: 1440h
+  hash_secret: ""      # берётся из FIXATIONSERVICE_BUSINESS_HASH_SECRET
 
 observability:
   tracing:
     enabled: true
     service_name: "fixationservice"
-    otlp_endpoint: "otel-collector:4317"
+    otlp_endpoint: "jaeger:4317"
     insecure: true
-    sample_ratio: 0.1
+    sample_ratio: 0.1   # в dev пишем каждый десятый трейс: их слишком много
 
 database:
   postgres:
+    dsn: "postgres://go_user:go_user@postgres:5432/broker?sslmode=disable&search_path=integration,public"
+
     host: "postgres"
     port: 5432
-    database_name: "fixation"
-    username: "fixation"
-    password: ""            # берётся из FIXATIONSERVICE_DATABASE_POSTGRES_PASSWORD
+    database_name: "broker"
+    username: "go_user"
+    password: ""        # берётся из FIXATIONSERVICE_DATABASE_POSTGRES_PASSWORD
     ssl_mode: "disable"
 
     migrations_path: "migrations/integration"
     migrations_table: "goose_db_version"
-    schema_name: "public"
+    schema_name: "integration"
 
     max_connections: 20
     min_connections: 2

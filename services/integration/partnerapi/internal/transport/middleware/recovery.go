@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"Broker_backend/services/integration/partnerapi/internal/transport/grpc/grpcerr"
+	"Broker_backend/services/integration/partnerapi/internal/transport/http/httperr"
 	"runtime/debug"
 
 	"github.com/gofiber/fiber/v2"
@@ -24,7 +24,7 @@ func Recovery(logger *zap.Logger) fiber.Handler {
 					zap.String("path", c.Path()),
 					zap.ByteString("stack", debug.Stack()),
 				)
-				err = grpcerr.WriteInternal(c)
+				err = httperr.WriteInternal(c)
 			}
 		}()
 

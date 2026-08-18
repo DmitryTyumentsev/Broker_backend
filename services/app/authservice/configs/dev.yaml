@@ -1,3 +1,7 @@
+# authservice, dev: сервис запущен внутри compose.
+
+environment: dev
+
 server:
   host: "0.0.0.0"
   port: 50051
@@ -11,7 +15,7 @@ business:
   lifetime_refresh_token: "720h"
   access_token_alg: "HS256"
   access_token_type: "JWT"
-  access_token_secret: "local-access-secret-change-me-32-bytes-minimum"
+  access_token_secret: ""     # берётся из AUTHSERVICE_BUSINESS_ACCESS_TOKEN_SECRET
   access_token_issuer: "authservice"
 
 observability:
@@ -20,20 +24,23 @@ observability:
     service_name: "authservice"
     otlp_endpoint: "jaeger:4317"
     insecure: true
-    sample_ratio: 1
+    sample_ratio: 0.1
 
 database:
   postgres:
-    dsn: ""
+    dsn: "postgres://app_user:app_user@postgres:5432/broker?sslmode=disable&search_path=app,public"
+
     host: "postgres"
     port: 5432
-    database_name: "auth_pg"
-    username: "postgres"
-    password: "postgres"
+    database_name: "broker"
+    username: "app_user"
+    password: ""              # берётся из AUTHSERVICE_DATABASE_POSTGRES_PASSWORD
     ssl_mode: "disable"
+
     migrations_path: "migrations/app"
     migrations_table: "goose_db_version"
-    schema_name: "public"
+    schema_name: "app"
+
     max_connections: 10
     min_connections: 1
     max_idle_time: "30m"

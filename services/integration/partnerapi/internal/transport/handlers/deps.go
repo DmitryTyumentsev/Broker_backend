@@ -52,6 +52,10 @@ func (d *Deps) Validate() error {
 		return err
 	}
 
+	if err := d.Fixation.Validate(); err != nil {
+		return err
+	}
+
 	return nil
 }
 

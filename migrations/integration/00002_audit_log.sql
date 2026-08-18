@@ -1,4 +1,4 @@
--- migrations/integration/0002_audit_log.sql
+-- migrations/integration/00002_audit_log.sql
 --
 -- Журнал аудита. Катится мигратором fixationservice под ролью go_user.
 --

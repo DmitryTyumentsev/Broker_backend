@@ -1,0 +1,66 @@
+# build/Dockerfile.go — один Dockerfile на все Go-бинари стенда.
+#
+# Собирает любой cmd-пакет: путь приезжает аргументом.
+#   docker build -f build/Dockerfile.go \
+#     --build-arg SERVICE_PATH=./services/integration/partnerapi/cmd/partnerapi \
+#     --build-arg SERVICE_NAME=partnerapi .
+#
+# Multi-stage: тяжёлый образ с тулчейном остаётся на этапе builder,
+# в финальный уезжает только бинарь. Разница — сотни мегабайт на сервис,
+# и это не про красоту: меньше образ — меньше поверхность атаки и быстрее
+# выкатка.
+
+# ── Этап 1: сборка ─────────────────────────────────────────────────────
+FROM golang:1.25-alpine AS builder
+
+WORKDIR /src
+
+# Зависимости отдельным слоем ДО копирования исходников. Пока go.mod и
+# go.sum не менялись, docker переиспользует кэш и не качает модули заново
+# при каждой правке кода.
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+ARG SERVICE_PATH
+ARG SERVICE_NAME
+
+# CGO_ENABLED=0 — статический бинарь без зависимости от libc,
+# иначе он не запустится в alpine/scratch.
+# -trimpath убирает пути сборочной машины из бинаря: и воспроизводимость,
+# и меньше лишнего в стектрейсах.
+# -s -w выкидывают таблицу символов и DWARF: образ легче, стектрейсы
+# при этом остаются читаемыми.
+RUN CGO_ENABLED=0 GOOS=linux go build \
+      -trimpath \
+      -ldflags="-s -w" \
+      -o /out/app \
+      ${SERVICE_PATH}
+
+# ── Этап 2: рантайм ────────────────────────────────────────────────────
+FROM alpine:3.19
+
+# ca-certificates — для TLS к внешним системам (amoCRM, Profitbase).
+# tzdata — иначе внутри контейнера только UTC, а сроки фиксаций считаются
+# в московском времени и в логах это будет неудобно.
+# wget — им ходит healthcheck.
+RUN apk add --no-cache ca-certificates tzdata wget
+
+# Непривилегированный пользователь: процессу в контейнере root не нужен.
+RUN adduser -D -u 10001 appuser
+
+WORKDIR /app
+
+COPY --from=builder /out/app /app/app
+
+# Конфиги нужны в образе: viper ищет configs/<env>.yaml относительно
+# рабочего каталога. Секреты туда не кладутся — они приезжают из env.
+COPY --from=builder /src/services /app/services
+
+USER appuser
+
+ARG SERVICE_NAME
+ENV SERVICE_NAME=${SERVICE_NAME}
+
+ENTRYPOINT ["/app/app"]

@@ -1,5 +1,13 @@
+-- migrations/app/00001_users.sql
+--
+-- Контур монолита. Катится мигратором authservice под ролью app_user.
+-- Схема указана явно во всех объектах: полагаться на search_path в миграциях
+-- опасно — если у мигратора и у сервиса он разный, таблица уедет не туда,
+-- и обнаружится это на проде.
+
 -- +goose Up
-create table if not exists users(
+-- +goose StatementBegin
+create table if not exists app.users(
     id uuid not null primary key,
     email varchar(64) not null,
     user_role text not null,
@@ -23,6 +31,9 @@ create table if not exists users(
                                           ),
     constraint users_email_unique unique(email)
 );
+-- +goose StatementEnd
 
 -- +goose Down
-drop table if exists users;
+-- +goose StatementBegin
+drop table if exists app.users;
+-- +goose StatementEnd

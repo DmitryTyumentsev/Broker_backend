@@ -8,8 +8,20 @@ import (
 	"time"
 )
 
+// agencyIDOrEmpty разворачивает nullable-агентство из entity.User.
+// Пустая строка не пройдёт проверку в AccessTokenIssuer.Issue — и это
+// правильно: токен без agency_id partnerapi всё равно отвергнет.
+func agencyIDOrEmpty(agencyID *string) string {
+	if agencyID == nil {
+		return ""
+	}
+
+	return strings.TrimSpace(*agencyID)
+}
+
 func (s *Service) createTokenPair(
 	ctx context.Context,
+	agencyID string,
 	userID string,
 	deviceID string,
 	role string,
@@ -36,7 +48,7 @@ func (s *Service) createTokenPair(
 		return nil, fmt.Errorf("%s: save refresh session: %w", op, err)
 	}
 
-	accessToken, err := s.accessIssuer.Issue(userID, deviceID, role, now)
+	accessToken, err := s.accessIssuer.Issue(agencyID, userID, deviceID, role, now)
 	if err != nil {
 		return nil, fmt.Errorf("%s: issue access token: %w", op, err)
 	}

@@ -1,5 +1,7 @@
 package authdto
 
+import "github.com/google/uuid"
+
 type RegisterRequest struct {
 	Email      string  `json:"email" validate:"required,email"`
 	Password   string  `json:"password" validate:"required,min=8"`
@@ -36,15 +38,19 @@ type LogoutResponse struct {
 	DeviceID  string `json:"device_id"`
 }
 
+// uuid.UUID сериализуется в JSON как строка (MarshalText),
+// отдельного маппинга в string не нужно.
 type MeResponse struct {
-	UserID   string `json:"user_id"`
-	DeviceID string `json:"device_id"`
-	Role     string `json:"role"`
+	AgencyID uuid.UUID `json:"agency_id"`
+	UserID   uuid.UUID `json:"user_id"`
+	DeviceID string    `json:"device_id"`
+	Role     string    `json:"role"`
 }
 
 type AdminPingResponse struct {
-	OK       bool   `json:"ok"`
-	UserID   string `json:"user_id"`
-	DeviceID string `json:"device_id"`
-	Role     string `json:"role"`
+	OK       bool      `json:"ok"`
+	AgencyID uuid.UUID `json:"agency_id"`
+	UserID   uuid.UUID `json:"user_id"`
+	DeviceID string    `json:"device_id"`
+	Role     string    `json:"role"`
 }

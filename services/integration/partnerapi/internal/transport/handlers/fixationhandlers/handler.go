@@ -7,6 +7,7 @@ import (
 	"Broker_backend/services/integration/partnerapi/internal/transport/http/httperr"
 	"Broker_backend/services/integration/partnerapi/internal/transport/middleware"
 	"context"
+	"errors"
 
 	validate "github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -16,15 +17,33 @@ import (
 
 type FixationHandler struct {
 	logger    *zap.Logger
-	validator *validate.Validate
 	fixation  FixationClient
+	validator *validate.Validate
 }
 
-func NewFixationHandler(logger *zap.Logger, validator *validate.Validate, fixation FixationClient) *FixationHandler {
+// Порядок аргументов одинаковый во всех хендлерах: logger, клиент, валидатор.
+// Одинаковый порядок = меньше шансов перепутать местами два указателя,
+// которые компилятор не различит, если типы совпадут.
+func NewFixationHandler(logger *zap.Logger, fixation FixationClient, validator *validate.Validate) *FixationHandler {
+	if logger == nil {
+		logger = zap.NewNop()
+	}
+
 	return &FixationHandler{
 		logger:    logger,
-		validator: validator,
 		fixation:  fixation,
+		validator: validator,
+	}
+}
+
+func (h *FixationHandler) Validate() error {
+	switch {
+	case h == nil:
+		return errors.New("fixation handler is nil")
+	case h.fixation == nil:
+		return errors.New("fixation client is required")
+	default:
+		return nil
 	}
 }
 

@@ -15,6 +15,7 @@ import (
 const serviceName = "authservice"
 
 type Config struct {
+	Environment   string              `mapstructure:"environment"`
 	Server        ServerConfig        `mapstructure:"server"`
 	Business      BusinessConfig      `mapstructure:"business"`
 	Observability ObservabilityConfig `mapstructure:"observability"`

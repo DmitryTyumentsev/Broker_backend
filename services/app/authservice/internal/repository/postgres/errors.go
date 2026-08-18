@@ -32,10 +32,10 @@ func MapError(op string, err error) error {
 			return mapUniqueViolation(op, pgErr.ConstraintName)
 
 		case pgerrcode.NotNullViolation:
-			return fmt.Errorf("%s: %w: %v", op, domain.ErrMustBeNotNull, err)
+			return fmt.Errorf("%s: %w: %s", op, domain.ErrMustBeNotNull, pgErr.Message)
 
 		case pgerrcode.ForeignKeyViolation:
-			return fmt.Errorf("%s: %w: %v", op, domain.ErrBadRequest, err)
+			return fmt.Errorf("%s: %w: %s", op, domain.ErrBadRequest, pgErr.Message)
 
 		case pgerrcode.CheckViolation:
 			return mapCheckViolation(op, pgErr.ConstraintName)

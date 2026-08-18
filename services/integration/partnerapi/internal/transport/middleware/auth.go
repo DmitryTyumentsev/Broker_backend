@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"Broker_backend/services/integration/partnerapi/internal/transport/grpc/grpcerr"
+	"Broker_backend/services/integration/partnerapi/internal/transport/http/httperr"
 	"context"
 	"strings"
 
@@ -29,22 +29,22 @@ type AccessTokenVerifier interface {
 func Auth(verifier AccessTokenVerifier) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		if verifier == nil {
-			return grpcerr.WriteServiceUnavailable(c, "auth verifier is not configured")
+			return httperr.WriteServiceUnavailable(c, "auth verifier is not configured")
 		}
 
 		token, ok := bearerToken(c.Get(fiber.HeaderAuthorization))
 		if !ok {
-			return grpcerr.WriteUnauthorized(c, "missing bearer token")
+			return httperr.WriteUnauthorized(c, "missing bearer token")
 		}
 
 		claims, err := verifier.Verify(token)
 		if err != nil {
-			return grpcerr.WriteUnauthorized(c, "invalid bearer token")
+			return httperr.WriteUnauthorized(c, "invalid bearer token")
 		}
 
 		principal := authz.PrincipalFromAccessTokenClaims(claims)
 		if !principal.Valid() {
-			return grpcerr.WriteUnauthorized(c, "invalid bearer token")
+			return httperr.WriteUnauthorized(c, "invalid bearer token")
 		}
 
 		c.Locals(claimsLocalKey, claims)
@@ -88,7 +88,7 @@ func contextWithClaims(parent context.Context, claims sharedjwt.AccessTokenClaim
 		parent = context.Background()
 	}
 	ctx := context.WithValue(parent, agencyIDContextKey, claims.AgencyID)
-	ctx := context.WithValue(parent, userIDContextKey, claims.UserID)
+	ctx = context.WithValue(ctx, userIDContextKey, claims.UserID)
 	ctx = context.WithValue(ctx, deviceIDContextKey, claims.DeviceID)
 	ctx = context.WithValue(ctx, roleContextKey, claims.Role)
 

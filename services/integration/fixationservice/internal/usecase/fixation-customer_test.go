@@ -196,7 +196,7 @@ func TestNewFixation_RaceFixations_ActiveFixationNoRows_OneOfFixationsSuccess(t 
 			return now
 		},
 	}
-	tx := &mockTxManager{do: func(ctx context.Context, fn func(context.Context) error) error {
+	usecaseTx := &mockTxManager{do: func(ctx context.Context, fn func(context.Context) error) error {
 		return fn(ctx)
 	}}
 	originalRepo := &postgres.Repository{
@@ -231,7 +231,7 @@ func TestNewFixation_RaceFixations_ActiveFixationNoRows_OneOfFixationsSuccess(t 
 		},
 	}
 
-	svc := NewService(cfg, zap.NewNop(), mockNow, repo, tx)
+	svc := NewService(cfg, zap.NewNop(), mockNow, repo, usecaseTx)
 	for i := 0; i < 50; i++ {
 		go func() {
 			fmt.Printf("start goroutine %d/n", i)

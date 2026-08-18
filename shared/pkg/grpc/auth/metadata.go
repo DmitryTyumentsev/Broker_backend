@@ -7,6 +7,7 @@ import (
 
 	"Broker_backend/shared/pkg/requestctx"
 
+	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -89,8 +90,8 @@ func ExtractIncomingContext(ctx context.Context) context.Context {
 	}
 
 	principal := authz.Principal{
-		AgencyID: firstMetadataValue(md, principalAgencyIDKey),
-		UserID:   firstMetadataValue(md, principalUserIDKey),
+		AgencyID: parseUUIDOrNil(firstMetadataValue(md, principalAgencyIDKey)),
+		UserID:   parseUUIDOrNil(firstMetadataValue(md, principalUserIDKey)),
 		DeviceID: firstMetadataValue(md, principalDeviceIDKey),
 		Role:     firstMetadataValue(md, principalRoleKey),
 	}
@@ -99,6 +100,18 @@ func ExtractIncomingContext(ctx context.Context) context.Context {
 	}
 
 	return ctx
+}
+
+// parseUUIDOrNil превращает строку метаданных в uuid.
+// Мусор в метаданных не ошибка транспорта: uuid.Nil не пройдёт
+// Principal.Valid(), и запрос отвалится с Unauthenticated выше по цепочке.
+func parseUUIDOrNil(value string) uuid.UUID {
+	id, err := uuid.Parse(value)
+	if err != nil {
+		return uuid.Nil
+	}
+
+	return id
 }
 
 func firstMetadataValue(md metadata.MD, key string) string {

@@ -75,7 +75,7 @@ func (s *Service) Refresh(ctx context.Context, req *RefreshRequest) (*TokenPairR
 		return nil, fmt.Errorf("%s: rotate refresh session: %w", op, err)
 	}
 
-	accessToken, err := s.accessIssuer.Issue(user.ID, req.DeviceID, string(user.Role), now)
+	accessToken, err := s.accessIssuer.Issue(agencyIDOrEmpty(user.AgencyID), user.ID, req.DeviceID, string(user.Role), now)
 	if err != nil {
 		return nil, fmt.Errorf("%s: issue access token: %w", op, err)
 	}

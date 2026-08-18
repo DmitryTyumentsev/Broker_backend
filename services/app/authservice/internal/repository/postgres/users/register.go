@@ -23,8 +23,9 @@ func (r *Repository) Save(ctx context.Context, user entity.User) error {
 	defer cancel()
 
 	query := `
-		insert into users (
+		insert into app.users (
 			id,
+			agency_id,
 			email,
 			user_role,
 			password_hash,
@@ -33,13 +34,14 @@ func (r *Repository) Save(ctx context.Context, user entity.User) error {
 			middle_name,
 			created_at
 		)
-		values ($1, $2, $3, $4, $5, $6, $7, $8)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
 	_, err := r.pg.DB().Exec(
 		ctx,
 		query,
 		user.ID,
+		user.AgencyID,
 		user.Email,
 		user.Role,
 		user.PasswordHash,

@@ -9,6 +9,7 @@ package main
 
 import (
 	"Broker_backend/services/integration/fixationservice/internal/config"
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -49,7 +50,13 @@ func run() error {
 	}
 	defer func() { _ = db.Close() }()
 
-	if err := db.Ping(); err != nil {
+	// PingContext, а не Ping: у мигратора должен быть потолок ожидания.
+	// Ping без контекста висит столько, сколько решит драйвер, и CI-шаг
+	// с миграциями зависает вместо того, чтобы упасть.
+	pingCtx, cancelPing := context.WithTimeout(context.Background(), pg.ConnectTimeout)
+	defer cancelPing()
+
+	if err := db.PingContext(pingCtx); err != nil {
 		return fmt.Errorf("ping db: %w", err)
 	}
 

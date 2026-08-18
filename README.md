@@ -1,50 +1,371 @@
 # ЛК брокера застройщика — Go-контур
 
-Гибрид Laravel + Go. В репозитории только Go-часть; роль монолита играют заглушки.
+## Продукт и в чём сложность
 
-## Кто за что отвечает
+Застройщик продаёт квартиры через агентства недвижимости. Агентство приводит
+клиента — застройщик платит комиссию. Всё, что делает система, сводится к
+одному вопросу: **чей это клиент**. От ответа зависят деньги, поэтому ответ
+должен быть один и тот же у всех, кто спросит.
 
-| Сервис | Контур | Роль |
+Механизм ответа — **фиксация**: агентство закрепляет за собой телефон клиента
+в конкретном проекте на срок. Пока фиксация активна, клиент «занят».
+
+Нагрузка — 10 RPS в среднем и 150 в пик на старте продаж корпуса. Это немного,
+и сложность здесь не в нагрузке. Она в трёх других местах:
+
+**Гонки.** На старте продаж два брокера из разных агентств отправляют один
+телефон в одну секунду. Обе фиксации не могут быть активны: это два акта
+комиссии за одного клиента. Разрулить это на уровне приложения нельзя —
+две реплики не договорятся между собой. Единственный, кто может, — база.
+
+**Консистентность с тремя внешними системами.** amoCRM (сделки), Profitbase
+(шахматка), 1С (деньги). Ни одна из них не участвует в наших транзакциях.
+Синхронизация «в конце концов», а вопросы задают в моменте: «почему у меня
+фиксация есть, а сделки в CRM нет».
+
+**Их падение не должно ронять продукт.** Внешние системы тормозят, отдают 429
+и исчезают на минуты. Фиксация обязана создаваться, даже когда amoCRM лежит.
+Отсюда outbox, очередь и воркеры вместо прямых вызовов из горячего пути.
+
+## Карта систем
+
+```
+                    браузер брокера
+                          │
+                          ▼
+        ┌──────────────────────────────────┐
+        │  MONOLITH (PHP 8.0, роль Laravel)│  витрина, админка, документы,
+        │  порт 8000                       │  отчёты, сессии, роли, очереди
+        └──────┬───────────────────┬───────┘
+               │ /internal/v1      │ RabbitMQ
+               ▼                   │ admin.events →
+        ┌──────────────┐           │ ← fixation.events
+        │ PARTNER-API  │◄──────────┘
+        │ Go, :8080    │◄──── CRM агентства: /partner/v1 (подпись, квоты)
+        └──────┬───────┘
+               │ gRPC
+        ┌──────┴───────────────┬─────────────────┐
+        ▼                      ▼                 ▼
+ ┌──────────────┐   ┌────────────────────┐  ┌──────────────────────┐
+ │ AUTHSERVICE  │   │ FIXATION-SERVICE   │  │ INTEGRATION-GATEWAY  │
+ │ Go, :50051   │   │ Go, :50052         │  │ Go, воркеры          │
+ │ токены       │   │ горячий путь       │  │ (ещё не написан)     │
+ └──────┬───────┘   └─────────┬──────────┘  └──────────┬───────────┘
+        │                     │                        │
+        ▼                     ▼                        ▼
+ ┌─────────────────────────────────────┐   ┌────────────────────────┐
+ │ PostgreSQL 13  база broker          │   │ amoCRM · Profitbase · 1С│
+ │ схема app  │  схема integration     │   │ (в стенде — моки)       │
+ └─────────────────────────────────────┘   └────────────────────────┘
+```
+
+Наружу торчит только `partnerapi`. `fixationservice` — gRPC внутри периметра,
+без публичного адреса: горячий путь не должен иметь входа снаружи вообще.
+
+## Границы контуров
+
+Граница держится не договорённостью, а **грантами в базе**:
+
+| Роль | схема `app` | схема `integration` |
 |---|---|---|
-| `services/app/authservice` | монолит | Заглушка вместо Laravel Sanctum: выпускает токены. Владеет схемой `app` |
-| `services/integration/partnerapi` | Go | Публичный вход: `/internal/v1` для монолита, `/partner/v1` для CRM агентств |
-| `services/integration/fixationservice` | Go | Горячий путь фиксации клиента. Владеет схемой `integration` |
+| `app_user` (монолит, authservice) | всё | только `select` |
+| `go_user` (Go-контур) | только `select` | всё |
 
-Точка входа для браузера — у монолита (Laravel). Go торчит наружу только через `partnerapi`.
-`fixationservice` наружу не смотрит: только gRPC внутри периметра.
+Если код Go попробует записать в `app.agencies`, он получит `permission denied`
+от PostgreSQL. Это важнее любого code review: договорённость забывается,
+грант — нет.
 
-## Раскладка сервиса
+Так же разделены остальные хранилища:
 
-```
-cmd/<бинарь>/main.go     запуск, 10 строк
-configs/                 local.yaml, dev.yaml
-internal/
-  app/                   composition root
-  config/
-  domain/                entity + доменные ошибки
-  usecase/               сценарии и порты (интерфейсы зависимостей)
-  repository/postgres/   реализация портов доступа к данным
-  infra/                 технические адаптеры: redis, security
-  transport/grpc|http/   хендлеры и мапперы
-```
+| | монолит | Go |
+|---|---|---|
+| Redis 6 | префикс `lk:` — сессии, очереди | префикс `go:` — лимиты, идемпотентность, кэш |
+| RabbitMQ 3.9 | публикует `admin.events` | публикует `fixation.events` |
+| MinIO | документы | — |
 
-## База
-
-Одна база, две схемы. Границу держат гранты, а не договорённости:
-`app_user` — полные права на `app.*`, только чтение `integration.*`; `go_user` — зеркально.
+Миграции разложены по владельцам и катятся разными ролями:
 
 ```
-migrations/bootstrap    схемы и роли, один раз суперюзером
-migrations/app          катит authservice/cmd/migrator
-migrations/integration  катит fixationservice/cmd/migrator
+migrations/bootstrap    схемы, роли, гранты, pgcrypto — суперюзером, один раз
+migrations/app          катит authservice/cmd/migrator под app_user
+migrations/integration  катит fixationservice/cmd/migrator под go_user
 ```
 
-## Запуск
+У каждого каталога **своя** таблица версий (`app.goose_db_version`,
+`integration.goose_db_version`, `public.goose_bootstrap_version`). С общей
+goose решит, что версия 00001 уже накачена, и молча пропустит чужие миграции.
 
+## Стек
+
+| Что | Чем | А что было бы в 2021 |
+|---|---|---|
+| HTTP | fiber v2 | то же самое, fiber v2 вышел в 2020 |
+| gRPC | grpc-go + buf | buf уже был, но большинство ещё звало `protoc` руками из shell-скрипта |
+| Postgres | pgx/v5 + pgxpool | **pgx v4**: v5 вышел только в сентябре 2022. API отличается заметно — `pgx.Conn` вместо `pgxpool.Pool` во многих местах, другой `QueryRow` |
+| Миграции | goose | goose v3 уже был; альтернатива — migrate |
+| Redis | go-redis/v9 | **go-redis v8**: v9 вышел в 2023. В v8 у команд другая сигнатура контекста |
+| RabbitMQ | rabbitmq/amqp091-go | **streadway/amqp**: официальный форк `amqp091-go` появился в конце 2021, до этого все сидели на streadway |
+| S3 | minio-go/v7 | то же самое |
+| Логи | zap | zap же. **`log/slog` не существует** до Go 1.21 (август 2023) |
+| Метрики | prometheus/client_golang | то же самое |
+| Трейсы | otel | **opentracing + Jaeger client**: OpenTelemetry Go дошёл до стабильного трейсинга только в 2021, и мигрировали на него позже |
+| Конфиг | viper | то же самое |
+| Валидация | validator/v10 | то же самое |
+| Тесты | testify, gomock, dockertest | gomock тогда был `github.com/golang/mock`, а не `go.uber.org/mock` (форк появился в 2023) |
+| Язык | дженерики в `ValidateJSON[T]`, `decodeSegment[T]` | **дженериков нет до Go 1.18 (март 2022)**. Всё это писалось бы через `interface{}` и type assertion, а `ValidatedBody[T]` был бы `ValidatedBody(c, &dst)` |
+| Прочее | `uuid.NewV7()` | **UUIDv7 нет** — RFC вышел в 2024. Был бы v4, а сортировка по времени делалась бы отдельной колонкой |
+
+## Как поднять
+
+Нужен только Docker и Go.
+
+```bash
+make up            # база, redis, rabbit, minio, jaeger, prometheus, grafana, моки
+make migrate       # три каталога миграций по порядку
+make up-full       # + монолит и три Go-сервиса в контейнерах
+make seed          # 3 агентства, 10 сотрудников, 2 проекта, 200 лотов, 300 фиксаций
 ```
-make up          postgres, redis, jaeger, prometheus, grafana
-make migrate     миграции
-make run         fixationservice
-make generate    proto -> Go
-make lint test
+
+`make seed` печатает идентификаторы агентств и проектов — они понадобятся дальше.
+
+Обычный режим разработки — инфраструктура в docker, свой сервис из IDE:
+
+```bash
+make up
+make migrate
+make run-auth        # :50051
+make run-fixation    # :50052
+make run-partnerapi  # :8080
 ```
+
+UI:
+
+| | |
+|---|---|
+| Jaeger | http://localhost:16686 |
+| Prometheus | http://localhost:9090 |
+| Grafana | http://localhost:3000 · admin/admin |
+| RabbitMQ | http://localhost:15672 · broker/broker (`make rabbit-ui`) |
+| MinIO | http://localhost:9001 · minioadmin/minioadmin (`make minio-ui`) |
+| Монолит | http://localhost:8000/internal/v1/health |
+| mock-amocrm | http://localhost:9101/_control/state |
+| mock-profitbase | http://localhost:9102/_control/state |
+
+`make help` — полный список целей.
+
+## Как проверить руками
+
+### Монолит отвечает
+
+```bash
+curl localhost:8000/internal/v1/health
+curl localhost:8000/internal/v1/agencies/<AGENCY_ID>
+curl "localhost:8000/internal/v1/lots?project_id=<PROJECT_ID>&limit=5"
+```
+
+### Шина работает в обе стороны
+
+```bash
+# монолит → Go: публикует agency.approved в admin.events
+curl -X POST localhost:8000/internal/v1/agencies/<AGENCY_ID>/approve
+
+# Go → монолит: в логах монолита появится «отправил письмо брокеру»
+docker compose logs -f monolith
+```
+
+Очереди и обменники видно в RabbitMQ management.
+
+### Токен и фиксация
+
+```bash
+TOKEN=$(curl -s -X POST localhost:8080/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"broker1@perviy-metr.test","password":"password","device_id":"cli"}' \
+  | jq -r .access)
+
+curl -X POST localhost:8080/api/v1/fixations \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: manual-1' \
+  -d '{"fix_for":"<BROKER_ID>","phone":"+7 (999) 111-22-33","project_id":"<PROJECT_ID>"}'
+```
+
+Что записалось:
+
+```bash
+make check-db
+```
+
+### Гонка на горячем пути
+
+Главная проверка проекта: 50 горутин одновременно фиксируют один телефон
+в один проект.
+
+```bash
+make race-fixation TOKEN=$TOKEN PROJECT=<PROJECT_ID> FIX_FOR=<BROKER_ID>
+```
+
+Ожидаемый результат — **ровно один 201** и 49 конфликтов. Два 201 означают,
+что комиссию за одного клиента получат два агентства.
+
+То же самое на живой базе без HTTP — интеграционные тесты:
+
+```bash
+make test-integration
+```
+
+### Прямой вызов fixationservice, минуя partnerapi
+
+Чтобы понять, на чьей стороне проблема:
+
+```bash
+make grpc-list
+make grpc-fix AGENCY=... PROJECT=... FIX_FOR=... FIX_BY=...
+```
+
+### Внешние системы ломаются по команде
+
+```bash
+# 300 мс задержки, 20% ответов 429, 10% пятисоток
+curl -X POST localhost:9101/_control \
+  -d '{"delay_ms":300,"rate_429":0.2,"retry_after_s":5,"rate_500":0.1}'
+
+# упасть целиком на 30 секунд (соединение рвётся, а не 503)
+curl -X POST localhost:9101/_control -d '{"down_for_s":30}'
+
+# посмотреть счётчики и вернуть как было
+curl localhost:9101/_control/state
+curl -X POST localhost:9101/_control/reset
+```
+
+У `mock-profitbase` то же самое плюс конфликт брони:
+
+```bash
+curl -X POST localhost:9102/api/v4/property/1/hold -H 'X-Agency-Id: agency-a'
+curl -X POST localhost:9102/api/v4/property/1/hold -H 'X-Agency-Id: agency-b'  # 409
+```
+
+### Расхождения с amoCRM
+
+```bash
+make reconcile
+```
+
+Три списка: что не доехало в CRM, что есть в CRM без нашей фиксации, где
+разошлись статусы.
+
+## Статус задач
+
+### Сделано (стенд)
+
+| | |
+|---|---|
+| Сборка | `go build ./...` зелёный, `golangci-lint` — 0 issues |
+| Точки входа | `Run() error` + graceful shutdown у всех трёх сервисов, `main.go` в 10 строк |
+| Линтер | `.golangci.yml` переписан под схему v2, 15 линтеров |
+| Миграции | разложены по владельцам, нумерация исправлена, схемы указаны явно |
+| DDL | `outbox`, `outbox_dlq`, `idempotency_keys`, `sync_cursors`, `webhook_endpoints`, `webhook_deliveries` |
+| Стенд | postgres 13, redis 6, rabbitmq 3.9, minio, монолит, два мока |
+| Монолит | PHP 8.0, ~300 строк, ручки + шина + сидер |
+| Инструменты | `racefix`, `reconcile`, `dbtest`, генерация gomock |
+
+### В работе (твои тикеты)
+
+| | |
+|---|---|
+| `usecase/fixation-customer_test.go` | не компилируется: `undefined: tx`, `undefined: req` |
+| `integrationtest/fixation_race_test.go` | не компилируется: `undefined: usecase.HashPhone` — в файле стоит пометка «подставь свою функцию» |
+| Схема `outbox` | намеренно неполная: нет `attempts`, `available_at`, классификации ошибок |
+
+### Найдено, не чинил — обсудить
+
+| Где | Что |
+|---|---|
+| `repository/postgres/fixation.go` `InsertAudit` | пишет в таблицу `audit`, которой нет. Есть `integration.audit_log` с другим набором колонок |
+| `repository/postgres/fixation.go` `InsertOutbox` | вставляет в `outbox` колонки фиксации, которых там нет и не будет |
+| `repository/postgres/fixation.go` `IsUserIDInAgencyID` | `u.user_id` — такой колонки нет, есть `u.id` |
+| `repository/postgres/fixation.go` `InsertNewFixation` | колонка `fixed_by`, в таблице — `fix_by` |
+| `repository/postgres/fixation.go` `UpdateFixationStatusExpired` | `SET f.status` — PostgreSQL не принимает алиас в `SET` |
+| `usecase/register.go` | регистрация не проставляет агентство, и выпуск токена падает на `agency id is required`. В proto `RegisterRequest` поля нет |
+
+Первые пять — механические ошибки SQL. Трогать их не стал: они в горячем пути
+и в том же файле, что твои тикеты; чинить их поверх твоей правки — гарантия
+конфликта. Скажи, кто берёт.
+
+## Журнал решений
+
+**Имя базы — `broker`, одно во всех местах.** Было три разных (`fixation`,
+`auth_pg`, `broker`) в compose, конфигах и makefile. Разные имена в разных
+местах — самый дешёвый способ потерять полдня на «а почему таблицы нет».
+
+**Версии образов подобраны под эпоху проекта.** postgres 13, redis 6,
+rabbitmq 3.9, php 8.0. Стенд, на котором версии новее прода, ловит не те баги
+и не ловит нужные.
+
+**DSN с ролью и `search_path` — прямо в конфигах.** `go_user` +
+`integration,public` у fixationservice, `app_user` + `app,public` у
+authservice. При этом схема в запросах всё равно пишется явно: `search_path` —
+подстраховка, а не контракт.
+
+**`.golangci.yml` переписан под v2 с `default: none`.** Файл в синтаксисе v1
+с `version: "2"` не запускался вообще — падал на разборе конфига, и выглядело
+это как «линтера в проекте нет». `default: none` — чтобы список включённых
+линтеров не врал.
+
+**`gocritic.commentFormatting` выключен.** В коде много рабочих заметок вида
+`//вопрос` без пробела. Это наша договорённость, а не дефект.
+
+**HTTP-ответы вынесены в `httperr`, в `grpcerr` остался только маппинг кодов
+gRPC.** Половина middleware звала `grpcerr.WriteUnauthorized`, которого там не
+было — отсюда часть ошибок сборки.
+
+**`config.HTTP` читался по ключу `grpc`.** Из-за опечатки в mapstructure-теге
+CORS и security-заголовки молча не читались из конфига и всегда были выключены.
+
+**Роли и пермишены в `configs/*.yaml` приведены к справочникам в коде.**
+Там стояли `agency_team_lead`, `customer_fixation.read` и ещё несколько имён,
+которых нет в `shared/pkg/authz`. С ними partnerapi не поднимался вообще:
+валидация конфига падает на старте — и это правильное поведение, опечатка
+в правах доступа должна ронять деплой.
+
+**`.env`-файлы урезаны до `ENVIRONMENT`.** В них лежали ключи, которые молча
+перекрывали yaml неверными значениями: `PARTNERAPI_SERVER_PORT=8081` и
+`PARTNERAPI_AUTH_GRPC_ADDRESS=localhost:50052` (адрес fixationservice).
+Правило: в `.env` только то, что меняется от машины к машине или является
+секретом.
+
+**`agency_id` протянут через `entity.User` и репозиторий.** Конкретный
+`AccessTokenIssuer.Issue` требовал `agencyID`, а интерфейс `domain.AccessTokenIssuer`
+— нет; сборка падала. Токен без `agency_id` partnerapi всё равно отвергает
+(`Principal.Valid()`), так что альтернативы не было.
+
+**Открытый вопрос: регистрация без агентства.** `RegisterRequest` в proto не
+несёт `agency_id`, а выпуск токена его требует. Значит, самостоятельная
+регистрация брокера сейчас невозможна — что, вероятно, и правильно (агентство
+сначала одобряет застройщик), но решение надо принять явно. Менять контракт
+`auth.v1` я не стал.
+
+**Миграции перенумерованы в сплошную нумерацию внутри каталога.**
+`00003_agencies_projects` делает `alter table app.users` и обязан идти после
+`00001_users`. Раньше он лежал с версией `0002` при users с версией
+`177860885821718` — goose сортирует по числу, и `alter` приезжал раньше таблицы.
+
+**`build/Dockerfile.go` переименован в `Dockerfile.goservice`.** Суффикс `.go`
+заставлял `gofmt` и часть Go-тулинга считать Dockerfile исходником.
+
+**Добавлена таблица `app.lots`.** Ручка `/internal/v1/lots` была в требованиях,
+а шахматки в схеме не было.
+
+**Сидер ходит суперпользователем.** Фиксации лежат в схеме `integration`, где
+у `app_user` только `select`. Это осознанное нарушение границы контуров ради
+стенда; в настоящем проекте демо-данные интеграционного контура наливал бы
+отдельный сидер на стороне Go.
+
+**Подъём тестовой базы вынесен в `shared/pkg/dbtest`.** Логика «поднять
+postgres, накатить три каталога миграций, отдать пул» была вшита в один
+`TestMain`; теперь её можно звать из тестов любого сервиса.
+
+**Моки рвут соединение, а не отвечают 503.** «Внешняя система упала» и
+«внешняя система ответила 503» — разные аварии: во втором случае у клиента
+есть HTTP-ответ. Путь с обрывом соединения в клиентах обрабатывают реже,
+поэтому он и воспроизводится.

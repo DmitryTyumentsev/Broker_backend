@@ -5,7 +5,10 @@ import (
 )
 
 type User struct {
-	ID                         string
+	ID string
+	// AgencyID — агентство сотрудника. NULL у сотрудников застройщика
+	// (sales_manager, account_manager): у них агентства нет.
+	AgencyID                   *string
 	Email                      string
 	Role                       UserRole
 	PasswordHash               string

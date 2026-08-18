@@ -1,0 +1,40 @@
+# build/Dockerfile.monolith — PHP-заглушка вместо Laravel.
+#
+# PHP 8.0, а не 8.3: стенд должен совпадать с эпохой проекта. На 8.3
+# половина проблем, ради которых стенд и нужен, просто не воспроизведётся.
+
+# ── Этап 1: зависимости ────────────────────────────────────────────────
+# Composer в отдельном этапе, чтобы в финальный образ не уезжал ни сам
+# composer, ни его кэш.
+FROM composer:2.2 AS vendor
+
+WORKDIR /app
+COPY monolith/composer.json ./
+# --no-dev: dev-зависимости в рантайме не нужны.
+# --ignore-platform-reqs: в образе composer другая версия PHP,
+# и проверять под неё требования нашего кода бессмысленно.
+RUN composer install --no-dev --no-interaction --no-progress --ignore-platform-reqs
+
+# ── Этап 2: рантайм ────────────────────────────────────────────────────
+FROM php:8.0-cli-alpine
+
+# pdo_pgsql — иначе PDO не знает про postgres.
+# sockets — нужен php-amqplib для соединения с RabbitMQ.
+# bcmath — php-amqplib использует его для 64-битных счётчиков на 32-битных платформах.
+RUN apk add --no-cache postgresql-dev \
+ && docker-php-ext-install pdo_pgsql sockets bcmath \
+ && apk del postgresql-dev \
+ && apk add --no-cache libpq
+
+WORKDIR /app
+
+COPY --from=vendor /app/vendor /app/vendor
+COPY monolith/src     /app/src
+COPY monolith/public  /app/public
+COPY monolith/bin     /app/bin
+
+RUN chmod +x /app/bin/entrypoint.sh
+
+EXPOSE 8000
+
+ENTRYPOINT ["/app/bin/entrypoint.sh"]

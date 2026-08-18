@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"Broker_backend/services/integration/partnerapi/internal/transport/grpc/grpcerr"
+	"Broker_backend/services/integration/partnerapi/internal/transport/http/httperr"
 	"context"
 	"time"
 
@@ -29,7 +29,7 @@ func RequestTimeout(timeout time.Duration) fiber.Handler {
 		}
 
 		if ctx.Err() == context.DeadlineExceeded && c.Response().StatusCode() < fiber.StatusBadRequest {
-			return grpcerr.WriteGatewayTimeout(c, "request deadline exceeded")
+			return httperr.WriteGatewayTimeout(c, "request deadline exceeded")
 		}
 
 		return nil

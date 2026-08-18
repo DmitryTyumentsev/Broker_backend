@@ -169,7 +169,7 @@ func payloadToClaims(payload accessTokenPayload) AccessTokenClaims {
 	}
 	userID, err := uuid.Parse(payload.Subject)
 	if err != nil {
-		agencyID = uuid.Nil
+		userID = uuid.Nil
 	}
 	return AccessTokenClaims{
 		AgencyID:  agencyID,

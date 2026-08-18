@@ -4,6 +4,7 @@ import (
 	"Broker_backend/services/integration/partnerapi/internal/clients/authclient"
 	"Broker_backend/services/integration/partnerapi/internal/transport/dto/authdto"
 	"Broker_backend/services/integration/partnerapi/internal/transport/grpc/grpcerr"
+	"Broker_backend/services/integration/partnerapi/internal/transport/http/httperr"
 	"Broker_backend/services/integration/partnerapi/internal/transport/middleware"
 	"errors"
 
@@ -50,7 +51,7 @@ func (h *AuthHandler) Validate() error {
 func (h *AuthHandler) Register(ctx *fiber.Ctx) error {
 	req, ok := middleware.ValidatedBody[authdto.RegisterRequest](ctx)
 	if !ok {
-		return grpcerr.WriteBadRequest(ctx, "validated request is missing")
+		return httperr.WriteBadRequest(ctx, "validated request is missing")
 	}
 
 	resp, err := h.authClient.Register(ctx.UserContext(), httpToGRPCRegister(req))
@@ -68,7 +69,7 @@ func (h *AuthHandler) Register(ctx *fiber.Ctx) error {
 func (h *AuthHandler) Login(ctx *fiber.Ctx) error {
 	req, ok := middleware.ValidatedBody[authdto.LoginRequest](ctx)
 	if !ok {
-		return grpcerr.WriteBadRequest(ctx, "validated request is missing")
+		return httperr.WriteBadRequest(ctx, "validated request is missing")
 	}
 
 	grpcReq := &authv1.LoginRequest{
@@ -92,7 +93,7 @@ func (h *AuthHandler) Login(ctx *fiber.Ctx) error {
 func (h *AuthHandler) Refresh(ctx *fiber.Ctx) error {
 	req, ok := middleware.ValidatedBody[authdto.RefreshRequest](ctx)
 	if !ok {
-		return grpcerr.WriteBadRequest(ctx, "validated request is missing")
+		return httperr.WriteBadRequest(ctx, "validated request is missing")
 	}
 
 	grpcReq := &authv1.RefreshRequest{
@@ -115,7 +116,7 @@ func (h *AuthHandler) Refresh(ctx *fiber.Ctx) error {
 func (h *AuthHandler) Logout(ctx *fiber.Ctx) error {
 	req, ok := middleware.ValidatedBody[authdto.LogoutRequest](ctx)
 	if !ok {
-		return grpcerr.WriteBadRequest(ctx, "validated request is missing")
+		return httperr.WriteBadRequest(ctx, "validated request is missing")
 	}
 
 	grpcReq := &authv1.LogoutRequest{
@@ -139,10 +140,11 @@ func (h *AuthHandler) Logout(ctx *fiber.Ctx) error {
 func (h *AuthHandler) Me(ctx *fiber.Ctx) error {
 	claims, ok := middleware.CurrentClaims(ctx)
 	if !ok {
-		return grpcerr.WriteUnauthorized(ctx, "auth context is missing")
+		return httperr.WriteUnauthorized(ctx, "auth context is missing")
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(authdto.MeResponse{
+		AgencyID: claims.AgencyID,
 		UserID:   claims.UserID,
 		DeviceID: claims.DeviceID,
 		Role:     claims.Role,
@@ -152,13 +154,14 @@ func (h *AuthHandler) Me(ctx *fiber.Ctx) error {
 func (h *AuthHandler) AdminPing(ctx *fiber.Ctx) error {
 	claims, ok := middleware.CurrentClaims(ctx)
 	if !ok {
-		return grpcerr.WriteUnauthorized(ctx, "auth context is missing")
+		return httperr.WriteUnauthorized(ctx, "auth context is missing")
 	}
 
 	middleware.AuditLog(ctx, h.logger, "admin.ping")
 
 	return ctx.Status(fiber.StatusOK).JSON(authdto.AdminPingResponse{
 		OK:       true,
+		AgencyID: claims.AgencyID,
 		UserID:   claims.UserID,
 		DeviceID: claims.DeviceID,
 		Role:     claims.Role,

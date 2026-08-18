@@ -1,0 +1,53 @@
+# build/Dockerfile.migrate — отдельный образ под миграции.
+#
+# Почему отдельно от сервисов, а не «сервис сам мигрирует на старте»:
+#   1. три реплики на старте начнут мигрировать одновременно;
+#   2. откатывать деплой и откатывать схему — разные операции с разным
+#      риском, и делать их одной кнопкой опасно;
+#   3. миграции требуют прав, которых у рантайма быть не должно.
+#
+# В образе три бинаря, по одному на владельца:
+#   dbbootstrap           схемы, роли, гранты, расширения — суперюзером
+#   migrator-app          migrations/app         — под app_user
+#   migrator-integration  migrations/integration — под go_user
+#
+# Какой запускать — решает command в docker-compose.yml.
+
+# ── Этап 1: сборка ─────────────────────────────────────────────────────
+FROM golang:1.25-alpine AS builder
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+      -o /out/dbbootstrap ./tools/dbbootstrap && \
+    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+      -o /out/migrator-app ./services/app/authservice/cmd/migrator && \
+    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+      -o /out/migrator-integration ./services/integration/fixationservice/cmd/migrator
+
+# ── Этап 2: рантайм ────────────────────────────────────────────────────
+FROM alpine:3.19
+
+RUN apk add --no-cache ca-certificates
+
+WORKDIR /app
+
+COPY --from=builder /out/dbbootstrap           /app/dbbootstrap
+COPY --from=builder /out/migrator-app          /app/migrator-app
+COPY --from=builder /out/migrator-integration  /app/migrator-integration
+
+# Сами .sql — обязательная часть образа: goose читает их с диска,
+# в бинарь они не вкомпилированы.
+COPY --from=builder /src/migrations /app/migrations
+
+# Конфиги нужны мигратору контура: он берёт DSN оттуда (или из env).
+COPY --from=builder /src/services /app/services
+
+# Команду задаёт compose: одного «правильного» бинаря здесь нет.
+ENTRYPOINT []
+CMD ["/app/dbbootstrap"]

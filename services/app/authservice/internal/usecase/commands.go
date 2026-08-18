@@ -7,6 +7,9 @@ type RegisterRequest struct {
 	FirstName   string
 	MiddleName  *string
 	DeviceID    string
+	// AgencyID заполняется только когда сотрудника заводит монолит.
+	// В proto RegisterRequest поля нет — см. «журнал решений» в README.
+	AgencyID *string
 }
 
 type LoginRequest struct {

@@ -38,7 +38,7 @@ func (s *Service) Login(ctx context.Context, req *LoginRequest) (*TokenPairRespo
 
 	now := s.clock.Now()
 
-	tokenPair, err := s.createTokenPair(ctx, user.ID, req.DeviceID, string(user.Role), now)
+	tokenPair, err := s.createTokenPair(ctx, agencyIDOrEmpty(user.AgencyID), user.ID, req.DeviceID, string(user.Role), now)
 	if err != nil {
 		return nil, fmt.Errorf("%s: create token pair: %w", op, err)
 	}

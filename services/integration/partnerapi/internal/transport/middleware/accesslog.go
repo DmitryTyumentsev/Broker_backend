@@ -39,7 +39,8 @@ func AccessLog(logger *zap.Logger) fiber.Handler {
 		if principal, ok := authz.PrincipalFromContext(c.UserContext()); ok {
 			fields = append(
 				fields,
-				zap.String("user_id", principal.UserID),
+				zap.String("agency_id", principal.AgencyID.String()),
+				zap.String("user_id", principal.UserID.String()),
 				zap.String("device_id", principal.DeviceID),
 				zap.String("role", principal.Role),
 			)

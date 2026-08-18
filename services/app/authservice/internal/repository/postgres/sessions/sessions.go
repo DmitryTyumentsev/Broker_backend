@@ -25,7 +25,7 @@ func (r *Repository) Save(ctx context.Context, session entity.RefreshSession) er
 	defer cancel()
 
 	query := `
-		insert into refresh_sessions (
+		insert into app.refresh_sessions (
 			refresh_token_hash,
 			user_id,
 			device_id,
@@ -71,7 +71,7 @@ func (r *Repository) FindByHash(ctx context.Context, hash string) (entity.Refres
 			expires_at,
 			revoked_at,
 			replaced_by_refresh_token_hash
-		from refresh_sessions
+		from app.refresh_sessions
 		where refresh_token_hash = $1
 	`
 
@@ -113,7 +113,7 @@ func (r *Repository) Rotate(
 	}()
 
 	updateQuery := `
-		update refresh_sessions
+		update app.refresh_sessions
 		set
 			revoked_at = $1,
 			replaced_by_refresh_token_hash = $2
@@ -137,7 +137,7 @@ func (r *Repository) Rotate(
 	}
 
 	insertQuery := `
-		insert into refresh_sessions (
+		insert into app.refresh_sessions (
 			refresh_token_hash,
 			user_id,
 			device_id,
@@ -178,7 +178,7 @@ func (r *Repository) Revoke(ctx context.Context, hash string) error {
 	defer cancel()
 
 	query := `
-		update refresh_sessions
+		update app.refresh_sessions
 		set revoked_at = coalesce(revoked_at, now())
 		where refresh_token_hash = $1
 	`

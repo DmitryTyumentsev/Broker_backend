@@ -1,3 +1,12 @@
+# authservice, локальный запуск: инфраструктура в docker, сервис на хосте.
+#
+# ВАЖНО про DSN. authservice играет роль контура монолита и ходит в базу
+# под ролью app_user: полные права на схему app, только select на
+# integration. Зеркально go_user у fixationservice — это и есть граница
+# двух контуров, и держит её база, а не договорённость.
+
+environment: local
+
 server:
   host: "0.0.0.0"
   port: 50051
@@ -11,6 +20,7 @@ business:
   lifetime_refresh_token: "720h"
   access_token_alg: "HS256"
   access_token_type: "JWT"
+  # Один и тот же секрет у authservice (выпускает) и partnerapi (проверяет).
   access_token_secret: "local-access-secret-change-me-32-bytes-minimum"
   access_token_issuer: "authservice"
 
@@ -24,16 +34,19 @@ observability:
 
 database:
   postgres:
-    dsn: ""
+    dsn: "postgres://app_user:app_user@127.0.0.1:5432/broker?sslmode=disable&search_path=app,public"
+
     host: "127.0.0.1"
     port: 5432
-    database_name: "auth_pg"
-    username: "postgres"
-    password: "2409"
+    database_name: "broker"
+    username: "app_user"
+    password: "app_user"
     ssl_mode: "disable"
+
     migrations_path: "migrations/app"
     migrations_table: "goose_db_version"
-    schema_name: "public"
+    schema_name: "app"        # → app.goose_db_version
+
     max_connections: 10
     min_connections: 1
     max_idle_time: "30m"

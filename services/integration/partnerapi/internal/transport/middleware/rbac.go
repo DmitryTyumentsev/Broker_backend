@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"Broker_backend/services/integration/partnerapi/internal/transport/grpc/grpcerr"
+	"Broker_backend/services/integration/partnerapi/internal/transport/http/httperr"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -20,15 +20,15 @@ func RequireRole(allowedRoles ...string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		principal, ok := CurrentPrincipal(c)
 		if !ok {
-			return grpcerr.WriteUnauthorized(c, "auth context is missing")
+			return httperr.WriteUnauthorized(c, "auth context is missing")
 		}
 
 		if len(allowed) == 0 {
-			return grpcerr.WriteForbidden(c, "no roles are allowed")
+			return httperr.WriteForbidden(c, "no roles are allowed")
 		}
 
 		if _, ok := allowed[principal.Role]; !ok {
-			return grpcerr.WriteForbidden(c, "insufficient role")
+			return httperr.WriteForbidden(c, "insufficient role")
 		}
 
 		return c.Next()

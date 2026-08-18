@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"Broker_backend/services/integration/partnerapi/internal/config"
-	"Broker_backend/services/integration/partnerapi/internal/transport/grpc/grpcerr"
+	"Broker_backend/services/integration/partnerapi/internal/transport/http/httperr"
 	"context"
 	"fmt"
 	"strconv"
@@ -34,7 +34,7 @@ func RedisRateLimit(client *redis.Client, cfg config.RateLimitConfig, logger *za
 		}
 
 		if client == nil {
-			return grpcerr.WriteServiceUnavailable(c, "rate limiter is not configured")
+			return httperr.WriteServiceUnavailable(c, "rate limiter is not configured")
 		}
 
 		ctx := c.UserContext()
@@ -46,7 +46,7 @@ func RedisRateLimit(client *redis.Client, cfg config.RateLimitConfig, logger *za
 		result, err := incrementRateLimit(ctx, client, key, cfg.Window)
 		if err != nil {
 			logger.Warn("rate limit failed", zap.Error(err), zap.String("key", key))
-			return grpcerr.WriteServiceUnavailable(c, "rate limiter unavailable")
+			return httperr.WriteServiceUnavailable(c, "rate limiter unavailable")
 		}
 
 		remaining := cfg.Limit - result.Count
@@ -63,7 +63,7 @@ func RedisRateLimit(client *redis.Client, cfg config.RateLimitConfig, logger *za
 				c.Set("Retry-After", strconv.FormatInt(retryAfterSeconds(result.TTL), 10))
 			}
 
-			return grpcerr.WriteTooManyRequests(c, "rate limit exceeded")
+			return httperr.WriteTooManyRequests(c, "rate limit exceeded")
 		}
 
 		return c.Next()

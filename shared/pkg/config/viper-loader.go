@@ -25,7 +25,7 @@ func Load(serviceName string, out any) error {
 	v.AddConfigPath(filepath.Join("services", serviceName, "configs"))
 	v.AddConfigPath(filepath.Join("services", "app", serviceName, "configs"))
 	v.AddConfigPath(filepath.Join("services", "integration", serviceName, "configs"))
-	v.AddConfigPath(filepath.Join("configs"))
+	v.AddConfigPath("configs")
 	v.AddConfigPath(".")
 
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))

@@ -16,9 +16,13 @@ import (
 const serviceName = "partnerapi"
 
 type Config struct {
-	Server        ServerConfig        `mapstructure:"server"`
-	Business      BusinessConfig      `mapstructure:"business"`
-	HTTP          HTTPConfig          `mapstructure:"grpc"`
+	Environment string         `mapstructure:"environment"`
+	Server      ServerConfig   `mapstructure:"server"`
+	Business    BusinessConfig `mapstructure:"business"`
+	// Секция в yaml называется http — она и есть http. Раньше здесь стоял
+	// ключ "grpc", из-за чего CORS и security-заголовки молча не читались
+	// из конфига и всегда были выключены.
+	HTTP          HTTPConfig          `mapstructure:"http"`
 	Observability ObservabilityConfig `mapstructure:"observability"`
 	AuthGRPC      AuthGRPCConfig      `mapstructure:"auth_grpc"`
 	FixationGRPC  FixationGRPCConfig  `mapstructure:"fixation_grpc"`

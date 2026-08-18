@@ -26,10 +26,10 @@ func MapError(op string, err error) error {
 			return mapUniqueViolation(op, pgErr.ConstraintName)
 
 		case pgerrcode.NotNullViolation:
-			return fmt.Errorf("%s: %w: %v", op, domain.ErrMustBeNotNull, err)
+			return fmt.Errorf("%s: %w: %s", op, domain.ErrMustBeNotNull, pgErr.Message)
 
 		case pgerrcode.ForeignKeyViolation:
-			return fmt.Errorf("%s: %w: %v", op, domain.ErrBadRequest, err)
+			return fmt.Errorf("%s: %w: %s", op, domain.ErrBadRequest, pgErr.Message)
 
 		case pgerrcode.CheckViolation:
 			return mapCheckViolation(op, pgErr.ConstraintName)
@@ -47,22 +47,14 @@ func MapError(op string, err error) error {
 	return fmt.Errorf("%s: %w", op, err)
 }
 
-func mapUniqueViolation(op string, constraintName string) error {
-	switch constraintName {
-	//case constraintUniqueEmail:
-	//	return fmt.Errorf("%s: %w", op, domain.ErrNotUniqueEmail)
-	//case constraintUniqueRefreshTokenHash:
-	//	return fmt.Errorf("%s: %w", op, domain.ErrNotUniqueRefreshTokenHash)
-	default:
-		return fmt.Errorf("%s: %w", op, domain.ErrNotUnique)
-	}
+// mapUniqueViolation пока не разбирает имя ограничения: доменная ошибка одна.
+// Когда уникальных ограничений станет больше одного, здесь появится switch по
+// constraintName — как сделано в authservice/repository/postgres/errors.go.
+func mapUniqueViolation(op string, _ string) error {
+	return fmt.Errorf("%s: %w", op, domain.ErrNotUnique)
 }
 
-func mapCheckViolation(op string, constraintName string) error {
-	switch constraintName {
-	//case constraintCheckUserRole:
-	//	return fmt.Errorf("%s: %w", op, domain.ErrUserRoleInvalid)
-	default:
-		return fmt.Errorf("%s: %w", op, domain.ErrBadRequest)
-	}
+// mapCheckViolation — то же самое для check-ограничений.
+func mapCheckViolation(op string, _ string) error {
+	return fmt.Errorf("%s: %w", op, domain.ErrBadRequest)
 }

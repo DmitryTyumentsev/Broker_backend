@@ -7,16 +7,23 @@ import (
 	"Broker_backend/shared/pkg/authz"
 	"Broker_backend/shared/pkg/requestctx"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
+var (
+	testAgencyID = uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	testUserID   = uuid.MustParse("22222222-2222-2222-2222-222222222222")
+)
+
 func TestInjectAndExtractPrincipalMetadata(t *testing.T) {
 	ctx := context.Background()
 	ctx = authz.WithPrincipal(ctx, authz.Principal{
-		UserID:   "user-1",
+		AgencyID: testAgencyID,
+		UserID:   testUserID,
 		DeviceID: "device-1",
 		Role:     "broker_team_member",
 	})
@@ -36,7 +43,8 @@ func TestInjectAndExtractPrincipalMetadata(t *testing.T) {
 		t.Fatal("expected principal in context")
 	}
 
-	if principal.UserID != "user-1" || principal.DeviceID != "device-1" || principal.Role != "broker_team_member" {
+	if principal.AgencyID != testAgencyID || principal.UserID != testUserID ||
+		principal.DeviceID != "device-1" || principal.Role != "broker_team_member" {
 		t.Fatalf("unexpected principal: %+v", principal)
 	}
 
@@ -69,7 +77,8 @@ func TestAuthUnaryServerInterceptorRejectsMissingPrincipal(t *testing.T) {
 
 func TestAuthUnaryServerInterceptorAllowsPrincipal(t *testing.T) {
 	md := metadata.Pairs(
-		principalUserIDKey, "user-1",
+		principalAgencyIDKey, testAgencyID.String(),
+		principalUserIDKey, testUserID.String(),
 		principalDeviceIDKey, "device-1",
 		principalRoleKey, "broker_team_member",
 	)

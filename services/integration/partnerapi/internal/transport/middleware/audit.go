@@ -22,7 +22,8 @@ func AuditLog(c *fiber.Ctx, logger *zap.Logger, event string, fields ...zap.Fiel
 	if principal, ok := authz.PrincipalFromContext(c.UserContext()); ok {
 		baseFields = append(
 			baseFields,
-			zap.String("user_id", principal.UserID),
+			zap.String("agency_id", principal.AgencyID.String()),
+			zap.String("user_id", principal.UserID.String()),
 			zap.String("device_id", principal.DeviceID),
 			zap.String("role", principal.Role),
 		)

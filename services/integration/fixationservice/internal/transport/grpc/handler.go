@@ -16,7 +16,12 @@ type FixationService interface {
 }
 
 type Handler struct {
-	grpc     fixationv1.UnimplementedFixationServiceServer
+	// Встраивание, а не поле: protoc генерирует у сервера непубличный метод
+	// mustEmbedUnimplemented..., без которого тип не подойдёт под интерфейс
+	// FixationServiceServer. Это же даёт forward compatibility — новый rpc
+	// в proto не ломает сборку, он просто вернёт Unimplemented.
+	fixationv1.UnimplementedFixationServiceServer
+
 	fixation FixationService
 	logger   *zap.Logger
 }
@@ -26,9 +31,9 @@ func NewHandler(grpc fixationv1.UnimplementedFixationServiceServer, fixation Fix
 		logger = zap.NewNop()
 	}
 	return &Handler{
-		grpc:     grpc,
-		fixation: fixation,
-		logger:   logger,
+		UnimplementedFixationServiceServer: grpc,
+		fixation:                           fixation,
+		logger:                             logger,
 	}
 }
 

@@ -25,7 +25,7 @@ type PasswordHasher interface {
 }
 
 type AccessTokenIssuer interface {
-	Issue(userID string, deviceID string, role string, now time.Time) (string, error)
+	Issue(agencyID string, userID string, deviceID string, role string, now time.Time) (string, error)
 }
 
 type RefreshTokenService interface {

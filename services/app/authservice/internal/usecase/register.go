@@ -33,6 +33,7 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 
 	user := entity2.User{
 		ID:           uuid.NewString(),
+		AgencyID:     helpers.NormalizeOptionText(req.AgencyID),
 		Email:        helpers.NormalizeEmail(req.Email),
 		Role:         entity2.RoleBrokerTeamMember,
 		PasswordHash: passwordHash,
@@ -46,7 +47,7 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*TokenPai
 		return nil, fmt.Errorf("%s: save user: %w", op, err)
 	}
 
-	tokenPair, err := s.createTokenPair(ctx, user.ID, req.DeviceID, string(user.Role), now)
+	tokenPair, err := s.createTokenPair(ctx, agencyIDOrEmpty(user.AgencyID), user.ID, req.DeviceID, string(user.Role), now)
 	if err != nil {
 		return nil, fmt.Errorf("%s: create token pair: %w", op, err)
 	}

@@ -1,12 +1,13 @@
-# .golangci.yml — конфиг линтеров.
-# Запуск: golangci-lint run
+# .golangci.yml — конфиг линтеров, схема v2.
 #
-# Что бы он поймал в твоём коде без моего участия:
-#   staticcheck  → пустой if !ok {}, недостижимый код
-#   errcheck     → отброшенный CommandTag, необработанные ошибки
-#   gosimple     → if ok == false вместо if !ok
-#   ineffassign  → присваивания, которые никто не читает
-#   unused       → мёртвый код (WriteWithTimeout, ReadWithTimeout)
+# Запуск:  make lint   (внутри — go tool golangci-lint run)
+#
+# В v2 структура другая, чем в v1, и это не косметика:
+#   linters.settings   вместо верхнеуровневого linters-settings
+#   linters.exclusions вместо issues.exclude-rules / issues.exclude-dirs
+#   formatters         отдельная секция, форматтеры больше не линтеры
+# Файл в синтаксисе v1 с version: "2" не запускается вообще — падает
+# на разборе конфига, и создаётся ощущение, что линтера в проекте нет.
 
 version: "2"
 
@@ -15,51 +16,77 @@ run:
   tests: true
 
 linters:
+  # default: none — берём ровно тот набор, который выбрали, без «стандартного»
+  # довеска. Иначе список выше врёт: включено больше, чем написано.
+  default: none
+
   enable:
-    # --- база, включена по умолчанию, перечисляю явно ---
+    # ── база ─────────────────────────────────────────────────────────
     - errcheck      # необработанные ошибки
     - govet         # подозрительные конструкции
-    - ineffassign   # бесполезные присваивания
-    - staticcheck   # большой набор проверок (включает gosimple)
-    - unused        # неиспользуемый код
+    - ineffassign   # присваивания, которые никто не читает
+    - staticcheck   # большой набор проверок (в v2 включает бывший gosimple)
+    - unused        # мёртвый код
 
-    # --- важные дополнительные ---
-    - bodyclose     # незакрытый grpc.Response.Body
-    - contextcheck  # потерянный context
+    # ── ошибки ───────────────────────────────────────────────────────
     - errorlint     # == вместо errors.Is, %v вместо %w
+    - nilerr        # return nil при ненулевой ошибке
+
+    # ── контекст и запросы ───────────────────────────────────────────
+    - contextcheck  # потерянный context (создали новый вместо переданного)
     - noctx         # HTTP-запросы без context
-    - rowserrcheck  # незакрытый sql.Rows / непроверенный rows.Err()
-    - sqlclosecheck # незакрытые sql.Rows и sql.Stmt
-    - nilerr        # return nil при ненулевой ошибке ← ловит твой баг с RowsAffected
-    - durationcheck # умножение двух Duration
-    - makezero      # make([]T, n) с последующим append
 
-    # --- стиль ---
-    - misspell      # опечатки в английских словах
-    - unconvert     # ненужные конверсии типов
-    - wastedassign
+    # ── база данных ──────────────────────────────────────────────────
+    - rowserrcheck   # непроверенный rows.Err() — молчаливая потеря строк
+    - sqlclosecheck  # незакрытые Rows/Stmt — утечка соединений из пула
+    - bodyclose      # незакрытый resp.Body — то же самое для HTTP
 
-linters-settings:
-  errcheck:
-    # Не ругаться на явно отброшенные ошибки вида `_ = f.Close()`
-    check-blank: false
-  errorlint:
-    errorf: true      # требовать %w вместо %v при обёртке
-    asserts: true     # ругаться на err.(*MyError) вместо errors.As
-    comparison: true  # ругаться на err == ErrFoo вместо errors.Is
+    # ── тихие баги ───────────────────────────────────────────────────
+    - durationcheck # умножение двух Duration: 5s * 60 != 5m
+    - makezero      # make([]T, n) с последующим append — n нулей в начале
+    - gocritic      # набор эвристик: копии больших структур, лишние ветвления
+
+  settings:
+    errcheck:
+      # Явно отброшенная ошибка `_ = f.Close()` — осознанное решение автора,
+      # на него не ругаемся. Молча проигнорированная — ругаемся.
+      check-blank: false
+
+    errorlint:
+      errorf: true      # требовать %w вместо %v при обёртке
+      asserts: true     # ругаться на err.(*MyError) вместо errors.As
+      comparison: true  # ругаться на err == ErrFoo вместо errors.Is
+
+    gocritic:
+      disabled-checks:
+        # Мы намеренно пишем if/else там, где switch читается хуже.
+        - ifElseChain
+        # В коде полно рабочих заметок вида `//вопрос` без пробела.
+        # Это наша договорённость, а не дефект.
+        - commentFormatting
+
+  exclusions:
+    # Сгенерированный код не наш — не правим и не читаем.
+    generated: lax
+
+    paths:
+      - gen$        # protoc-выхлоп
+      - _trash$     # свалка, живёт до первой уборки
+
+    rules:
+      # В тестах допускаем неполную обработку ошибок: там падение теста
+      # и есть обработка.
+      - path: _test\.go
+        linters:
+          - errcheck
+          - bodyclose
 
 issues:
-  exclude-rules:
-    # В тестах допускаем неполную обработку ошибок
-    - path: _test\.go
-      linters:
-        - errcheck
-        - bodyclose
-  # По умолчанию golangci-lint показывает максимум 3 однотипных проблемы.
-  # На первом прогоне хочется увидеть всё.
+  # По умолчанию показывается максимум 3 однотипных проблемы.
+  # На разборе legacy-кода хочется увидеть все.
   max-issues-per-linter: 0
   max-same-issues: 0
 
-  # Сгенерированный код не проверяем
-  exclude-dirs:
-    - gen
+formatters:
+  enable:
+    - gofmt
