@@ -9,11 +9,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func WriteGRPCError(c *fiber.Ctx, err error) error {
+func WriteGRPCToHTTPError(c *fiber.Ctx, err error) error {
 	if err == nil {
 		return nil
 	}
-
 	st, ok := status.FromError(err)
 	if !ok {
 		return httperr.WriteInternal(c)

@@ -21,6 +21,7 @@ const (
 	principalDeviceIDKey = "principal-device-id"
 	principalRoleKey     = "principal-role"
 	requestIDKey         = "x-request-id"
+	clientIPKey          = "x-client-ip"
 )
 
 func InjectOutgoingContext(ctx context.Context) context.Context {
@@ -44,6 +45,9 @@ func InjectOutgoingContext(ctx context.Context) context.Context {
 
 	if requestID, ok := requestctx.RequestIDFromContext(ctx); ok {
 		md.Set(requestIDKey, requestID)
+	}
+	if clientIP, ok := requestctx.ClientIPFromContext(ctx); ok {
+		md.Set(clientIPKey, clientIP)
 	}
 
 	otel.GetTextMapPropagator().Inject(ctx, metadataCarrier{md: md})
@@ -87,6 +91,9 @@ func ExtractIncomingContext(ctx context.Context) context.Context {
 
 	if requestID := firstMetadataValue(md, requestIDKey); requestID != "" {
 		ctx = requestctx.WithRequestID(ctx, requestID)
+	}
+	if clientIP := firstMetadataValue(md, clientIPKey); clientIP != "" {
+		ctx = requestctx.WithClientIP(ctx, clientIP)
 	}
 
 	principal := authz.Principal{

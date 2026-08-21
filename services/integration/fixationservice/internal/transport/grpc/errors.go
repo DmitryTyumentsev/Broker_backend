@@ -35,6 +35,12 @@ func grpcStatusFromError(err error) (codes.Code, string) {
 		return codes.PermissionDenied, domain.ErrForbidden.Error()
 	case errors.Is(err, domain.ErrFixationAlreadyExist):
 		return codes.AlreadyExists, "fixation already exists"
+	case errors.Is(err, domain.ErrProjectNotExist):
+		return codes.NotFound, domain.ErrProjectNotExist.Error()
+	case errors.Is(err, domain.ErrEmployeeNotInAgency):
+		return codes.InvalidArgument, domain.ErrEmployeeNotInAgency.Error()
+	case errors.Is(err, domain.ErrProjectArchived):
+		return codes.InvalidArgument, domain.ErrProjectArchived.Error()
 
 	default:
 		return codes.Internal, "internal server error"

@@ -12,7 +12,7 @@ import (
 )
 
 type FixationRepository interface {
-	IsExistsProjectID(ctx context.Context, projectID uuid.UUID) (bool, error)
+	StatusByProjectID(ctx context.Context, projectID uuid.UUID) (string, error)
 	IsUserIDInAgencyID(ctx context.Context, agencyID, userID uuid.UUID) (bool, error)
 	FixationCurrent(ctx context.Context, phoneHash string, projectID uuid.UUID) (*entity.Fixation, error)
 	InsertNewFixation(ctx context.Context, f entity.Fixation) error

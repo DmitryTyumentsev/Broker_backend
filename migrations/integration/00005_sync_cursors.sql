@@ -13,7 +13,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
-create table if not exists integration.sync_cursors (
+create table if not status integration.sync_cursors (
     -- Какая внешняя система: 'amocrm', 'profitbase', '1c'.
     source          text        not null,
 
@@ -56,7 +56,7 @@ comment on table integration.sync_cursors is
 -- последнего успеха. Таблица маленькая (единицы строк), поэтому больше
 -- индексов здесь не нужно: любой из них Postgres всё равно проигнорирует
 -- в пользу seq scan.
-create index if not exists sync_cursors_last_success_idx
+create index if not status sync_cursors_last_success_idx
     on integration.sync_cursors (last_success_at);
 
 -- +goose StatementEnd
@@ -64,6 +64,6 @@ create index if not exists sync_cursors_last_success_idx
 -- +goose Down
 -- +goose StatementBegin
 
-drop table if exists integration.sync_cursors;
+drop table if status integration.sync_cursors;
 
 -- +goose StatementEnd

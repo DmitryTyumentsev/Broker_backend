@@ -1,7 +1,8 @@
 -- migrations/app/00003_agencies_projects.sql
 --
 -- Контур монолита. Катится мигратором authservice под ролью app_user.
--- В настоящем гибриде это делал бы мигратор Laravel.
+-- На локальном стенде authservice/cmd/migrator — техническая точка входа
+-- владельца схемы app; в горячем пути authservice миграции не запускает.
 --
 -- Схема указана явно во всех объектах. Полагаться на search_path в миграциях
 -- опасно: если у мигратора и у сервиса он разный, таблица уедет не туда,
@@ -15,7 +16,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
-create table if not exists app.agencies (
+create table if not status app.agencies (
     id         uuid        primary key,
     name       text        not null,
     inn        text,
@@ -30,7 +31,7 @@ create table if not exists app.agencies (
 comment on table app.agencies is
     'Агентства-партнёры. Владелец — контур монолита, Go только читает.';
 
-create table if not exists app.projects (
+create table if not status app.projects (
     id         uuid        primary key,
     name       text        not null,
     status     text        not null default 'active',
@@ -46,11 +47,11 @@ comment on table app.projects is
 -- Сотрудник принадлежит агентству. Колонка допускает NULL: у сотрудников
 -- застройщика (sales_manager, account_manager) агентства нет.
 alter table app.users
-    add column if not exists agency_id uuid;
+    add column if not status agency_id uuid;
 
 do $$
 begin
-    if not exists (
+    if not status (
         select 1 from pg_constraint where conname = 'users_agency_id_fkey'
     ) then
         alter table app.users
@@ -60,7 +61,7 @@ begin
 end
 $$;
 
-create index if not exists users_agency_id_idx
+create index if not status users_agency_id_idx
     on app.users (agency_id)
     where agency_id is not null;
 
@@ -69,10 +70,10 @@ create index if not exists users_agency_id_idx
 -- +goose Down
 -- +goose StatementBegin
 
-drop index if exists app.users_agency_id_idx;
-alter table app.users drop constraint if exists users_agency_id_fkey;
-alter table app.users drop column if exists agency_id;
-drop table if exists app.projects;
-drop table if exists app.agencies;
+drop index if status app.users_agency_id_idx;
+alter table app.users drop constraint if status users_agency_id_fkey;
+alter table app.users drop column if status agency_id;
+drop table if status app.projects;
+drop table if status app.agencies;
 
 -- +goose StatementEnd

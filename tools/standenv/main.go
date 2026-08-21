@@ -124,9 +124,6 @@ func collect(ctx context.Context, db *sql.DB) ([]variable, error) {
 		{Key: "password", Value: "password"},
 		{Key: "deviceId", Value: "postman"},
 		{Key: "phone", Value: "+7 (999) 111-22-33"},
-		{Key: "token", Value: ""},
-		{Key: "refresh", Value: ""},
-		{Key: "fixationId", Value: ""},
 	}
 
 	// Агентство и «свой» брокер. Берём активное агентство: у заблокированного

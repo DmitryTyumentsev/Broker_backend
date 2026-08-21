@@ -9,7 +9,7 @@
 #   Jaeger (трейсы)       http://localhost:16686
 #   Prometheus (метрики)  http://localhost:9090
 #   Grafana (дашборды)    http://localhost:3000   admin/admin
-#   RabbitMQ (очереди)    http://localhost:15672  broker/broker
+#   RabbitMQ (очереди)    http://localhost:15672  broker/broker17
 #   MinIO (документы)     http://localhost:9001   minioadmin/minioadmin
 #   Монолит (заглушка)    http://localhost:8000
 #
@@ -78,7 +78,7 @@ services:
     container_name: broker_rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: broker
-      RABBITMQ_DEFAULT_PASS: broker
+      RABBITMQ_DEFAULT_PASS: broker17
     ports:
       - "55672:5672"    # AMQP
       - "15672:15672"   # management UI
@@ -274,7 +274,7 @@ services:
       APP_AMQP_HOST: rabbitmq
       APP_AMQP_PORT: "5672"
       APP_AMQP_USER: broker
-      APP_AMQP_PASSWORD: broker
+      APP_AMQP_PASSWORD: broker17
     ports:
       - "8000:8000"
     depends_on:

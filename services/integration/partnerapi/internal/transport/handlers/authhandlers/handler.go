@@ -58,7 +58,7 @@ func (h *AuthHandler) Register(ctx *fiber.Ctx) error {
 	if err != nil {
 		h.logger.Warn("register grpc failed", zap.Error(err))
 		middleware.AuditLog(ctx, h.logger, "auth.register.failed", zap.String("email", req.Email))
-		return grpcerr.WriteGRPCError(ctx, err)
+		return grpcerr.WriteGRPCToHTTPError(ctx, err)
 	}
 
 	middleware.AuditLog(ctx, h.logger, "auth.register.succeeded", zap.String("email", req.Email))
@@ -82,7 +82,7 @@ func (h *AuthHandler) Login(ctx *fiber.Ctx) error {
 	if err != nil {
 		h.logger.Warn("login grpc failed", zap.Error(err))
 		middleware.AuditLog(ctx, h.logger, "auth.login.failed", zap.String("email", req.Email))
-		return grpcerr.WriteGRPCError(ctx, err)
+		return grpcerr.WriteGRPCToHTTPError(ctx, err)
 	}
 
 	middleware.AuditLog(ctx, h.logger, "auth.login.succeeded", zap.String("email", req.Email))
@@ -105,7 +105,7 @@ func (h *AuthHandler) Refresh(ctx *fiber.Ctx) error {
 	if err != nil {
 		h.logger.Warn("refresh grpc failed", zap.Error(err))
 		middleware.AuditLog(ctx, h.logger, "auth.refresh.failed", zap.String("device_id", req.DeviceID))
-		return grpcerr.WriteGRPCError(ctx, err)
+		return grpcerr.WriteGRPCToHTTPError(ctx, err)
 	}
 
 	middleware.AuditLog(ctx, h.logger, "auth.refresh.succeeded", zap.String("device_id", req.DeviceID))
@@ -126,7 +126,7 @@ func (h *AuthHandler) Logout(ctx *fiber.Ctx) error {
 	if _, err := h.authClient.Logout(ctx.UserContext(), grpcReq); err != nil {
 		h.logger.Warn("logout grpc failed", zap.Error(err))
 		middleware.AuditLog(ctx, h.logger, "auth.logout.failed", zap.String("device_id", req.DeviceID))
-		return grpcerr.WriteGRPCError(ctx, err)
+		return grpcerr.WriteGRPCToHTTPError(ctx, err)
 	}
 
 	middleware.AuditLog(ctx, h.logger, "auth.logout.succeeded", zap.String("device_id", req.DeviceID))
@@ -187,16 +187,17 @@ func httpToGRPCRegister(req authdto.RegisterRequest) *authv1.RegisterRequest {
 	}
 }
 
-// tokenPair объединяет Register/Login/RefreshResponse — у всех есть только access/refresh токены.
-// expires_in_sec из proto убрали, поэтому в DTO оно теперь всегда 0.
+// tokenPair объединяет одинаковые поля Register/Login/RefreshResponse.
 type tokenPair interface {
 	GetAccessToken() string
 	GetRefreshToken() string
+	GetExpiresInSec() int64
 }
 
 func grpcToHTTPTokenPair(resp tokenPair) authdto.TokenPairResponse {
 	return authdto.TokenPairResponse{
-		Access:  resp.GetAccessToken(),
-		Refresh: resp.GetRefreshToken(),
+		Access:       resp.GetAccessToken(),
+		Refresh:      resp.GetRefreshToken(),
+		ExpiresInSec: resp.GetExpiresInSec(),
 	}
 }

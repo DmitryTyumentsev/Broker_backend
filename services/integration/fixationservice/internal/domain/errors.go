@@ -12,4 +12,7 @@ var (
 	ErrGeneral              = errors.New("internal error")
 	ErrFixationAlreadyExist = errors.New("fixation already exist")
 	ErrConflict             = errors.New("conflict")
+	ErrProjectNotExist      = errors.New("project does not exist")
+	ErrEmployeeNotInAgency  = errors.New("employee not in agency")
+	ErrProjectArchived      = errors.New("project archived, try another project")
 )

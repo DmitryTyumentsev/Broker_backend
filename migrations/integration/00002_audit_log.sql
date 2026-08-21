@@ -9,7 +9,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
-create table if not exists integration.audit_log (
+create table if not status integration.audit_log (
     id              bigserial   primary key,
 
     -- на что смотрим. Внешнего ключа НЕТ намеренно: аудит обязан пережить
@@ -54,17 +54,16 @@ comment on table integration.audit_log is
     'Append-only. UPDATE и DELETE отозваны у go_user ниже в этой же миграции.';
 
 -- «покажи историю этой фиксации»
-create index if not exists audit_log_entity_idx
+create index if not status audit_log_entity_idx
     on integration.audit_log (entity_type, entity_id, created_at desc);
 
 -- «что делало это агентство за период» — по этому индексу ловят перебор
-create index if not exists audit_log_actor_idx
+create index if not status audit_log_actor_idx
     on integration.audit_log (actor_agency_id, created_at desc);
 
--- Права.
--- В bootstrap-миграции стоит `alter default privileges ... grant all`,
--- поэтому на новую таблицу go_user получил все права автоматически.
--- Здесь мы забираем лишнее обратно.
+-- Права. go_user создаёт таблицу и остаётся её владельцем, но может отозвать
+-- у себя обычные DML-права. Миграция 00007 добавляет второй рубеж через
+-- FORCE ROW LEVEL SECURITY на случай будущей ошибочной выдачи прав.
 revoke update, delete on integration.audit_log from go_user;
 grant  insert, select on integration.audit_log to go_user;
 
@@ -77,6 +76,6 @@ grant usage, select on sequence integration.audit_log_id_seq to go_user;
 -- +goose Down
 -- +goose StatementBegin
 
-drop table if exists integration.audit_log;
+drop table if status integration.audit_log;
 
 -- +goose StatementEnd

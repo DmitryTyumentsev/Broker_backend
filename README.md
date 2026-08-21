@@ -165,6 +165,60 @@ make seed
 
 Так ближе к прод-раскладке, но отладчик к сервису не подцепишь.
 
+### Трейсы: где именно упало
+
+Jaeger — это веб-интерфейс на **http://localhost:16686**, отдельное
+приложение ставить не надо. Поднимается вместе с `make up`.
+
+В обоих access-логах есть `trace_id`. Копируешь его, вставляешь в Jaeger
+в поиск — и видишь лестницу спанов одного запроса:
+
+```
+POST /api/v1/fixations                       partnerapi        42ms
+  fixation.v1.FixationService/NewFixation    fixationservice   38ms
+    pg.query select ... from app.projects                       2ms
+    pg.query select ... from app.users                          1ms
+    pg.query insert into integration.fixations                  3ms
+```
+
+Запросы к базе трассируются через `pgx.QueryTracer`
+(`shared/pkg/tracing/pgxtrace.go`), подключён в оба пула. У спана видно
+текст запроса, длительность, `rows_affected` и ошибку, если она была.
+
+Аргументы запросов в спаны не попадают намеренно: там ездит телефон,
+а трейсы хранятся дольше логов и в другом месте.
+
+Ноль в `rows_affected` у `insert` — это не ошибка базы, а бизнес-факт.
+Отличить одно от другого иначе нечем.
+
+### Подключиться к базе
+
+Порт стенда — `55432`, база `broker`.
+
+| Кто | Пароль | Что видит |
+|---|---|---|
+| `postgres` | `postgres` | всё |
+| `app_user` | `app_user` | пишет в `app`, читает `integration` |
+| `go_user` | `go_user` | зеркально |
+
+GoLand: три источника уже заведены в `.idea/dataSources.xml`, пароли в URL.
+pgAdmin: `deploy/pgadmin/servers.json` — Tools → Import/Export Servers.
+
+Три роли, а не одна, потому что границу контуров держат гранты, и её
+полезно потрогать руками: под `go_user` попробуй записать в
+`app.projects` — получишь permission denied.
+
+### Отладка
+
+В `.idea/runConfigurations` лежат конфигурации на все три сервиса и
+compound «Стенд: все сервисы». Под `make run-*` сервис работает через
+`go run`, и отладчик к нему не подцепить; из этих конфигураций —
+подцепляется. Инфраструктура при этом должна быть поднята:
+`make up && make migrate`.
+
+Точка останова в юзкейсе — единственный способ увидеть ошибку, которую
+по дороге наружу превратили в `internal server error`.
+
 ### Postman
 
 ```bash
@@ -172,25 +226,33 @@ make postman-env    # окружение из текущих данных баз
 ```
 
 Импортировать в Postman два файла из `deploy/postman/`: коллекцию и
-окружение, затем выбрать окружение в списке справа сверху. «Логин» сам
-кладёт токен в переменную; «Кто я (/me)» перезаписывает `agencyId` и
-`brokerId` значениями из принципала текущего токена.
+окружение, затем выбрать окружение в списке справа сверху. После изменений
+в репозитории оба файла надо импортировать заново.
+
+В окружении лежат только адреса, логин и идентификаторы из базы. Динамические
+`token`, `refresh` и `fixationId` генератор туда пустыми не кладёт: пустая
+переменная environment имеет приоритет над collection и раньше перекрывала
+токен, сохранённый после логина — поэтому `/me` отвечал 401. Теперь «Логин»
+и «Обновить токен» сохраняют токены в активное окружение (или в collection,
+если окружение не выбрано), «Кто я (/me)» там же обновляет `agencyId` и
+`brokerId`, а успешная фиксация — `fixationId`. Удалять поля вручную больше
+не нужно.
 
 Внутри — здоровье сервисов, авторизация, фиксации во всех вариантах
 входных данных, ручки монолита и управление отказами обоих моков.
 
 UI:
 
-| | |
-|---|---|
-| Jaeger | http://localhost:16686 |
-| Prometheus | http://localhost:9090 |
-| Grafana | http://localhost:3000 · admin/admin |
-| RabbitMQ | http://localhost:15672 · broker/broker (`make rabbit-ui`) |
+| |                                                                 |
+|---|-----------------------------------------------------------------|
+| Jaeger | http://localhost:16686                                          |
+| Prometheus | http://localhost:9090                                           |
+| Grafana | http://localhost:3000 · admin/admin                             |
+| RabbitMQ | http://localhost:15672 · broker/broker17 (`make rabbit-ui`)     |
 | MinIO | http://localhost:9001 · minioadmin/minioadmin (`make minio-ui`) |
-| Монолит | http://localhost:8000/internal/v1/health |
-| mock-amocrm | http://localhost:9101/_control/state |
-| mock-profitbase | http://localhost:9102/_control/state |
+| Монолит | http://localhost:8000/internal/v1/health                        |
+| mock-amocrm | http://localhost:9101/_control/state                            |
+| mock-profitbase | http://localhost:9102/_control/state                            |
 
 `make help` — полный список целей.
 
@@ -338,6 +400,8 @@ make reconcile
 | Линтер | `.golangci.yml` переписан под схему v2, 15 линтеров |
 | Миграции | разложены по владельцам, нумерация исправлена, схемы указаны явно |
 | DDL | `outbox`, `outbox_dlq`, `idempotency_keys`, `sync_cursors`, `webhook_endpoints`, `webhook_deliveries` |
+| Граница схем | существующие и будущие таблицы доступны соседнему контуру только на чтение; bootstrap-миграция учитывает роль-создателя объекта |
+| Создание фиксации | фиксация, append-only аудит и `fixation.created` в outbox записываются одной транзакцией |
 | Стенд | postgres 13, redis 6, rabbitmq 3.9, minio, монолит, два мока |
 | Монолит | PHP 8.0, ~300 строк, ручки + шина + сидер |
 | Инструменты | `racefix`, `reconcile`, `token`, `dbtest`, генерация gomock |
@@ -362,22 +426,13 @@ make reconcile
 |---|---|
 | `usecase/fixation-customer_test.go` | не компилируется: `undefined: tx`, `undefined: req` |
 | `integrationtest/fixation_race_test.go` | не компилируется: `undefined: usecase.HashPhone` — в файле стоит пометка «подставь свою функцию» |
-| Схема `outbox` | намеренно неполная: нет `attempts`, `available_at`, классификации ошибок |
+| Надёжный outbox-воркер (отдельный тикет) | текущей схеме намеренно не хватает `attempts`, `available_at` и классификации ошибок; запись события горячего пути уже работает |
 
 ### Найдено, не чинил — обсудить
 
 | Где | Что |
 |---|---|
-| `repository/postgres/fixation.go` `InsertAudit` | пишет в таблицу `audit`, которой нет. Есть `integration.audit_log` с другим набором колонок |
-| `repository/postgres/fixation.go` `InsertOutbox` | вставляет в `outbox` колонки фиксации, которых там нет и не будет |
-| `repository/postgres/fixation.go` `IsUserIDInAgencyID` | `u.user_id` — такой колонки нет, есть `u.id` |
-| `repository/postgres/fixation.go` `InsertNewFixation` | колонка `fixed_by`, в таблице — `fix_by` |
-| `repository/postgres/fixation.go` `UpdateFixationStatusExpired` | `SET f.status` — PostgreSQL не принимает алиас в `SET` |
 | `usecase/register.go` | регистрация не проставляет агентство, и выпуск токена падает на `agency id is required`. В proto `RegisterRequest` поля нет |
-
-Первые пять — механические ошибки SQL. Трогать их не стал: они в горячем пути
-и в том же файле, что твои тикеты; чинить их поверх твоей правки — гарантия
-конфликта. Скажи, кто берёт.
 
 Отдельно: `account_manager` и `sales_manager` из сидера сейчас не могут
 получить токен — у них нет агентства, а выпуск токена его требует. Это тот же
@@ -456,6 +511,17 @@ CORS и security-заголовки молча не читались из кон
 postgres, накатить три каталога миграций, отдать пул» была вшита в один
 `TestMain`; теперь её можно звать из тестов любого сервиса.
 
+**Запросы к PostgreSQL трассируются.** Спаны были только на границах
+сервисов, внутри — чёрный ящик: по логам видно «какой сервис вернул 500»,
+но не «на каком запросе». `shared/pkg/tracing/pgxtrace.go` вешается на
+`ConnConfig.Tracer` обоих пулов. Аргументы в спан не пишутся: в них
+персональные данные.
+
+**Таймауты в run-конфигурациях подняты до 10 минут.** Только там, в
+`configs/local.yaml` значения боевые. Под отладчиком точка останова висит
+дольше пятисекундного дедлайна, контекст отменяется, и вместо своей ошибки
+получаешь `context deadline exceeded` во всех трёх сервисах сразу.
+
 **Порты на хосте нестандартные: postgres 55432, redis 56379, rabbitmq 55672.**
 Внутри сети compose всё осталось стандартным. Причина не в эстетике: если
 у разработчика уже есть свой postgres на 5432 — в системе, в WSL, в другом
@@ -482,7 +548,19 @@ compose в докеровский. Получаются две базы, и си
 генерирует заново на каждом прогоне. Переносить их в Postman руками — шесть
 copy-paste и один шанс из шести ошибиться так, что потом объясняешь себе 404.
 Цель собирает окружение Postman прямо из базы, включая архивный проект и
-брокера из чужого агентства.
+брокера из чужого агентства. Runtime-переменные (`token`, `refresh`,
+`fixationId`) в файл намеренно не попадают: их создают скрипты коллекции в
+активном окружении, поэтому пустое значение больше не может перекрыть токен.
+
+**Аудит и outbox создания фиксации приведены к DDL.** `InsertAudit` пишет
+`created` в `integration.audit_log`: `state_before = null`, полный снимок в
+`state_after`, актёр и `request_id` берутся из principal/контекста, клиентский
+IP передаётся из partnerapi через gRPC metadata. `InsertOutbox` пишет envelope
+`fixation` / `fixation.created` и тот же снимок в payload; обязательные для
+consumer поля `fixation_id` и `agency_id` входят в контракт. Обе строки и сама
+фиксация коммитятся одной транзакцией. `REVOKE` запрещает `go_user` менять
+журнал, а миграция 00007 добавляет FORCE RLS как второй рубеж на случай
+будущей ошибочной выдачи UPDATE/DELETE.
 
 **Jaeger поднят до 1.35.** Приёмник OTLP появился у Jaeger только в этой
 версии (июнь 2022). На 1.30 переменная `COLLECTOR_OTLP_ENABLED` молча

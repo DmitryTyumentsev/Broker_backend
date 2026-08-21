@@ -281,6 +281,7 @@ type RegisterResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
 	RefreshToken  string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	ExpiresInSec  int64                  `protobuf:"varint,3,opt,name=expires_in_sec,json=expiresInSec,proto3" json:"expires_in_sec,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -329,10 +330,18 @@ func (x *RegisterResponse) GetRefreshToken() string {
 	return ""
 }
 
+func (x *RegisterResponse) GetExpiresInSec() int64 {
+	if x != nil {
+		return x.ExpiresInSec
+	}
+	return 0
+}
+
 type LoginResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
 	RefreshToken  string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	ExpiresInSec  int64                  `protobuf:"varint,3,opt,name=expires_in_sec,json=expiresInSec,proto3" json:"expires_in_sec,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -381,10 +390,18 @@ func (x *LoginResponse) GetRefreshToken() string {
 	return ""
 }
 
+func (x *LoginResponse) GetExpiresInSec() int64 {
+	if x != nil {
+		return x.ExpiresInSec
+	}
+	return 0
+}
+
 type RefreshResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
 	RefreshToken  string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	ExpiresInSec  int64                  `protobuf:"varint,3,opt,name=expires_in_sec,json=expiresInSec,proto3" json:"expires_in_sec,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -431,6 +448,13 @@ func (x *RefreshResponse) GetRefreshToken() string {
 		return x.RefreshToken
 	}
 	return ""
+}
+
+func (x *RefreshResponse) GetExpiresInSec() int64 {
+	if x != nil {
+		return x.ExpiresInSec
+	}
+	return 0
 }
 
 type LogoutRequest struct {
@@ -538,16 +562,19 @@ const file_auth_v1_authv1_proto_rawDesc = "" +
 	"\x11TokenPairResponse\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12$\n" +
-	"\x0eexpires_in_sec\x18\x03 \x01(\x03R\fexpiresInSec\"Z\n" +
+	"\x0eexpires_in_sec\x18\x03 \x01(\x03R\fexpiresInSec\"\x80\x01\n" +
 	"\x10RegisterResponse\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
-	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\"W\n" +
+	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12$\n" +
+	"\x0eexpires_in_sec\x18\x03 \x01(\x03R\fexpiresInSec\"}\n" +
 	"\rLoginResponse\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
-	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\"Y\n" +
+	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12$\n" +
+	"\x0eexpires_in_sec\x18\x03 \x01(\x03R\fexpiresInSec\"\x7f\n" +
 	"\x0fRefreshResponse\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
-	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\"4\n" +
+	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12$\n" +
+	"\x0eexpires_in_sec\x18\x03 \x01(\x03R\fexpiresInSec\"4\n" +
 	"\rLogoutRequest\x12#\n" +
 	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\"\x10\n" +
 	"\x0eLogoutResponse2\xff\x01\n" +

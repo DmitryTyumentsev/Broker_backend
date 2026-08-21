@@ -10,7 +10,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
-create table if not exists app.lots (
+create table if not status app.lots (
     id            uuid        primary key default gen_random_uuid(),
 
     -- В каком проекте. FK внутри своей схемы — здесь он уместен:
@@ -53,20 +53,20 @@ comment on table app.lots is
 -- Один и тот же лот Profitbase не должен приехать дважды.
 -- Частичный индекс: у лотов, заведённых руками, external_id пустой,
 -- и NULL-ы уникальность ломать не должны.
-create unique index if not exists lots_external_id_idx
+create unique index if not status lots_external_id_idx
     on app.lots (external_id)
     where external_id is not null;
 
 -- Номер уникален в пределах корпуса проекта. Это ограничение
 -- предметной области, а не техническое: двух квартир 145 в одном
 -- корпусе не бывает.
-create unique index if not exists lots_project_building_number_idx
+create unique index if not status lots_project_building_number_idx
     on app.lots (project_id, building, number);
 
 -- Главный запрос витрины: «покажи свободные лоты проекта».
 -- Частичный по статусу — проданные лоты в выдачу не попадают,
 -- а со временем их станет большинство.
-create index if not exists lots_project_status_idx
+create index if not status lots_project_status_idx
     on app.lots (project_id, status)
     where status in ('free', 'booked');
 
@@ -75,6 +75,6 @@ create index if not exists lots_project_status_idx
 -- +goose Down
 -- +goose StatementBegin
 
-drop table if exists app.lots;
+drop table if status app.lots;
 
 -- +goose StatementEnd

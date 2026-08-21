@@ -1,0 +1,34 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "broker · postgres (стенд)",
+      "Group": "ЛК брокера",
+      "Host": "localhost",
+      "Port": 55432,
+      "MaintenanceDB": "broker",
+      "Username": "postgres",
+      "SSLMode": "prefer",
+      "Comment": "Суперюзер. Пароль: postgres. Порт 55432, а не 5432: стенд намеренно не занимает дефолтный порт, чтобы не путаться с локальным PostgreSQL."
+    },
+    "2": {
+      "Name": "broker · app_user (контур монолита)",
+      "Group": "ЛК брокера",
+      "Host": "localhost",
+      "Port": 55432,
+      "MaintenanceDB": "broker",
+      "Username": "app_user",
+      "SSLMode": "prefer",
+      "Comment": "Пароль: app_user. Полные права на схему app, только select на integration. Попробуй записать в integration.fixations — получишь permission denied. Это и есть граница контуров."
+    },
+    "3": {
+      "Name": "broker · go_user (контур Go)",
+      "Group": "ЛК брокера",
+      "Host": "localhost",
+      "Port": 55432,
+      "MaintenanceDB": "broker",
+      "Username": "go_user",
+      "SSLMode": "prefer",
+      "Comment": "Пароль: go_user. Зеркально app_user: полные права на integration, только select на app."
+    }
+  }
+}

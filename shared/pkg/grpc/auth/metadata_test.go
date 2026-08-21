@@ -28,6 +28,7 @@ func TestInjectAndExtractPrincipalMetadata(t *testing.T) {
 		Role:     "broker_team_member",
 	})
 	ctx = requestctx.WithRequestID(ctx, "request-1")
+	ctx = requestctx.WithClientIP(ctx, "192.0.2.10")
 
 	outgoing := InjectOutgoingContext(ctx)
 	md, ok := metadata.FromOutgoingContext(outgoing)
@@ -51,6 +52,11 @@ func TestInjectAndExtractPrincipalMetadata(t *testing.T) {
 	requestID, ok := requestctx.RequestIDFromContext(extracted)
 	if !ok || requestID != "request-1" {
 		t.Fatalf("unexpected request id: %q", requestID)
+	}
+
+	clientIP, ok := requestctx.ClientIPFromContext(extracted)
+	if !ok || clientIP != "192.0.2.10" {
+		t.Fatalf("unexpected client ip: %q", clientIP)
 	}
 }
 

@@ -26,7 +26,8 @@ func RequestID() fiber.Handler {
 
 		c.Set(RequestIDHeader, requestID)
 		c.Locals(requestIDLocalKey, requestID)
-		c.SetUserContext(requestctx.WithRequestID(userContext(c), requestID))
+		ctx := requestctx.WithRequestID(userContext(c), requestID)
+		c.SetUserContext(requestctx.WithClientIP(ctx, c.IP()))
 
 		return c.Next()
 	}

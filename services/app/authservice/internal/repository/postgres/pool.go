@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 
+	sharedtracing "Broker_backend/shared/pkg/tracing"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -19,6 +21,10 @@ func NewPool(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse postgres config: %w", err)
 	}
+
+	// Трассировка каждого запроса. Без неё в Jaeger видно только границу
+	// сервиса, а «на каком именно запросе упало» приходится угадывать.
+	poolCfg.ConnConfig.Tracer = sharedtracing.NewQueryTracer(cfg.Observability.Tracing.ServiceName)
 
 	if pgCfg.MaxConnections > 0 {
 		poolCfg.MaxConns = int32(pgCfg.MaxConnections)

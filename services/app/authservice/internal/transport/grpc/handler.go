@@ -53,6 +53,7 @@ func (h *Handler) Register(
 	return &authv1.RegisterResponse{
 		AccessToken:  resp.AccessToken,
 		RefreshToken: resp.RefreshToken,
+		ExpiresInSec: resp.ExpiresInSec,
 	}, nil
 }
 
@@ -77,6 +78,7 @@ func (h *Handler) Login(
 	return &authv1.LoginResponse{
 		AccessToken:  resp.AccessToken,
 		RefreshToken: resp.RefreshToken,
+		ExpiresInSec: resp.ExpiresInSec,
 	}, nil
 }
 
@@ -100,6 +102,7 @@ func (h *Handler) Refresh(
 	return &authv1.RefreshResponse{
 		AccessToken:  resp.AccessToken,
 		RefreshToken: resp.RefreshToken,
+		ExpiresInSec: resp.ExpiresInSec,
 	}, nil
 }
 

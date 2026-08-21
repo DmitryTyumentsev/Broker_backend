@@ -29,12 +29,12 @@ func ValidateJSON[T any](validator RequestValidator) fiber.Handler { //в T мы
 
 		if err := c.BodyParser(&req); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{
-				Code:    fiber.StatusBadRequest,
+				Code:    fiber.StatusUnprocessableEntity,
 				Message: "invalid request body",
 			})
 		}
 
-		if validator != nil {
+		if validator != nil { //не понимаю зачем нам валидатор когда валидацию(например обработка required, uuid в dto) лежит на c.BodyParser. как и парсинг req в dto, то есть в моей картине вообще все делает fiber
 			if err := validator.Struct(req); err != nil {
 				return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{
 					Code:    fiber.StatusBadRequest,

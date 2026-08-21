@@ -39,7 +39,7 @@ BOOTSTRAP_DSN := postgres://postgres:postgres@localhost:55432/$(DB_NAME)?sslmode
 # Без него make увидит файл с таким именем и решит, что делать нечего.
 .PHONY: help tools generate mocks lint fmt vet test test-integration race-fixation cover \
         build run run-auth run-fixation run-partnerapi \
-        migrate migrate-bootstrap migrate-app migrate-integration seed show-data db-check postman-env \
+        migrate migrate-bootstrap migrate-app migrate-integration seed show-data db-check postman-env clean-stray-db \
         up up-full down down-v logs psql redis-cli rabbit-ui minio-ui \
         grpc-list grpc-fix check-db reconcile token vuln breaking
 
@@ -64,6 +64,7 @@ help:
 	@echo "  make seed              демо-данные: агентства, лоты, фиксации"
 	@echo "  make show-data         кто и что лежит в базе: агентства, сотрудники, проекты"
 	@echo "  make db-check          на какой сервер смотрят хост и compose, что там есть"
+	@echo "  make clean-stray-db DSN=..  убрать схемы стенда из чужого постгреса"
 	@echo "  make postman-env       собрать окружение Postman из текущих данных базы"
 	@echo ""
 	@echo "Разработка:"
@@ -127,7 +128,7 @@ up:
 	@echo "Jaeger      http://localhost:16686"
 	@echo "Prometheus  http://localhost:9090"
 	@echo "Grafana     http://localhost:3000   admin/admin"
-	@echo "RabbitMQ    http://localhost:15672  broker/broker"
+	@echo "RabbitMQ    http://localhost:15672  broker/broker17"
 	@echo "MinIO       http://localhost:9001   minioadmin/minioadmin"
 	@echo "mock-amocrm      http://localhost:9101/_control/state"
 	@echo "mock-profitbase  http://localhost:9102/_control/state"
@@ -160,7 +161,7 @@ redis-cli:
 	docker compose exec redis redis-cli
 
 rabbit-ui:
-	@echo "RabbitMQ management: http://localhost:15672  (broker/broker)"
+	@echo "RabbitMQ management: http://localhost:15672  (broker/broker17)"
 	@echo "Обменники: admin.events (монолит -> Go), fixation.events (Go -> монолит)"
 	@python -m webbrowser http://localhost:15672 2>/dev/null || \
 	 start http://localhost:15672 2>/dev/null || \
@@ -210,6 +211,7 @@ seed:
 	  -e SEED_DB_USER=postgres \
 	  -e SEED_DB_PASSWORD=postgres \
 	  --entrypoint php monolith /app/bin/seed.php
+	@$(MAKE) --no-print-directory postman-env
 
 # Сравнение двух точек зрения на базу: с хоста (так ходят мигратор и
 # сервисы, запущенные через make run-*) и из сети compose (так ходят
@@ -227,6 +229,25 @@ db-check:
 	          (select system_identifier::text from pg_control_system()) as system_identifier;" \
 	  -c "select schemaname || '.' || tablename as tables from pg_tables \
 	       where schemaname in ('app','integration') order by 1;"
+
+# Убрать схемы стенда из ЧУЖОГО постгреса.
+#
+# Пока порт стенда был 5432, миграции уезжали в локальный PostgreSQL
+# разработчика и создавали там app/integration и роли app_user/go_user.
+# Стенду они больше не нужны, а путаться будут.
+#
+# DSN обязателен и передаётся руками: цель дропает схемы каскадом,
+# и подставлять его по умолчанию нельзя. Сначала показывает, что удалит,
+# и просит подтвердить.
+#
+#   make clean-stray-db DSN="postgres://postgres:ПАРОЛЬ@localhost:5432/broker?sslmode=disable"
+#   make clean-stray-db DSN="..." CONFIRM=yes
+clean-stray-db:
+	@test -n "$(DSN)" || (echo "нужен DSN=<строка подключения к чужой базе>"; exit 1)
+	@go run ./tools/dbcheck -label "что сейчас в этой базе" -dsn "$(DSN)"
+	@test "$(CONFIRM)" = "yes" || (echo ""; echo "Схемы app и integration будут удалены КАСКАДОМ."; echo "Если это та база — повтори команду с CONFIRM=yes"; exit 1)
+	@docker compose run --rm --no-deps --entrypoint psql postgres "$(DSN)" -X -q -c 	  "drop schema if exists integration cascade; 	   drop schema if exists app cascade; 	   drop role if exists go_user; 	   drop role if exists app_user;"
+	@echo "схемы и роли стенда убраны"
 
 # Окружение Postman из того, что реально лежит в базе.
 # Идентификаторы сидер генерирует заново на каждом прогоне, переносить их

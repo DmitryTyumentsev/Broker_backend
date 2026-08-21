@@ -75,7 +75,7 @@ func (t *mainT) Fatalf(format string, args ...any) {
 // ─────────────────────────────────────────────────────────────────────
 
 // seedAgencyProjectUser создаёт агентство, проект и сотрудника в нём.
-// Без них NewFixation отвалится на проверках IsExistsProjectID
+// Без них NewFixation отвалится на проверках StatusByProjectID
 // и IsUserIDInAgencyID.
 //
 // Каждый тест зовёт это сам и получает СВОИ идентификаторы — тогда тесты

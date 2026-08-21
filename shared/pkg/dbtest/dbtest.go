@@ -53,8 +53,11 @@ type Instance struct {
 	Pool *pgxpool.Pool
 
 	// DSN отдаёт строку подключения с нужным search_path. Нужен тестам,
-	// которые хотят своё соединение — например, под другой ролью.
+	// которые хотят своё соединение под postgres.
 	DSN func(searchPath string) string
+
+	// DSNForRole нужен проверкам реальных грантов приложения.
+	DSNForRole func(username, password, searchPath string) string
 
 	purge func()
 }
@@ -73,9 +76,9 @@ func (i *Instance) Close() {
 
 // Start поднимает контейнер, катит миграции и возвращает готовый пул.
 //
-// Подключение под postgres, а не под go_user: тесту нужно готовить данные
-// в обеих схемах, включая чужую. Проверять гранты — отдельная задача,
-// и для неё есть DSN() с другой ролью.
+// Возвращаемый Pool работает под postgres: тесту часто нужно готовить данные
+// в обеих схемах. Сами миграции при этом катятся реальными владельцами,
+// а DSNForRole позволяет отдельно проверить гранты приложения.
 func Start(tb testing.TB) *Instance {
 	tb.Helper()
 
@@ -115,11 +118,14 @@ func Start(tb testing.TB) *Instance {
 	_ = resource.Expire(containerTTLSeconds)
 
 	hostPort := resource.GetPort("5432/tcp")
-	dsn := func(searchPath string) string {
+	dsnForRole := func(username, password, searchPath string) string {
 		return fmt.Sprintf(
-			"postgres://postgres:postgres@localhost:%s/%s?sslmode=disable&search_path=%s",
-			hostPort, databaseName, searchPath,
+			"postgres://%s:%s@localhost:%s/%s?sslmode=disable&search_path=%s",
+			username, password, hostPort, databaseName, searchPath,
 		)
+	}
+	dsn := func(searchPath string) string {
+		return dsnForRole("postgres", "postgres", searchPath)
 	}
 
 	// Контейнер поднялся, но база внутри стартует не мгновенно.
@@ -132,13 +138,18 @@ func Start(tb testing.TB) *Instance {
 		}
 		defer func() { _ = db.Close() }()
 
-		return db.Ping()
+		// PingContext с потолком: без него одна зависшая попытка съедает
+		// весь MaxWait, и вместо «база не поднялась за минуту» тест висит.
+		pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		return db.PingContext(pingCtx)
 	}); err != nil {
 		purge()
 		tb.Fatalf("wait for postgres: %v", err)
 	}
 
-	if err := applyMigrations(dsn); err != nil {
+	if err := applyMigrations(dsnForRole); err != nil {
 		purge()
 		tb.Fatalf("apply migrations: %v", err)
 	}
@@ -149,7 +160,7 @@ func Start(tb testing.TB) *Instance {
 		tb.Fatalf("create pool: %v", err)
 	}
 
-	return &Instance{Pool: pool, DSN: dsn, purge: purge}
+	return &Instance{Pool: pool, DSN: dsn, DSNForRole: dsnForRole, purge: purge}
 }
 
 // applyMigrations катит те же три каталога, что и прод, в том же порядке.
@@ -158,7 +169,7 @@ func Start(tb testing.TB) *Instance {
 // Первое — потому что часть объектов создаётся без префикса схемы.
 // Второе — потому что с общей таблицей goose решит, что версия 00001
 // уже накачена, когда дойдёт до второго каталога, и молча пропустит его.
-func applyMigrations(dsn func(string) string) error {
+func applyMigrations(dsn func(username, password, searchPath string) string) error {
 	if err := goose.SetDialect("postgres"); err != nil {
 		return fmt.Errorf("set dialect: %w", err)
 	}
@@ -172,14 +183,16 @@ func applyMigrations(dsn func(string) string) error {
 		dir        string
 		searchPath string
 		table      string
+		username   string
+		password   string
 	}{
-		{"bootstrap", "public", "public.goose_bootstrap_version"},
-		{"app", "app", "app.goose_db_version"},
-		{"integration", "integration", "integration.goose_db_version"},
+		{"bootstrap", "public", "public.goose_bootstrap_version", "postgres", "postgres"},
+		{"app", "app", "app.goose_db_version", "app_user", "app_user"},
+		{"integration", "integration", "integration.goose_db_version", "go_user", "go_user"},
 	}
 
 	for _, step := range steps {
-		db, err := sql.Open("pgx", dsn(step.searchPath))
+		db, err := sql.Open("pgx", dsn(step.username, step.password, step.searchPath))
 		if err != nil {
 			return fmt.Errorf("open db for %s: %w", step.dir, err)
 		}

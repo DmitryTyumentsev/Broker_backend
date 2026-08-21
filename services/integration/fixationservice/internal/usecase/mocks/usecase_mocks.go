@@ -103,7 +103,7 @@ func (mr *MockFixationRepositoryMockRecorder) InsertOutbox(ctx, f any) *gomock.C
 // IsExistsProjectID mocks base method.
 func (m *MockFixationRepository) IsExistsProjectID(ctx context.Context, projectID uuid.UUID) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsExistsProjectID", ctx, projectID)
+	ret := m.ctrl.Call(m, "StatusByProjectID", ctx, projectID)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -112,7 +112,7 @@ func (m *MockFixationRepository) IsExistsProjectID(ctx context.Context, projectI
 // IsExistsProjectID indicates an expected call of IsExistsProjectID.
 func (mr *MockFixationRepositoryMockRecorder) IsExistsProjectID(ctx, projectID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsExistsProjectID", reflect.TypeOf((*MockFixationRepository)(nil).IsExistsProjectID), ctx, projectID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatusByProjectID", reflect.TypeOf((*MockFixationRepository)(nil).IsExistsProjectID), ctx, projectID)
 }
 
 // IsUserIDInAgencyID mocks base method.

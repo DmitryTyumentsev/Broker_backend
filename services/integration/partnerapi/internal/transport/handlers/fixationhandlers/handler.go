@@ -72,12 +72,12 @@ func (h *FixationHandler) NewFixation(c *fiber.Ctx) error {
 	}
 	protoResp, err := h.fixation.NewFixation(ctx, protoReq)
 	if err != nil {
-		return grpcerr.WriteGRPCError(c, err)
+		return grpcerr.WriteGRPCToHTTPError(c, err)
 	}
 
 	fixationID, err := uuid.Parse(protoResp.FixationId)
 	if err != nil {
-		return grpcerr.WriteGRPCError(c, err)
+		return grpcerr.WriteGRPCToHTTPError(c, err)
 	}
 
 	dtoResp := &fixationdto.FixationResponse{

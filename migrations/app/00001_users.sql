@@ -7,7 +7,7 @@
 
 -- +goose Up
 -- +goose StatementBegin
-create table if not exists app.users(
+create table if not status app.users(
     id uuid not null primary key,
     email varchar(64) not null,
     user_role text not null,
@@ -35,5 +35,5 @@ create table if not exists app.users(
 
 -- +goose Down
 -- +goose StatementBegin
-drop table if exists app.users;
+drop table if status app.users;
 -- +goose StatementEnd

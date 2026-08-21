@@ -53,12 +53,12 @@
     {
       "key": "token",
       "value": "",
-      "description": "заполняется скриптом после логина"
+      "description": "заполняется скриптом после логина в активном окружении; здесь fallback без окружения"
     },
     {
       "key": "refresh",
       "value": "",
-      "description": "заполняется скриптом после логина"
+      "description": "заполняется скриптом после логина в активном окружении; здесь fallback без окружения"
     },
     {
       "key": "agencyId",
@@ -195,21 +195,23 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Токен сразу уезжает в переменную коллекции — руками его",
-                  "// копировать не надо, все защищённые запросы подтянут сами.",
+                  "// Активное окружение имеет приоритет над коллекцией, поэтому",
+                  "// runtime-значения сохраняем туда. Без окружения используем fallback.",
+                  "const put = (key, value) => {",
+                  "    if (!value) { return; }",
+                  "    if (pm.environment.name) { pm.environment.set(key, value); }",
+                  "    else { pm.collectionVariables.set(key, value); }",
+                  "};",
+                  "",
                   "if (pm.response.code !== 200) {",
-                  "    console.log('логин не прошёл:', pm.response.text());",
+                  "    console.log('логин не прошёл:', pm.response.code, pm.response.text());",
                   "    return;",
                   "}",
                   "",
                   "const body = pm.response.json();",
                   "",
-                  "if (body.access) {",
-                  "    pm.collectionVariables.set('token', body.access);",
-                  "}",
-                  "if (body.refresh) {",
-                  "    pm.collectionVariables.set('refresh', body.refresh);",
-                  "}"
+                  "put('token', body.access);",
+                  "put('refresh', body.refresh);"
                 ]
               }
             }
@@ -259,7 +261,7 @@
                 "me"
               ]
             },
-            "description": "Показывает, что именно лежит в принципале: agency_id, user_id, device_id, роль. Отсюда видно, от чьего имени пойдут остальные запросы."
+            "description": "Показывает, что лежит в принципале: agency_id, user_id, device_id, роль.\n\nПобочный эффект полезный: перезаписывает agencyId и brokerId значениями текущего токена. Выполни сразу после «Логина» — тогда fix_for будет указывать на реального сотрудника, даже если окружение собрано до последнего make seed."
           },
           "event": [
             {
@@ -267,18 +269,28 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// agencyId и brokerId берём из принципала, а не из вывода make seed:",
-                  "// так они гарантированно совпадают с тем токеном, под которым",
-                  "// сейчас работаешь. Остальные идентификаторы — из окружения,",
-                  "// его собирает `make postman-env`.",
-                  "if (pm.response.code !== 200) { return; }",
+                  "// agencyId и brokerId берём из принципала текущего токена.",
+                  "//",
+                  "// Писать надо в АКТИВНОЕ окружение: если оно выбрано, его значения",
+                  "// перекрывают переменные коллекции, и запись в коллекцию просто",
+                  "// ничего не изменит — запросы продолжат уходить со старыми id.",
+                  "const put = (key, value) => {",
+                  "    if (!value) { return; }",
+                  "    if (pm.environment.name) { pm.environment.set(key, value); }",
+                  "    else { pm.collectionVariables.set(key, value); }",
+                  "};",
+                  "",
+                  "if (pm.response.code !== 200) {",
+                  "    console.log('me: код', pm.response.code, pm.response.text());",
+                  "    return;",
+                  "}",
                   "",
                   "const body = pm.response.json();",
                   "",
-                  "if (body.agency_id) { pm.collectionVariables.set(\"agencyId\", body.agency_id); }",
-                  "if (body.user_id)   { pm.collectionVariables.set(\"brokerId\", body.user_id); }",
+                  "put('agencyId', body.agency_id);",
+                  "put('brokerId', body.user_id);",
                   "",
-                  "console.log(\"agencyId =\", body.agency_id, \"| brokerId =\", body.user_id);"
+                  "console.log('agencyId =', body.agency_id, '| brokerId =', body.user_id);"
                 ]
               }
             }
@@ -292,12 +304,18 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "const put = (key, value) => {",
+                  "    if (!value) { return; }",
+                  "    if (pm.environment.name) { pm.environment.set(key, value); }",
+                  "    else { pm.collectionVariables.set(key, value); }",
+                  "};",
+                  "",
                   "if (pm.response.code !== 200) { return; }",
                   "",
                   "const body = pm.response.json();",
                   "",
-                  "if (body.access) { pm.collectionVariables.set('token', body.access); }",
-                  "if (body.refresh) { pm.collectionVariables.set('refresh', body.refresh); }"
+                  "put('token', body.access);",
+                  "put('refresh', body.refresh);"
                 ]
               }
             }
@@ -428,11 +446,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "const put = (key, value) => {",
+                  "    if (!value) { return; }",
+                  "    if (pm.environment.name) { pm.environment.set(key, value); }",
+                  "    else { pm.collectionVariables.set(key, value); }",
+                  "};",
+                  "",
                   "if (pm.response.code === 201) {",
                   "    const body = pm.response.json();",
-                  "    if (body.fixation_id) {",
-                  "        pm.collectionVariables.set('fixationId', body.fixation_id);",
-                  "    }",
+                  "    put('fixationId', body.fixation_id);",
                   "}",
                   "",
                   "console.log('X-Request-ID:', pm.response.headers.get('X-Request-ID'));"

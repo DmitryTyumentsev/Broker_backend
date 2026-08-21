@@ -12,18 +12,21 @@ import (
 )
 
 func (s *Service) NewFixation(ctx context.Context, req *FixationRequest) (*entity.Fixation, error) {
-	b, err := s.fixations.IsExistsProjectID(ctx, req.ProjectID)
+	status, err := s.fixations.StatusByProjectID(ctx, req.ProjectID)
 	if err != nil {
+		if status == "" {
+			return nil, domain.ErrProjectNotExist
+		}
 		return nil, err
 	}
-	if b == false {
-		return nil, err
+	if status == entity.StatusProjectArchived {
+		return nil, domain.ErrProjectArchived
 	}
-	b, err = s.fixations.IsUserIDInAgencyID(ctx, req.AgencyID, req.FixFor)
+	b, err := s.fixations.IsUserIDInAgencyID(ctx, req.AgencyID, req.FixFor)
 	if err != nil {
-		return nil, err
-	}
-	if b == false {
+		if b == false {
+			return nil, domain.ErrEmployeeNotInAgency
+		}
 		return nil, err
 	}
 

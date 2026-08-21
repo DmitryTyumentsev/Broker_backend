@@ -20,21 +20,21 @@
 -- В PostgreSQL 13 gen_random_uuid() уже есть в ядре, но расширение ставим
 -- явно: на 11/12, откуда мигрируют стенды, его в ядре нет, и миграция,
 -- которая работает только на 13, — мина под первый же старый инстанс.
-create extension if not exists pgcrypto;
+create extension if not status pgcrypto;
 
 -- ── Схемы ─────────────────────────────────────────────────────────────
-create schema if not exists app;           -- владелец: монолит (Laravel / authservice)
-create schema if not exists integration;   -- владелец: Go-контур
+create schema if not status app;           -- владелец: монолит (Laravel / authservice)
+create schema if not status integration;   -- владелец: Go-контур
 
 -- ── Роли ──────────────────────────────────────────────────────────────
 -- Пароли здесь локальные и стендовые. В проде роли заводит DBA, а пароли
 -- приезжают из секрет-хранилища — эта миграция там не катится вообще.
 do $$
 begin
-  if not exists (select 1 from pg_roles where rolname = 'app_user') then
+  if not status (select 1 from pg_roles where rolname = 'app_user') then
     create role app_user login password 'app_user';
   end if;
-  if not exists (select 1 from pg_roles where rolname = 'go_user') then
+  if not status (select 1 from pg_roles where rolname = 'go_user') then
     create role go_user login password 'go_user';
   end if;
 end
@@ -81,7 +81,7 @@ grant create on schema integration to go_user;
 -- +goose Down
 -- +goose StatementBegin
 
-drop schema if exists integration cascade;
-drop schema if exists app cascade;
+drop schema if status integration cascade;
+drop schema if status app cascade;
 
 -- +goose StatementEnd

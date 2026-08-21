@@ -38,14 +38,17 @@ message TokenPairResponse {
 message RegisterResponse {
   string access_token = 1;
   string refresh_token = 2;
+  int64 expires_in_sec = 3;
 }
 message LoginResponse {
   string access_token = 1;
   string refresh_token = 2;
+  int64 expires_in_sec = 3;
 }
 message RefreshResponse {
   string access_token = 1;
   string refresh_token = 2;
+  int64 expires_in_sec = 3;
 }
 message LogoutRequest {
   string refresh_token = 1;

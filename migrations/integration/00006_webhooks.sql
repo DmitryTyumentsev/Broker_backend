@@ -12,7 +12,7 @@
 -- +goose StatementBegin
 
 -- ── Куда и что слать ─────────────────────────────────────────────────
-create table if not exists integration.webhook_endpoints (
+create table if not status integration.webhook_endpoints (
     id              uuid        primary key default gen_random_uuid(),
 
     -- Чей адрес. Без FK на app.agencies: это чужая схема, и у go_user
@@ -49,18 +49,18 @@ comment on table integration.webhook_endpoints is
 -- Один и тот же URL дважды у одного агентства — это всегда ошибка ввода,
 -- и её дешевле поймать на вставке, чем потом отвечать на вопрос,
 -- почему вебхук пришёл дважды.
-create unique index if not exists webhook_endpoints_agency_url_idx
+create unique index if not status webhook_endpoints_agency_url_idx
     on integration.webhook_endpoints (agency_id, url);
 
 -- Рабочий запрос отправителя: «кому слать это событие». Частичный индекс —
 -- выключенные адреса в выборку не попадают никогда, незачем держать их
 -- в индексе.
-create index if not exists webhook_endpoints_active_idx
+create index if not status webhook_endpoints_active_idx
     on integration.webhook_endpoints (agency_id)
     where is_active;
 
 -- ── Что и когда ушло ─────────────────────────────────────────────────
-create table if not exists integration.webhook_deliveries (
+create table if not status integration.webhook_deliveries (
     id              bigserial   primary key,
 
     -- Куда доставляли. Здесь FK уместен: обе таблицы наши, и запись
@@ -99,13 +99,13 @@ comment on table integration.webhook_deliveries is
 
 -- «Что происходило с этим адресом» — основной вопрос поддержки.
 -- desc по времени, потому что смотрят всегда последнее.
-create index if not exists webhook_deliveries_endpoint_idx
+create index if not status webhook_deliveries_endpoint_idx
     on integration.webhook_deliveries (endpoint_id, created_at desc);
 
 -- «Покажи всё, что не доставилось» — под алерт и под ручной разбор.
 -- Частичный: успешные доставки составляют почти всю таблицу, и держать
 -- их в этом индексе бессмысленно.
-create index if not exists webhook_deliveries_failed_idx
+create index if not status webhook_deliveries_failed_idx
     on integration.webhook_deliveries (created_at desc)
     where status_code is null or status_code >= 400;
 
@@ -114,7 +114,7 @@ create index if not exists webhook_deliveries_failed_idx
 -- +goose Down
 -- +goose StatementBegin
 
-drop table if exists integration.webhook_deliveries;
-drop table if exists integration.webhook_endpoints;
+drop table if status integration.webhook_deliveries;
+drop table if status integration.webhook_endpoints;
 
 -- +goose StatementEnd
