@@ -28,7 +28,7 @@ func ValidateJSON[T any](validator RequestValidator) fiber.Handler { //в T мы
 		var req T
 
 		if err := c.BodyParser(&req); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(dto.ErrorResponse{
 				Code:    fiber.StatusUnprocessableEntity,
 				Message: "invalid request body",
 			})
