@@ -6,7 +6,7 @@
 
 -- +goose Up
 -- +goose StatementBegin
-create table if not status integration.fixations(
+create table if not exists integration.fixations(
     id uuid primary key default gen_random_uuid(),
     fixed_at timestamptz not null default now(),
     expires_at timestamptz not null,
@@ -19,10 +19,10 @@ create table if not status integration.fixations(
     constraint fixations_status_check
         check(status IN('active', 'converted', 'expired', 'removed') )
 );
-create unique index if not status fixations_phone_hash_project_id_idx on integration.fixations(phone_hash, project_id) where status = 'active';
+create unique index if not exists fixations_phone_hash_project_id_idx on integration.fixations(phone_hash, project_id) where status = 'active';
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-drop table if status integration.fixations;
+drop table if exists integration.fixations;
 -- +goose StatementEnd

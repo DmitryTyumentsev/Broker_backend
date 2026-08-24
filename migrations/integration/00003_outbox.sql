@@ -17,7 +17,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
-create table if not status integration.outbox (
+create table if not exists integration.outbox (
     -- Суррогатный ключ. bigserial, а не uuid: outbox читают пачками по
     -- возрастанию id, и монотонный int64 для этого удобнее и компактнее
     -- в индексе, чем случайный uuid.
@@ -57,13 +57,13 @@ comment on table integration.outbox is
 -- невыполненные задания. Опубликованные строки, которых со временем
 -- станут миллионы, в индекс не попадают вообще, и он остаётся маленьким
 -- независимо от размера таблицы.
-create index if not status outbox_unpublished_idx
+create index if not exists outbox_unpublished_idx
     on integration.outbox (id)
     where published_at is null;
 
 -- «Что мы вообще отправляли про эту фиксацию» — вопрос при расследовании
 -- расхождений с amoCRM. Без этого индекса это seq scan по всей таблице.
-create index if not status outbox_aggregate_idx
+create index if not exists outbox_aggregate_idx
     on integration.outbox (aggregate_type, aggregate_id, created_at);
 
 -- ── Dead letter queue ────────────────────────────────────────────────
@@ -74,7 +74,7 @@ create index if not status outbox_aggregate_idx
 -- сломанное сообщение не должно попадаться воркеру на каждом цикле.
 --
 -- Разбирают DLQ руками: это очередь к человеку, а не к процессу.
-create table if not status integration.outbox_dlq (
+create table if not exists integration.outbox_dlq (
     -- Свой ключ. Исходный id сохраняем отдельным полем: связь с outbox
     -- нужна для расследования, но не как FK — строку в outbox могут
     -- удалить при чистке, а DLQ обязан её пережить.
@@ -107,11 +107,11 @@ comment on table integration.outbox_dlq is
 
 -- «Что лежит в DLQ и с каких пор» — единственный регулярный запрос:
 -- по нему строится алерт «в DLQ что-то есть».
-create index if not status outbox_dlq_moved_at_idx
+create index if not exists outbox_dlq_moved_at_idx
     on integration.outbox_dlq (moved_at desc);
 
 -- «Найди в DLQ всё по этой фиксации» — при разборе конкретной жалобы.
-create index if not status outbox_dlq_aggregate_idx
+create index if not exists outbox_dlq_aggregate_idx
     on integration.outbox_dlq (aggregate_type, aggregate_id);
 
 -- +goose StatementEnd
@@ -119,7 +119,7 @@ create index if not status outbox_dlq_aggregate_idx
 -- +goose Down
 -- +goose StatementBegin
 
-drop table if status integration.outbox_dlq;
-drop table if status integration.outbox;
+drop table if exists integration.outbox_dlq;
+drop table if exists integration.outbox;
 
 -- +goose StatementEnd

@@ -28,8 +28,8 @@ create policy audit_log_append
 -- +goose Down
 -- +goose StatementBegin
 
-drop policy if status audit_log_append on integration.audit_log;
-drop policy if status audit_log_read on integration.audit_log;
+drop policy if exists audit_log_append on integration.audit_log;
+drop policy if exists audit_log_read on integration.audit_log;
 alter table integration.audit_log no force row level security;
 alter table integration.audit_log disable row level security;
 

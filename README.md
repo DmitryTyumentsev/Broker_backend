@@ -132,6 +132,7 @@ docker desktop            # запущен, дальше только make
 make up                   # postgres, redis, rabbit, minio, jaeger, prometheus, grafana, моки
 make migrate              # три каталога миграций по порядку
 make seed                 # демо-данные + справочник идентификаторов
+make seed-bulk            # объём поверх демо-данных, когда меряешь план запроса
 
 make run-auth             # терминал 1, :50051
 make run-fixation         # терминал 2, :50052
@@ -419,6 +420,9 @@ make reconcile
 | Токен под любого сотрудника | `make token EMAIL=...` |
 | `request_id` в логах обоих сервисов | включён по умолчанию |
 | Данные под граничные случаи | `make seed`, справочник печатается в конце |
+| Фиксации на удалённый проект, разошедшиеся `fix_by`/`fix_for`, партия с одинаковым `fixed_at` до микросекунды | `make seed` |
+| Объём под требование «50 мс на 3 млн строк» | `make seed-bulk`, по умолчанию 3 000 000; `ROWS=` меняет |
+| Хэш телефона в базе совпадает с тем, что считает fixationservice | сидер и `deploy/seed/bulk_fixations.sql` считают тот же HMAC |
 
 ### В работе (твои тикеты)
 

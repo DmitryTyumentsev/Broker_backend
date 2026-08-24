@@ -12,8 +12,14 @@
 //
 //	agencyId, brokerEmail, brokerId  — активное агентство и его сотрудник
 //	foreignBrokerId                  — сотрудник ДРУГОГО агентства
+//	directorEmail                    — руководитель того же агентства
+//	memberEmail, memberId            — рядовой брокер того же агентства
 //	projectId                        — активный проект
 //	archivedProjectId                — архивный проект
+//	deletedProjectId                 — проект, которого в app.projects уже нет,
+//	                                   а фиксации на него остались
+//	phoneTail                        — четыре последние цифры, которые в базе
+//	                                   встречаются у разных клиентов
 //
 // Выбор детерминированный (сортировка по имени), чтобы два запуска
 // подряд давали одно и то же и диффы не шумели.
@@ -23,6 +29,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -155,6 +162,19 @@ func collect(ctx context.Context, db *sql.DB) ([]variable, error) {
 		return nil, describeEmpty(err, "сотрудник другого агентства")
 	}
 
+	// Руководитель и рядовой брокер ОДНОГО агентства. Роли в списке
+	// фиксаций видны по-разному: директор смотрит всё агентство, брокер —
+	// только своё. Без обеих почт эту разницу нечем воспроизвести руками.
+	directorEmail, err := oneEmployee(ctx, db, agencyID, "agency_owner")
+	if err != nil {
+		return nil, err
+	}
+
+	memberID, memberEmail, err := oneEmployeeWithID(ctx, db, agencyID, "broker_team_member")
+	if err != nil {
+		return nil, err
+	}
+
 	projectID, err := oneProject(ctx, db, "active")
 	if err != nil {
 		return nil, err
@@ -170,9 +190,22 @@ func collect(ctx context.Context, db *sql.DB) ([]variable, error) {
 		variable{Key: "brokerId", Value: brokerID},
 		variable{Key: "brokerEmail", Value: brokerEmail},
 		variable{Key: "foreignBrokerId", Value: foreignBrokerID},
+		variable{Key: "directorEmail", Value: directorEmail},
+		variable{Key: "memberId", Value: memberID},
+		variable{Key: "memberEmail", Value: memberEmail},
 		variable{Key: "projectId", Value: projectID},
 		variable{Key: "archivedProjectId", Value: archivedProjectID},
+		variable{Key: "phoneTail", Value: "4567"},
 	)
+
+	// Проект, которого в app.projects нет, а фиксации на него есть.
+	// Не обязателен: база, налитая старым сидером, такого не содержит,
+	// и падать из-за этого окружение не должно.
+	if deletedProjectID, err := deletedProject(ctx, db); err != nil {
+		return nil, err
+	} else if deletedProjectID != "" {
+		values = append(values, variable{Key: "deletedProjectId", Value: deletedProjectID})
+	}
 
 	for i := range values {
 		values[i].Type = "default"
@@ -180,6 +213,52 @@ func collect(ctx context.Context, db *sql.DB) ([]variable, error) {
 	}
 
 	return values, nil
+}
+
+func oneEmployee(ctx context.Context, db *sql.DB, agencyID, role string) (string, error) {
+	_, email, err := oneEmployeeWithID(ctx, db, agencyID, role)
+
+	return email, err
+}
+
+func oneEmployeeWithID(ctx context.Context, db *sql.DB, agencyID, role string) (string, string, error) {
+	var id, email string
+
+	err := db.QueryRowContext(ctx, `
+		select u.id::text, u.email
+		  from app.users u
+		 where u.agency_id = $1::uuid and u.user_role = $2
+		 order by u.email
+		 limit 1`, agencyID, role).Scan(&id, &email)
+	if err != nil {
+		return "", "", describeEmpty(err, "сотрудник с ролью "+role)
+	}
+
+	return id, email, nil
+}
+
+// deletedProject ищет сироту: фиксации ссылаются на проект, строки которого
+// в app.projects уже нет. Внешнего ключа между схемами нет — схемы у разных
+// владельцев, — поэтому такое состояние законно и встречается в проде.
+func deletedProject(ctx context.Context, db *sql.DB) (string, error) {
+	var id string
+
+	err := db.QueryRowContext(ctx, `
+		select f.project_id::text
+		  from integration.fixations f
+		  left join app.projects p on p.id = f.project_id
+		 where p.id is null
+		 order by f.project_id
+		 limit 1`).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("проект-сирота: %w", err)
+	}
+
+	return id, nil
 }
 
 func oneProject(ctx context.Context, db *sql.DB, status string) (string, error) {

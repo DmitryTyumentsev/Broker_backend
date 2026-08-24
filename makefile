@@ -35,11 +35,16 @@ HTTP_ADDR  := http://localhost:8080
 
 BOOTSTRAP_DSN := postgres://postgres:postgres@localhost:55432/$(DB_NAME)?sslmode=disable
 
+# Соль телефона. Значение то же, что в configs/local.yaml и в compose:
+# сидер и сервис обязаны считать один и тот же хэш, иначе частичный
+# уникальный индекс на стенде не срабатывает и стенд врёт.
+HASH_SECRET := local-phone-hash-secret-change-me
+
 # .PHONY говорит make: это команды, а не имена файлов.
 # Без него make увидит файл с таким именем и решит, что делать нечего.
 .PHONY: help tools generate mocks lint fmt vet test test-integration race-fixation cover \
         build run run-auth run-fixation run-partnerapi \
-        migrate migrate-bootstrap migrate-app migrate-integration seed show-data db-check postman-env clean-stray-db \
+        migrate migrate-bootstrap migrate-app migrate-integration seed seed-bulk show-data db-check postman-env clean-stray-db \
         up up-full down down-v logs psql redis-cli rabbit-ui minio-ui \
         grpc-list grpc-fix check-db reconcile token vuln breaking
 
@@ -62,6 +67,7 @@ help:
 	@echo "  make migrate-app       migrations/app под app_user"
 	@echo "  make migrate-integration  migrations/integration под go_user"
 	@echo "  make seed              демо-данные: агентства, лоты, фиксации"
+	@echo "  make seed-bulk         объём поверх демо-данных (ROWS=3000000 по умолчанию)"
 	@echo "  make show-data         кто и что лежит в базе: агентства, сотрудники, проекты"
 	@echo "  make db-check          на какой сервер смотрят хост и compose, что там есть"
 	@echo "  make clean-stray-db DSN=..  убрать схемы стенда из чужого постгреса"
@@ -205,13 +211,35 @@ migrate-integration:
 # потянет за собой всю цепочку depends_on — rabbitmq и три контейнера
 # с миграциями. Миграции к этому моменту уже накачены (`make migrate`),
 # а шина сидеру не нужна вообще.
+# --build: seed.php уезжает в образ на этапе сборки (COPY monolith/bin).
+# Без пересборки правка сидера не доезжает до контейнера, сидер отчитывается
+# об успехе, и полчаса уходит на вопрос «почему данных нет». Сборка кэшируется
+# и стоит секунды.
 seed:
-	docker compose --profile full run --rm --no-deps \
+	docker compose --profile full run --rm --no-deps --build \
 	  -e SEED_DB_DSN="pgsql:host=postgres;port=5432;dbname=$(DB_NAME)" \
 	  -e SEED_DB_USER=postgres \
 	  -e SEED_DB_PASSWORD=postgres \
+	  -e SEED_PHONE_HASH_SECRET="$(HASH_SECRET)" \
 	  --entrypoint php monolith /app/bin/seed.php
 	@$(MAKE) --no-print-directory postman-env
+
+# Объём поверх демо-данных. Отдельной целью, а не частью `make seed`:
+# три миллиона строк нужны, когда меряешь план запроса, и мешают, когда
+# просто смотришь список глазами.
+#
+#   make seed-bulk                # 3 000 000 строк
+#   make seed-bulk ROWS=500000
+#
+# Требование «уложиться в 50 мс на 3 млн строк» на трёхстах строках не
+# проверяется никак: планировщик берёт seq scan, оказывается прав, и
+# отсутствие индекса выглядит как быстрый запрос.
+#
+# Убрать объём: `make seed` — он чистит фиксации целиком.
+seed-bulk:
+	@docker compose exec -T postgres psql -U $(DB_USER) -d $(DB_NAME) -X \
+	  -v rows=$(or $(ROWS),3000000) -v key='"$(HASH_SECRET)"' \
+	  -f - < deploy/seed/bulk_fixations.sql
 
 # Сравнение двух точек зрения на базу: с хоста (так ходят мигратор и
 # сервисы, запущенные через make run-*) и из сети compose (так ходят

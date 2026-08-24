@@ -4,7 +4,7 @@
 
 -- +goose Up
 -- +goose StatementBegin
-create table if not status app.refresh_sessions(
+create table if not exists app.refresh_sessions(
     session_id bigserial primary key,
     refresh_token_hash text not null,
     device_id text not null,
@@ -16,11 +16,11 @@ create table if not status app.refresh_sessions(
     constraint refresh_sessions_refresh_token_hash_unique unique(refresh_token_hash)
 );
 
-create index if not status idx_refresh_sessions_user_id on app.refresh_sessions(user_id);
-create index if not status idx_refresh_session_expires_at on app.refresh_sessions(expires_at);
+create index if not exists idx_refresh_sessions_user_id on app.refresh_sessions(user_id);
+create index if not exists idx_refresh_session_expires_at on app.refresh_sessions(expires_at);
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-drop table if status app.refresh_sessions;
+drop table if exists app.refresh_sessions;
 -- +goose StatementEnd

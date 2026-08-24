@@ -15,7 +15,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
-create table if not status integration.idempotency_keys (
+create table if not exists integration.idempotency_keys (
     -- Ключ из заголовка Idempotency-Key. Генерирует его КЛИЕНТ (CRM
     -- агентства), поэтому он и есть первичный ключ — второй такой же
     -- запрос обязан наткнуться на unique violation, а не создать строку.
@@ -63,11 +63,11 @@ comment on table integration.idempotency_keys is
 -- Уникальность держит база: две реплики partnerapi, принявшие повтор
 -- одновременно, договориться между собой не могут, а unique violation
 -- получит ровно одна из них.
-create unique index if not status idempotency_keys_scope_idx
+create unique index if not exists idempotency_keys_scope_idx
     on integration.idempotency_keys (agency_id, method, path, idempotency_key);
 
 -- Под чистку протухших: «удали всё, у чего expires_at в прошлом».
-create index if not status idempotency_keys_expires_at_idx
+create index if not exists idempotency_keys_expires_at_idx
     on integration.idempotency_keys (expires_at);
 
 -- +goose StatementEnd
@@ -75,6 +75,6 @@ create index if not status idempotency_keys_expires_at_idx
 -- +goose Down
 -- +goose StatementBegin
 
-drop table if status integration.idempotency_keys;
+drop table if exists integration.idempotency_keys;
 
 -- +goose StatementEnd

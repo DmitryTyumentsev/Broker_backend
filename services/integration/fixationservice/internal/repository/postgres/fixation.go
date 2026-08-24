@@ -70,12 +70,13 @@ func (r *Repository) IsUserIDInAgencyID(ctx context.Context, agencyID, userID uu
       FROM app.users AS u
      WHERE u.agency_id = $1 AND u.id = $2
 );`
-	err := r.Tx.Querier(ctx).QueryRow(ctx, query, agencyID, userID).Scan()
+	var exists bool
+	err := r.Tx.Querier(ctx).QueryRow(ctx, query, agencyID, userID).Scan(&exists)
 	if err != nil {
 		return false, MapError(op, err)
 	}
 
-	return true, nil
+	return exists, nil
 }
 
 func (r *Repository) InsertNewFixation(ctx context.Context, f entity.Fixation) error {
