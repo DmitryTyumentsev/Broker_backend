@@ -3,16 +3,13 @@ package usecase
 import (
 	"Broker_backend/services/integration/fixationservice/internal/config"
 	"Broker_backend/services/integration/fixationservice/internal/domain/entity"
-	"Broker_backend/services/integration/fixationservice/internal/repository/postgres"
 	"context"
-	"errors"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 )
 
@@ -27,7 +24,7 @@ var _ TxManager = (*mockTxManager)(nil)
 var _ Clock = (*mockClock)(nil)
 
 type mockRepo struct {
-	isExistsProjectID           func(ctx context.Context, projectID uuid.UUID) (bool, error)
+	statusByProjectID           func(ctx context.Context, projectID uuid.UUID) (string, error)
 	isUserIDInAgencyID          func(ctx context.Context, agencyID, userID uuid.UUID) (bool, error)
 	fixationCurrent             func(ctx context.Context, phoneHash string, projectID uuid.UUID) (*entity.Fixation, error)
 	insertNewFixation           func(ctx context.Context, f entity.Fixation) error
@@ -61,8 +58,8 @@ func (m *mockTxManager) Do(ctx context.Context, fn func(ctx context.Context) err
 	return m.do(ctx, fn)
 }
 
-func (m *mockRepo) IsExistsProjectID(ctx context.Context, projectID uuid.UUID) (bool, error) {
-	return m.isExistsProjectID(ctx, projectID)
+func (m *mockRepo) StatusByProjectID(ctx context.Context, projectID uuid.UUID) (string, error) {
+	return m.statusByProjectID(ctx, projectID)
 }
 
 func (m *mockRepo) IsUserIDInAgencyID(ctx context.Context, agencyID, userID uuid.UUID) (bool, error) {
@@ -91,9 +88,9 @@ func (m *mockRepo) UpdateFixationStatusExpired(ctx context.Context, statusExpire
 
 func TestNewFixation_NoActiveFixation_InsertFixationAuditOutbox(t *testing.T) {
 	repo := &mockRepo{
-		isExistsProjectID: func(context.Context, uuid.UUID) (bool, error) {
-			fmt.Println("implement isExistsProjectID")
-			return true, nil
+		statusByProjectID: func(context.Context, uuid.UUID) (string, error) {
+			fmt.Println("implement statusByProjectID")
+			return string(entity.StatusExpired), nil
 		},
 		isUserIDInAgencyID: func(context.Context, uuid.UUID, uuid.UUID) (bool, error) {
 			fmt.Println("implement isUserIDInAgencyID")
@@ -189,65 +186,10 @@ func TestNewFixation_NoActiveFixation_InsertFixationAuditOutbox(t *testing.T) {
 }
 
 func TestNewFixation_RaceFixations_ActiveFixationNoRows_OneOfFixationsSuccess(t *testing.T) {
-	cfg := newMockConfig()
-	now := time.Now().UTC()
-	mockNow := &mockClock{
-		clock: func() time.Time {
-			return now
-		},
-	}
-	usecaseTx := &mockTxManager{do: func(ctx context.Context, fn func(context.Context) error) error {
-		return fn(ctx)
-	}}
-	originalRepo := &postgres.Repository{
-		Tx: tx,
-	}
-	repo := &mockRepo{
-		isExistsProjectID: func(context.Context, uuid.UUID) (bool, error) {
-			fmt.Println("implement isExistsProjectID")
-			return true, nil
-		},
-		isUserIDInAgencyID: func(context.Context, uuid.UUID, uuid.UUID) (bool, error) {
-			fmt.Println("implement isUserIDInAgencyID")
-			return true, nil
-		},
-		fixationCurrent: func(context.Context, string, uuid.UUID) (*entity.Fixation, error) {
-			fmt.Println("implement fixationCurrent")
-			return &entity.Fixation{
-				Status: entity.StatusNoRows,
-			}, nil
-		},
-		insertNewFixation: func(context.Context, entity.Fixation) error {
-			fmt.Println("implement insertNewFixation")
-			return originalRepo.InsertNewFixation(context.Background(), entity.Fixation{})
-		},
-		insertAudit: func(ctx context.Context, f entity.Fixation) error {
-			fmt.Println("implement insertAudit")
-			return nil
-		},
-		insertOutbox: func(ctx context.Context, f entity.Fixation) error {
-			fmt.Println("implement insertOutbox")
-			return nil
-		},
-	}
+	svc := NewService(cfg, lg, now, repo, tx)
+	chErr := make(chan error)
+	chResp := make(chan *entity.Fixation)
+	wg := &sync.WaitGroup{}
+	go chResp, chErr <- svc.NewFixation(context.Background(), req)
 
-	svc := NewService(cfg, zap.NewNop(), mockNow, repo, usecaseTx)
-	for i := 0; i < 50; i++ {
-		go func() {
-			fmt.Printf("start goroutine %d/n", i)
-			got, err := svc.NewFixation(context.Background(), req)
-			if got != nil && i != 0 { //почему кстати && а не & ? когда дважды надо ставить знак а когда один раз?
-				t.Errorf("double fixation, i: %d, got: %v", i, *got)
-			}
-			if err != nil { //вообще насколько правильно тут смотреть ошибки постгри и даже конкретной либы
-				var pgErr *pgconn.PgError
-				if errors.As(err, &pgErr) {
-					if pgErr.Code != pgerrcode.UniqueViolation {
-						t.Errorf("wrong error code, err: %v, code: %v", err, pgErr.Code)
-					}
-				}
-			}
-
-		}()
-	}
 }

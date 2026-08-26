@@ -16,3 +16,4 @@ _trash/
 *.tgz
 coverage.out
 /bin/
+GAPS.md
