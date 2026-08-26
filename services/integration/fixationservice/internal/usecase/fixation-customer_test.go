@@ -5,7 +5,6 @@ import (
 	"Broker_backend/services/integration/fixationservice/internal/domain/entity"
 	"context"
 	"fmt"
-	"sync"
 	"testing"
 	"time"
 
@@ -182,14 +181,5 @@ func TestNewFixation_NoActiveFixation_InsertFixationAuditOutbox(t *testing.T) {
 	//готовим тестовые данные:
 	//создаем мок структуры под каждый тест, внутри req/entity/pgerrcode
 	//создаем в каждом тесте экземпляры моков, заполняем, вызываем оригинальный метод NewFixation передавая мок в ресивере и на вход метода
-
-}
-
-func TestNewFixation_RaceFixations_ActiveFixationNoRows_OneOfFixationsSuccess(t *testing.T) {
-	svc := NewService(cfg, lg, now, repo, tx)
-	chErr := make(chan error)
-	chResp := make(chan *entity.Fixation)
-	wg := &sync.WaitGroup{}
-	go chResp, chErr <- svc.NewFixation(context.Background(), req)
 
 }
