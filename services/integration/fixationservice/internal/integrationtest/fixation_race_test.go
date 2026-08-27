@@ -221,14 +221,3 @@ func setDefaultNewService() *usecase.Service {
 
 	return usecase.NewService(cfg, zap.NewNop(), cl, repo, tx)
 }
-
-func test() {
-	arr := []int{1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22, 33, 44, 55, 66, 77, 88, 99, 2, 4, 6, 8, 11, 11, 11}
-	num := 80
-	res := [2]int{}
-	for k, v := range arr {
-		if res[k]
-		res = [2]int(append(res[:], arr[k]))
-	}
-
-}
