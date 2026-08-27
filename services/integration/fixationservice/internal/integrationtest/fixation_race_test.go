@@ -3,7 +3,9 @@ package integrationtest
 import (
 	"Broker_backend/services/integration/fixationservice/internal/config"
 	"Broker_backend/services/integration/fixationservice/internal/domain/entity"
+	"Broker_backend/services/integration/fixationservice/internal/repository/postgres"
 	"Broker_backend/services/integration/fixationservice/internal/usecase"
+	"Broker_backend/shared/pkg/clock"
 	"context"
 	"sync"
 	"testing"
@@ -11,6 +13,10 @@ import (
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
+)
+
+const (
+	projectIDFixUUID = "a347f9bf-7a54-4a4a-b7c0-c3163c730977"
 )
 
 //const (
@@ -157,16 +163,7 @@ import (
 //}
 
 func TestNewFixation_RaceFixations_ActiveFixationNoRows_OneOfFixationsSuccess(t *testing.T) {
-	cfg := &config.Config{
-		Business: config.BusinessConfig{
-			HashSecret:       "text-text-text-text",
-			FixationDuration: 24 * 30 * time.Hour,
-		},
-	}
-	repo := usecase.FixationRepository
-	tx := usecase.TxManager
-	now := time.Now().UTC()
-	projectID, err := uuid.Parse("text-text-text-text")
+	projectID, err := uuid.Parse(projectIDFixUUID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,14 +174,22 @@ func TestNewFixation_RaceFixations_ActiveFixationNoRows_OneOfFixationsSuccess(t 
 		Phone:     "+7(999)999-99-99",
 		ProjectID: projectID,
 	}
-	svc := usecase.NewService(cfg, zap.NewNop(), now, repo, tx)
+	svc := testNewService(nil)
 	chErr := make(chan error)
 	chRes := make(chan *entity.Fixation)
-	go func() {
-		res, err := svc.NewFixation(context.Background(), req)
-		chErr <- err
-		chRes <- res
-	}()
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			res, err := svc.NewFixation(context.Background(), req)
+			chErr <- err
+			chRes <- res
+		}()
+	}
+	close(start)
 	res := <-chRes
 	if res == nil {
 		t.Fatal("res is nil")
@@ -193,4 +198,37 @@ func TestNewFixation_RaceFixations_ActiveFixationNoRows_OneOfFixationsSuccess(t 
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+// nil если хотим дефолтные настройки сервиса
+func testNewService(service *usecase.Service) *usecase.Service {
+	if service == nil {
+		return setDefaultNewService()
+	}
+	return service
+}
+
+func setDefaultNewService() *usecase.Service {
+	cfg := &config.Config{
+		Business: config.BusinessConfig{
+			HashSecret:       "text-text-text-text",
+			FixationDuration: 24 * 30 * time.Hour,
+		},
+	}
+	tx := postgres.NewTxManager(testPool)
+	repo := postgres.NewRepository(tx)
+	cl := clock.NewRealClock()
+
+	return usecase.NewService(cfg, zap.NewNop(), cl, repo, tx)
+}
+
+func test() {
+	arr := []int{1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 22, 33, 44, 55, 66, 77, 88, 99, 2, 4, 6, 8, 11, 11, 11}
+	num := 80
+	res := [2]int{}
+	for k, v := range arr {
+		if res[k]
+		res = [2]int(append(res[:], arr[k]))
+	}
+
 }

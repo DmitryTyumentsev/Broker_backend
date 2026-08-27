@@ -31,7 +31,7 @@ func (s *Service) NewFixation(ctx context.Context, req *FixationRequest) (*entit
 	}
 
 	phone := helpers.NormalizePhoneNumber(req.Phone)
-	phoneHash, err := security.SignHS256AndEncodeBase64URL(s.cfg, phone)
+	phoneHash, err := s.HashPhone(phone)
 	if err != nil {
 		return nil, err
 	}
@@ -105,4 +105,8 @@ func (s *Service) insertFixationList(txCtx context.Context, f entity.Fixation) e
 		return err
 	}
 	return nil
+}
+
+func (s *Service) HashPhone(phone string) (string, error) {
+	return security.SignHS256AndEncodeBase64URL(s.cfg, phone)
 }
