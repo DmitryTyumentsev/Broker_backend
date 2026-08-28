@@ -12,6 +12,7 @@ package integrationtest
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"testing"
@@ -35,6 +36,12 @@ func TestMain(m *testing.M) {
 // run вынесен отдельно, чтобы работали defer: в TestMain их нельзя
 // использовать из-за os.Exit, который завершает процесс мгновенно.
 func run(m *testing.M) int {
+	// В обычном прогоне флаги разбирает m.Run. Здесь значение -short нужно
+	// раньше, чтобы вообще не поднимать контейнер, поэтому разбираем их сами.
+	if !flag.Parsed() {
+		flag.Parse()
+	}
+
 	// При -short выходим ДО m.Run(): без контейнера testPool остался бы nil,
 	// и тесты упали бы не «пропущено», а паникой на nil-пуле.
 	if testing.Short() {

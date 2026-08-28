@@ -67,8 +67,8 @@ function normalizePhone(string $phone): string
 
 /**
  * Хэш телефона ровно такой, какой считает fixationservice: HMAC-SHA256
- * по нормализованному номеру, ключ — секрет в том виде, в каком его
- * сериализует json.Marshal (то есть в кавычках), результат — base64.
+ * по нормализованному номеру, ключ — байты секрета без дополнительной
+ * сериализации, результат — base64.
  *
  * Совпадение здесь не косметика. Если сидер кладёт «правдоподобную
  * строку», то фиксация, оформленная через API на тот же номер, не
@@ -77,7 +77,7 @@ function normalizePhone(string $phone): string
  */
 function phoneHash(string $phone, string $secret): string
 {
-    return base64_encode(hash_hmac('sha256', normalizePhone($phone), json_encode($secret), true));
+    return base64_encode(hash_hmac('sha256', normalizePhone($phone), $secret, true));
 }
 
 /**

@@ -44,7 +44,7 @@ HASH_SECRET := local-phone-hash-secret-change-me
 # Без него make увидит файл с таким именем и решит, что делать нечего.
 .PHONY: help tools generate mocks lint fmt vet test test-integration race-fixation cover \
         build run run-auth run-fixation run-partnerapi \
-        migrate migrate-bootstrap migrate-app migrate-integration seed seed-bulk show-data db-check postman-env clean-stray-db \
+        migrate migrate-bootstrap migrate-app migrate-integration seed seed-check seed-bulk seed-bulk-check show-data db-check postman-env clean-stray-db \
         up up-full down down-v logs psql redis-cli rabbit-ui minio-ui \
         grpc-list grpc-fix check-db reconcile token vuln breaking
 
@@ -67,6 +67,7 @@ help:
 	@echo "  make migrate-app       migrations/app под app_user"
 	@echo "  make migrate-integration  migrations/integration под go_user"
 	@echo "  make seed              демо-данные: агентства, лоты, фиксации"
+	@echo "  make seed-check        проверить состав сценарных данных без вывода количества"
 	@echo "  make seed-bulk         объём поверх демо-данных (ROWS=3000000 по умолчанию)"
 	@echo "  make show-data         кто и что лежит в базе: агентства, сотрудники, проекты"
 	@echo "  make db-check          на какой сервер смотрят хост и compose, что там есть"
@@ -222,7 +223,15 @@ seed:
 	  -e SEED_DB_PASSWORD=postgres \
 	  -e SEED_PHONE_HASH_SECRET="$(HASH_SECRET)" \
 	  --entrypoint php monolith /app/bin/seed.php
+	@$(MAKE) --no-print-directory seed-check
 	@$(MAKE) --no-print-directory postman-env
+
+# Сидер обязан воспроизводить граничные случаи и считать phone_hash тем же
+# способом, что fixationservice. Проверка не печатает объёмы специальных
+# наборов: их разработчик устанавливает запросом во время расследования.
+seed-check:
+	@docker compose exec -T postgres psql -U $(DB_USER) -d $(DB_NAME) -X -q \
+	  -v key="$(HASH_SECRET)" -f - < deploy/seed/verify_fixations.sql
 
 # Объём поверх демо-данных. Отдельной целью, а не частью `make seed`:
 # три миллиона строк нужны, когда меряешь план запроса, и мешают, когда
@@ -238,8 +247,14 @@ seed:
 # Убрать объём: `make seed` — он чистит фиксации целиком.
 seed-bulk:
 	@docker compose exec -T postgres psql -U $(DB_USER) -d $(DB_NAME) -X \
-	  -v rows=$(or $(ROWS),3000000) -v key='"$(HASH_SECRET)"' \
+	  -v rows=$(or $(ROWS),3000000) -v key="$(HASH_SECRET)" \
 	  -f - < deploy/seed/bulk_fixations.sql
+	@$(MAKE) --no-print-directory seed-bulk-check ROWS=$(or $(ROWS),3000000)
+
+seed-bulk-check:
+	@docker compose exec -T postgres psql -U $(DB_USER) -d $(DB_NAME) -X -q \
+	  -v rows=$(or $(ROWS),3000000) -v key="$(HASH_SECRET)" \
+	  -f - < deploy/seed/verify_bulk_fixations.sql
 
 # Сравнение двух точек зрения на базу: с хоста (так ходят мигратор и
 # сервисы, запущенные через make run-*) и из сети compose (так ходят

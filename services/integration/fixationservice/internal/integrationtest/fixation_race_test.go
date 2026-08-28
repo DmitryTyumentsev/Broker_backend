@@ -17,6 +17,7 @@ import (
 
 const (
 	projectIDFixUUID = "a347f9bf-7a54-4a4a-b7c0-c3163c730977"
+	goroutines       = 50
 )
 
 //const (
@@ -175,8 +176,7 @@ func TestNewFixation_RaceFixations_ActiveFixationNoRows_OneOfFixationsSuccess(t 
 		ProjectID: projectID,
 	}
 	svc := testNewService(nil)
-	chErr := make(chan error)
-	chRes := make(chan *entity.Fixation)
+	chRes := make(chan *res, goroutines)
 	var wg sync.WaitGroup
 	start := make(chan struct{})
 	for i := 0; i < 50; i++ {
@@ -184,20 +184,24 @@ func TestNewFixation_RaceFixations_ActiveFixationNoRows_OneOfFixationsSuccess(t 
 		go func() {
 			defer wg.Done()
 			<-start
-			res, err := svc.NewFixation(context.Background(), req)
-			chErr <- err
-			chRes <- res
+			f, err := svc.NewFixation(context.Background(), req)
+			chRes <- &res{f: f, err: err}
 		}()
 	}
 	close(start)
-	res := <-chRes
-	if res == nil {
+	result := <-chRes
+	if result == nil {
 		t.Fatal("res is nil")
 	}
-	err = <-chErr
-	if err != nil {
-		t.Fatal(err)
+	if result.err != nil {
+		t.Fatal(result.err)
 	}
+	t.Log(*result)
+}
+
+type res struct {
+	f   *entity.Fixation
+	err error
 }
 
 // nil если хотим дефолтные настройки сервиса
