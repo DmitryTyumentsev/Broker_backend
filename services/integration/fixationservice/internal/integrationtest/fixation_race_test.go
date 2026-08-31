@@ -2,11 +2,13 @@ package integrationtest
 
 import (
 	"Broker_backend/services/integration/fixationservice/internal/config"
+	"Broker_backend/services/integration/fixationservice/internal/domain"
 	"Broker_backend/services/integration/fixationservice/internal/domain/entity"
 	"Broker_backend/services/integration/fixationservice/internal/repository/postgres"
 	"Broker_backend/services/integration/fixationservice/internal/usecase"
 	"Broker_backend/shared/pkg/clock"
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -175,7 +177,7 @@ func TestNewFixation_RaceFixations_ActiveFixationNoRows_OneOfFixationsSuccess(t 
 		Phone:     "+7(999)999-99-99",
 		ProjectID: projectID,
 	}
-	svc := testNewService(nil)
+	svc := newTestService(t)
 	chRes := make(chan *res, goroutines)
 	var wg sync.WaitGroup
 	start := make(chan struct{})
@@ -189,14 +191,17 @@ func TestNewFixation_RaceFixations_ActiveFixationNoRows_OneOfFixationsSuccess(t 
 		}()
 	}
 	close(start)
-	result := <-chRes
-	if result == nil {
-		t.Fatal("res is nil")
+	// что в result будет если я отпустил 50 горутин? как это прочитать вообще?
+	for i := 0; i < goroutines; i++ {
+		result := <-chRes
+		if result.f != nil {
+			t.Log(*result.f)
+		}
+		if !errors.Is(result.err, domain.ErrConflict) {
+			t.Error(result.err)
+		}
 	}
-	if result.err != nil {
-		t.Fatal(result.err)
-	}
-	t.Log(*result)
+
 }
 
 type res struct {
@@ -204,15 +209,8 @@ type res struct {
 	err error
 }
 
-// nil если хотим дефолтные настройки сервиса
-func testNewService(service *usecase.Service) *usecase.Service {
-	if service == nil {
-		return setDefaultNewService()
-	}
-	return service
-}
-
-func setDefaultNewService() *usecase.Service {
+func newTestService(t *testing.T) *usecase.Service {
+	t.Helper()
 	cfg := &config.Config{
 		Business: config.BusinessConfig{
 			HashSecret:       "text-text-text-text",

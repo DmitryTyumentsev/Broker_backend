@@ -1,14 +1,13 @@
 package security
 
 import (
-	"Broker_backend/services/integration/fixationservice/internal/config"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
 )
 
-func SignHS256AndEncodeBase64URL(cfg *config.Config, v string) (string, error) {
-	secretBytes := []byte(cfg.Business.HashSecret)
+func SignHS256AndEncodeBase64URL(hashSecret string, v string) (string, error) {
+	secretBytes := []byte(hashSecret)
 
 	mac := hmac.New(sha256.New, secretBytes)
 
