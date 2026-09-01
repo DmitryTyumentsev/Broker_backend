@@ -37,9 +37,9 @@ func NewHandler(grpc fixationv1.UnimplementedFixationServiceServer, fixation Fix
 	}
 }
 
-func (h *Handler) NewFixation(ctx context.Context, req *fixationv1.NewFixationRequest) (
+func (h *Handler) NewFixation(ctx context.Context, req *fixationv1.NewFixationRequest, meta *fixationdto.Meta) (
 	*fixationv1.NewFixationResponse, error) {
-	cmdReq, err := convertToUsecaseFixation(req)
+	cmdReq, err := convertToUsecaseFixation(req, meta)
 	if err != nil {
 		return nil, mapGRPCError(err)
 	}
@@ -58,8 +58,8 @@ func (h *Handler) NewFixation(ctx context.Context, req *fixationv1.NewFixationRe
 	return resp, nil
 }
 
-func convertToUsecaseFixation(req *fixationv1.NewFixationRequest) (*usecase.FixationRequest, error) {
-	agencyID, err := uuid.Parse(req.AgencyId)
+func convertToUsecaseFixation(req *fixationv1.NewFixationRequest, meta *fixationdto.Meta) (*usecase.FixationRequest, error) {
+	agencyID, err := uuid.Parse(meta.AgencyID)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func convertToUsecaseFixation(req *fixationv1.NewFixationRequest) (*usecase.Fixa
 	if err != nil {
 		return nil, err
 	}
-	fixBy, err := uuid.Parse(req.FixBy)
+	fixBy, err := uuid.Parse(meta.FixBy)
 	if err != nil {
 		return nil, err
 	}

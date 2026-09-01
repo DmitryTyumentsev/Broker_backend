@@ -48,7 +48,7 @@ func (h *FixationHandler) Validate() error {
 }
 
 type FixationClient interface {
-	NewFixation(ctx context.Context, req *fixationv1.NewFixationRequest) (
+	NewFixation(ctx context.Context, req *fixationv1.NewFixationRequest, meta *fixationdto.Meta) (
 		*fixationv1.NewFixationResponse, error)
 }
 
@@ -64,13 +64,15 @@ func (h *FixationHandler) NewFixation(c *fiber.Ctx) error {
 
 	ctx := c.UserContext() //зачем перекладываем из fiber.Ctx в context.Context? разве нельзя fiber.Ctx дальше передавать?
 	protoReq := &fixationv1.NewFixationRequest{
-		AgencyId:  principal.AgencyID.String(),
 		FixFor:    dtoReq.FixFor.String(),
-		FixBy:     principal.UserID.String(),
 		Phone:     dtoReq.Phone,
 		ProjectId: dtoReq.ProjectID.String(),
 	}
-	protoResp, err := h.fixation.NewFixation(ctx, protoReq)
+	meta := &fixationdto.Meta{
+		AgencyID: principal.AgencyID,
+		FixBy:    principal.UserID,
+	}
+	protoResp, err := h.fixation.NewFixation(ctx, protoReq, meta)
 	if err != nil {
 		return grpcerr.WriteGRPCToHTTPError(c, err)
 	}

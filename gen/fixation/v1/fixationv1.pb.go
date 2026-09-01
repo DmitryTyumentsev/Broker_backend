@@ -24,11 +24,9 @@ const (
 
 type NewFixationRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AgencyId      string                 `protobuf:"bytes,1,opt,name=agency_id,json=agencyId,proto3" json:"agency_id,omitempty"`
 	FixFor        string                 `protobuf:"bytes,2,opt,name=fix_for,json=fixFor,proto3" json:"fix_for,omitempty"`
 	Phone         string                 `protobuf:"bytes,3,opt,name=phone,proto3" json:"phone,omitempty"`
 	ProjectId     string                 `protobuf:"bytes,4,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	FixBy         string                 `protobuf:"bytes,5,opt,name=fix_by,json=fixBy,proto3" json:"fix_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -63,13 +61,6 @@ func (*NewFixationRequest) Descriptor() ([]byte, []int) {
 	return file_fixation_v1_fixationv1_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *NewFixationRequest) GetAgencyId() string {
-	if x != nil {
-		return x.AgencyId
-	}
-	return ""
-}
-
 func (x *NewFixationRequest) GetFixFor() string {
 	if x != nil {
 		return x.FixFor
@@ -87,13 +78,6 @@ func (x *NewFixationRequest) GetPhone() string {
 func (x *NewFixationRequest) GetProjectId() string {
 	if x != nil {
 		return x.ProjectId
-	}
-	return ""
-}
-
-func (x *NewFixationRequest) GetFixBy() string {
-	if x != nil {
-		return x.FixBy
 	}
 	return ""
 }
@@ -162,14 +146,12 @@ var File_fixation_v1_fixationv1_proto protoreflect.FileDescriptor
 
 const file_fixation_v1_fixationv1_proto_rawDesc = "" +
 	"\n" +
-	"\x1cfixation/v1/fixationv1.proto\x12\vfixation.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x96\x01\n" +
-	"\x12NewFixationRequest\x12\x1b\n" +
-	"\tagency_id\x18\x01 \x01(\tR\bagencyId\x12\x17\n" +
+	"\x1cfixation/v1/fixationv1.proto\x12\vfixation.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"b\n" +
+	"\x12NewFixationRequest\x12\x17\n" +
 	"\afix_for\x18\x02 \x01(\tR\x06fixFor\x12\x14\n" +
 	"\x05phone\x18\x03 \x01(\tR\x05phone\x12\x1d\n" +
 	"\n" +
-	"project_id\x18\x04 \x01(\tR\tprojectId\x12\x15\n" +
-	"\x06fix_by\x18\x05 \x01(\tR\x05fixBy\"\xa8\x01\n" +
+	"project_id\x18\x04 \x01(\tR\tprojectId\"\xa8\x01\n" +
 	"\x13NewFixationResponse\x12\x1f\n" +
 	"\vfixation_id\x18\x01 \x01(\tR\n" +
 	"fixationId\x125\n" +

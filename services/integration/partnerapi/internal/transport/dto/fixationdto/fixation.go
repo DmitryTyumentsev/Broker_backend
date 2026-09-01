@@ -12,6 +12,11 @@ type FixationRequest struct {
 	FixFor    uuid.UUID `json:"fix_for" validate:"omitempty,uuid"`
 }
 
+type Meta struct {
+	AgencyID uuid.UUID
+	FixBy    uuid.UUID
+}
+
 type FixationResponse struct {
 	FixationID uuid.UUID `json:"fixation_id"`
 	FixedAt    time.Time `json:"fixed_at"`
