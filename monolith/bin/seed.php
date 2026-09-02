@@ -342,22 +342,27 @@ try {
     }
 
     // ── Один клиент, два проекта ─────────────────────────────────────
-    // Один и тот же номер, две живые фиксации на разные ЖК. Частичный
-    // уникальный индекс такое разрешает: он про пару (телефон, проект),
-    // а не про телефон. В выдаче человек встретится дважды — и это не дубль.
+    // Один и тот же номер, две живые фиксации на разные ЖК. В выдаче
+    // человек встретится дважды — и это не дубль: разные проекты, разные
+    // комиссии, спорить не о чем.
+    //
+    // Брокеры взяты из РАЗНЫХ агентств (0-й, 3-й и 6-й — по одному на
+    // агентство, см. раскладку выше): клиент обошёл два ЖК через два
+    // разных агентства, так это обычно и выглядит.
     $twoProjectsClient = '+7 (999) 765-43-21';
 
     foreach ([0, 1] as $index) {
         $daysAgo = 12 + $index;
+        $broker  = $brokers[$index * 3];
 
         $stmt->execute([
             'id'         => uuid(),
             'fixed_at'   => (new DateTimeImmutable("-{$daysAgo} days"))->format(DATE_ATOM),
             'expires_at' => (new DateTimeImmutable("-{$daysAgo} days +60 days"))->format(DATE_ATOM),
             'status'     => 'active',
-            'agency_id'  => $brokers[$index]['agency_id'],
-            'fix_by'     => $brokers[$index]['id'],
-            'fix_for'    => $brokers[$index]['id'],
+            'agency_id'  => $broker['agency_id'],
+            'fix_by'     => $broker['id'],
+            'fix_for'    => $broker['id'],
             'project_id' => $projects[$index]['id'],
             'phone_hash' => phoneHash($twoProjectsClient, $hashSecret),
         ]);
@@ -385,6 +390,136 @@ try {
             'phone_hash' => legacyPhoneHash($written),
         ]);
     }
+
+    // ── Спорные клиенты ──────────────────────────────────────────────
+    // Случаи, которые коммерческий отдел приносит на разбор: на один
+    // номер и один ЖК претендует не одно агентство. Часть из них —
+    // настоящие споры о комиссии, часть только выглядит спором и при
+    // ближайшем рассмотрении им не является.
+    //
+    // Разброс по времени между записями в паре сделан намеренно широким:
+    // от десятков миллисекунд до нескольких дней. Правило, по которому
+    // выбирается победитель, должно работать на всём диапазоне, а не на
+    // одном красивом примере.
+    //
+    // Сколько здесь чего — не печатается и не комментируется: найти и
+    // посчитать спорные пары входит в работу, а не в вывод сидера.
+    $brokerIn = static function (int $agencyIndex, int $slot = 0) use ($brokers, $agencies): array {
+        $inAgency = array_values(array_filter(
+            $brokers,
+            static fn(array $b): bool => $b['agency_id'] === $agencies[$agencyIndex]['id']
+        ));
+
+        return $inAgency[$slot % count($inAgency)];
+    };
+
+    /**
+     * Одна претензия на клиента. Время задаётся с микросекундами: разница
+     * между записями в паре бывает меньше миллисекунды, и через DATE_ATOM
+     * (секундная точность) она бы просто исчезла.
+     */
+    $claim = static function (
+        string            $phone,
+        string            $projectId,
+        int               $agencyIndex,
+        string            $status,
+        DateTimeImmutable $fixedAt,
+        DateTimeImmutable $expiresAt
+    ) use ($stmt, $brokerIn, $hashSecret): void {
+        $broker = $brokerIn($agencyIndex);
+
+        $stmt->execute([
+            'id'         => uuid(),
+            'fixed_at'   => $fixedAt->format('Y-m-d H:i:s.u P'),
+            'expires_at' => $expiresAt->format('Y-m-d H:i:s.u P'),
+            'status'     => $status,
+            'agency_id'  => $broker['agency_id'],
+            'fix_by'     => $broker['id'],
+            'fix_for'    => $broker['id'],
+            'project_id' => $projectId,
+            'phone_hash' => phoneHash($phone, $hashSecret),
+        ]);
+    };
+
+    /** Номер спорного клиента №$n. Диапазон 7999-8XX-XX-XX не пересекается ни с одним выше. */
+    $disputedPhone = static fn(int $n): string => sprintf('+7999%07d', 8_000_000 + $n);
+
+    // Момент, от которого отсчитываются времена претензий.
+    $t = static fn(string $shift): DateTimeImmutable => new DateTimeImmutable($shift);
+
+    /**
+     * Сдвиг на доли секунды: DateTimeImmutable::modify микросекунд не умеет.
+     * Считаем в целых микросекундах и собираем время заново — через float
+     * на секундах эпохи шестой знак после запятой уже теряется.
+     */
+    $plusMicros = static function (DateTimeImmutable $at, int $micros): DateTimeImmutable {
+        $total = (int)$at->format('U') * 1_000_000 + (int)$at->format('u') + $micros;
+
+        return DateTimeImmutable::createFromFormat(
+            'U.u',
+            sprintf('%d.%06d', intdiv($total, 1_000_000), $total % 1_000_000)
+        )->setTimezone($at->getTimezone());
+    };
+
+    // 1. Старт продаж корпуса: две живые претензии, разница — миллисекунды.
+    //    Тот самый случай, с которого пришла эскалация.
+    $at = $t('-3 days');
+    $claim($disputedPhone(1), $projects[0]['id'], 0, 'active', $at, $at->modify('+60 days'));
+    $claim($disputedPhone(1), $projects[0]['id'], 1, 'active', $plusMicros($at, 40_000), $at->modify('+60 days'));
+
+    // 2. То же самое, но одно из агентств с тех пор заблокировали.
+    $at = $t('-9 days');
+    $claim($disputedPhone(2), $projects[1]['id'], 1, 'active', $at, $at->modify('+60 days'));
+    $claim($disputedPhone(2), $projects[1]['id'], 2, 'active', $plusMicros($at, 900_000), $at->modify('+60 days'));
+
+    // 3. Претендентов трое. Победитель всё равно один, но выбирать
+    //    приходится не из двух.
+    $at = $t('-21 days');
+    $claim($disputedPhone(3), $projects[0]['id'], 0, 'active', $at, $at->modify('+60 days'));
+    $claim($disputedPhone(3), $projects[0]['id'], 1, 'active', $plusMicros($at, 120_000), $at->modify('+60 days'));
+    $claim($disputedPhone(3), $projects[0]['id'], 2, 'active', $at->modify('+6 seconds'), $at->modify('+60 days'));
+
+    // 4. Разница в четыре дня: это не гонка, это ввели руками, глядя на
+    //    пустой список. Разводить всё равно придётся.
+    $at = $t('-30 days');
+    $claim($disputedPhone(4), $projects[1]['id'], 0, 'active', $at, $at->modify('+60 days'));
+    $claim($disputedPhone(4), $projects[1]['id'], 2, 'active', $at->modify('+4 days'), $at->modify('+64 days'));
+
+    // 5. Спор на проекте, который уже в архиве. Продавать по нему нельзя,
+    //    а комиссия по старой сделке всё ещё чья-то.
+    $at = $t('-45 days');
+    $claim($disputedPhone(5), $projects[2]['id'], 1, 'active', $at, $at->modify('+60 days'));
+    $claim($disputedPhone(5), $projects[2]['id'], 0, 'active', $plusMicros($at, 70_000), $at->modify('+60 days'));
+
+    // 6. Обе претензии в статусе active, а сроки у обеих давно вышли.
+    //    Фонового процесса, который переводил бы такие в expired, нет.
+    $at = $t('-200 days');
+    $claim($disputedPhone(6), $projects[0]['id'], 0, 'active', $at, $at->modify('+60 days'));
+    $claim($disputedPhone(6), $projects[0]['id'], 1, 'active', $plusMicros($at, 300_000), $at->modify('+60 days'));
+
+    // 7. Одна претензия живая, вторая active, но срок по ней истёк вчера.
+    $at = $t('-100 days');
+    $claim($disputedPhone(7), $projects[1]['id'], 0, 'active', $at, $at->modify('+99 days'));
+    $claim($disputedPhone(7), $projects[1]['id'], 1, 'active', $plusMicros($at, 15_000), $at->modify('+180 days'));
+
+    // 8. Похоже на спор, но им не является: живая претензия одна,
+    //    остальные по тому же номеру и проекту давно закрыты.
+    $at = $t('-70 days');
+    $claim($disputedPhone(10), $projects[0]['id'], 0, 'active', $at, $at->modify('+60 days'));
+    $claim($disputedPhone(10), $projects[0]['id'], 1, 'converted', $at->modify('-30 days'), $at->modify('+30 days'));
+    $claim($disputedPhone(10), $projects[0]['id'], 2, 'expired', $at->modify('-120 days'), $at->modify('-60 days'));
+
+    // 9. Одно агентство, один клиент, один проект, вся история статусов
+    //    рядом с живой фиксацией.
+    $at = $t('-15 days');
+    $claim($disputedPhone(11), $projects[0]['id'], 0, 'active', $at, $at->modify('+60 days'));
+    $claim($disputedPhone(11), $projects[0]['id'], 0, 'converted', $at->modify('-90 days'), $at->modify('-30 days'));
+    $claim($disputedPhone(11), $projects[0]['id'], 0, 'removed', $at->modify('-200 days'), $at->modify('-140 days'));
+
+    // 10. Тоже не спор: два агентства, один клиент, но проекты разные.
+    $at = $t('-25 days');
+    $claim($disputedPhone(12), $projects[0]['id'], 0, 'active', $at, $at->modify('+60 days'));
+    $claim($disputedPhone(12), $projects[1]['id'], 1, 'active', $at->modify('+2 days'), $at->modify('+62 days'));
 
     // ── Партия из CRM: одинаковый fixed_at до микросекунды ───────────
     // Агентство выгрузило накопленное одним импортом, все записи легли

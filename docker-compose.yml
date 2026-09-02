@@ -147,8 +147,14 @@ services:
       - "9090:9090"
     volumes:
       - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/alerts.yml:/etc/prometheus/alerts.yml:ro
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
+      # Правила и таргеты перечитываются по SIGHUP или по POST /-/reload —
+      # без флага ниже ручка reload выключена, и после правки alerts.yml
+      # пришлось бы пересоздавать контейнер:
+      #   curl -X POST http://localhost:9090/-/reload
+      - "--web.enable-lifecycle"
 
   grafana:
     image: grafana/grafana:8.3.4

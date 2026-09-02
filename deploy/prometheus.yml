@@ -12,6 +12,13 @@ global:
   scrape_interval: 15s      # как часто опрашивать
   evaluation_interval: 15s  # как часто пересчитывать правила алертов
 
+# Без этой секции правила из alerts.yml не загружаются вообще, и алерт,
+# который ты написал, молча не существует. Alertmanager на стенде не
+# поднят: сработавшие правила видно на http://localhost:9090/alerts,
+# и для проверки формулировки этого достаточно.
+rule_files:
+  - /etc/prometheus/alerts.yml
+
 scrape_configs:
   # ── Единственный Go-сервис с HTTP ────────────────────────────────────
   # authservice и fixationservice метрик не отдают: они gRPC-only и HTTP-порта

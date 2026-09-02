@@ -16,6 +16,10 @@ const (
 	randomPhone      = "8(999)999-99-99"
 	fixationDuration = 24 * time.Hour * 60
 	mockHashSecret   = "mock-hash-secret"
+	fixFor           = "22222222-2222-2222-2222-222222222222"
+	projectID        = "33333333-3333-3333-3333-333333333333"
+	fixBy            = "22222222-2222-2222-2222-222222222222"
+	agencyID         = "11111111-1111-1111-1111-111111111111"
 )
 
 var _ FixationRepository = (*mockRepo)(nil)

@@ -15,6 +15,7 @@ import (
 	grpctransport "Broker_backend/services/integration/fixationservice/internal/transport/grpc"
 	"Broker_backend/services/integration/fixationservice/internal/usecase"
 	"Broker_backend/shared/pkg/clock"
+	"Broker_backend/shared/pkg/grpc/auth"
 	"context"
 	"errors"
 	"fmt"
@@ -133,6 +134,7 @@ func Run() error {
 			grpcobservability.AccessLogUnaryServerInterceptor(logger), // строка на каждый RPC с request_id
 			recoveryInterceptor(logger), // паника в хендлере не должна ронять сервис
 			unaryContextTimeout(cfg.Business.ContextTimeout),
+			auth.RequirePrincipalUnaryServerInterceptor(),
 		),
 	)
 

@@ -15,4 +15,5 @@ var (
 	ErrProjectNotExist      = errors.New("project does not exist")
 	ErrEmployeeNotInAgency  = errors.New("employee not in agency")
 	ErrProjectArchived      = errors.New("project archived, try another project")
+	ErrPrincipalNotFound    = errors.New("principal not found in context")
 )

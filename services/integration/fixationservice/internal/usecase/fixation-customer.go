@@ -23,10 +23,10 @@ func (s *Service) NewFixation(ctx context.Context, req *FixationRequest) (*entit
 		return nil, domain.ErrProjectArchived
 	}
 	b, err := s.fixations.IsUserIDInAgencyID(ctx, req.AgencyID, req.FixFor)
+	if b == false {
+		return nil, domain.ErrEmployeeNotInAgency
+	}
 	if err != nil {
-		if b == false {
-			return nil, domain.ErrEmployeeNotInAgency
-		}
 		return nil, err
 	}
 

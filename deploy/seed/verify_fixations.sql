@@ -60,6 +60,63 @@ begin
         raise exception 'seed contract: same client in different projects is missing';
     end if;
 
+    -- Спорные клиенты. Проверяется наличие сценария, а не его объём:
+    -- пересчёт спорных пар — это работа расследования, и подсказывать
+    -- ответ постусловием сидера нельзя.
+    if not exists (
+        select 1
+          from integration.fixations f
+          join integration.fixations o
+            on  o.phone_hash = f.phone_hash
+            and o.project_id = f.project_id
+            and o.agency_id <> f.agency_id
+         where f.status = 'active'
+           and o.status = 'active'
+    ) then
+        raise exception 'seed contract: disputed client scenario is missing';
+    end if;
+
+    -- Претендентов больше двух: правило выбора победителя обязано работать
+    -- не только на паре.
+    if not exists (
+        select 1
+          from integration.fixations
+         where status = 'active'
+         group by phone_hash, project_id
+        having count(distinct agency_id) > 2
+    ) then
+        raise exception 'seed contract: three-way dispute scenario is missing';
+    end if;
+
+    -- Спор, в котором обе стороны формально активны, а сроки у обеих вышли.
+    if not exists (
+        select 1
+          from integration.fixations f
+          join integration.fixations o
+            on  o.phone_hash = f.phone_hash
+            and o.project_id = f.project_id
+            and o.agency_id <> f.agency_id
+         where f.status = 'active'
+           and o.status = 'active'
+           and f.expires_at < now()
+           and o.expires_at < now()
+    ) then
+        raise exception 'seed contract: stale disputed pair scenario is missing';
+    end if;
+
+    -- Похоже на спор, но не спор: живая одна, остальные по тому же
+    -- телефону и проекту закрыты. Запрос из расследования обязан их
+    -- различать, значит в базе они должны быть.
+    if not exists (
+        select 1
+          from integration.fixations
+         group by phone_hash, project_id
+        having count(*) filter (where status = 'active') = 1
+           and count(*) filter (where status <> 'active') > 1
+    ) then
+        raise exception 'seed contract: closed-history decoy scenario is missing';
+    end if;
+
     if not exists (
         select 1
           from integration.fixations

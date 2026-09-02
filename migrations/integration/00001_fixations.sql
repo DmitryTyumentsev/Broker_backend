@@ -19,7 +19,11 @@ create table if not exists integration.fixations(
     constraint fixations_status_check
         check(status IN('active', 'converted', 'expired', 'removed') )
 );
-create unique index if not exists fixations_phone_hash_project_id_idx on integration.fixations(phone_hash, project_id) where status = 'active';
+-- Одно агентство не должно фиксировать одного и того же клиента дважды:
+-- на витрине это выглядело как задвоение в списке, и первым делом закрыли
+-- именно его. Частичный — потому что ограничение касается только живых
+-- фиксаций: протухшие и снятые по тому же телефону обязаны сосуществовать.
+create unique index if not exists fixations_phone_hash_agency_id_idx on integration.fixations(phone_hash, agency_id) where status = 'active';
 -- +goose StatementEnd
 
 -- +goose Down

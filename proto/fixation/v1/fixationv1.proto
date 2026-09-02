@@ -9,9 +9,9 @@ service FixationService{
 }
 
 message NewFixationRequest{
-  string fix_for = 2;
-  string phone = 3;
-  string project_id = 4;
+  string fix_for = 1;
+  string phone = 2;
+  string project_id = 3;
 }
 
 message NewFixationResponse{

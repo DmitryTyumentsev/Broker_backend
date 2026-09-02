@@ -2,8 +2,10 @@ package grpc
 
 import (
 	fixationv1 "Broker_backend/gen/fixation/v1"
+	"Broker_backend/services/integration/fixationservice/internal/domain"
 	"Broker_backend/services/integration/fixationservice/internal/domain/entity"
 	"Broker_backend/services/integration/fixationservice/internal/usecase"
+	"Broker_backend/shared/pkg/authz"
 	"context"
 
 	"github.com/google/uuid"
@@ -37,9 +39,9 @@ func NewHandler(grpc fixationv1.UnimplementedFixationServiceServer, fixation Fix
 	}
 }
 
-func (h *Handler) NewFixation(ctx context.Context, req *fixationv1.NewFixationRequest, meta *fixationdto.Meta) (
+func (h *Handler) NewFixation(ctx context.Context, req *fixationv1.NewFixationRequest) (
 	*fixationv1.NewFixationResponse, error) {
-	cmdReq, err := convertToUsecaseFixation(req, meta)
+	cmdReq, err := convertToUsecaseFixation(ctx, req)
 	if err != nil {
 		return nil, mapGRPCError(err)
 	}
@@ -58,8 +60,12 @@ func (h *Handler) NewFixation(ctx context.Context, req *fixationv1.NewFixationRe
 	return resp, nil
 }
 
-func convertToUsecaseFixation(req *fixationv1.NewFixationRequest, meta *fixationdto.Meta) (*usecase.FixationRequest, error) {
-	agencyID, err := uuid.Parse(meta.AgencyID)
+func convertToUsecaseFixation(ctx context.Context, req *fixationv1.NewFixationRequest) (*usecase.FixationRequest, error) {
+	principal, ok := authz.PrincipalFromContext(ctx)
+	if !ok {
+		return nil, domain.ErrPrincipalNotFound
+	}
+	agencyID, err := uuid.Parse(principal.AgencyID.String())
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +73,7 @@ func convertToUsecaseFixation(req *fixationv1.NewFixationRequest, meta *fixation
 	if err != nil {
 		return nil, err
 	}
-	fixBy, err := uuid.Parse(meta.FixBy)
+	fixBy, err := uuid.Parse(principal.UserID.String())
 	if err != nil {
 		return nil, err
 	}

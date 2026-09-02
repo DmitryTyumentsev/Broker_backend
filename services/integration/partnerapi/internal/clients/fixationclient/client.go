@@ -3,7 +3,6 @@ package fixationclient
 import (
 	fixationv1 "Broker_backend/gen/fixation/v1"
 	"Broker_backend/services/integration/partnerapi/internal/config"
-	"Broker_backend/services/integration/partnerapi/internal/transport/dto/fixationdto"
 	grpcauth "Broker_backend/shared/pkg/grpc/auth"
 	"context"
 	"errors"
@@ -79,12 +78,12 @@ func (c *GRPCClient) contextWithTimeout(parent context.Context) (context.Context
 	return ctx, cancel, nil
 }
 
-func (c *GRPCClient) NewFixation(ctx context.Context, req *fixationv1.NewFixationRequest, meta *fixationdto.Meta) (
+func (c *GRPCClient) NewFixation(ctx context.Context, req *fixationv1.NewFixationRequest) (
 	*fixationv1.NewFixationResponse, error) {
 	ctx, cancel, err := c.contextWithTimeout(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer cancel()
-	return c.fixation.NewFixation(ctx, req, meta)
+	return c.fixation.NewFixation(ctx, req)
 }

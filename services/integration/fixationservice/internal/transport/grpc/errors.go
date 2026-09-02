@@ -41,6 +41,8 @@ func grpcStatusFromError(err error) (codes.Code, string) {
 		return codes.InvalidArgument, domain.ErrEmployeeNotInAgency.Error()
 	case errors.Is(err, domain.ErrProjectArchived):
 		return codes.InvalidArgument, domain.ErrProjectArchived.Error()
+	case errors.Is(err, domain.ErrPrincipalNotFound):
+		return codes.Unauthenticated, "unauthenticated"
 
 	default:
 		return codes.Internal, "internal server error"

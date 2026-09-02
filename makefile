@@ -57,6 +57,8 @@ help:
 	@echo "  make down-v            остановить и стереть данные"
 	@echo "  make logs              смотреть логи"
 	@echo "  make psql              консоль postgres"
+	@echo "  make psql-a / psql-b   два именованных сеанса psql для ручного воспроизведения"
+	@echo "  make locks             кто кого ждёт: pg_stat_activity + pg_blocking_pids"
 	@echo "  make redis-cli         консоль redis"
 	@echo "  make rabbit-ui         открыть RabbitMQ management"
 	@echo "  make minio-ui          открыть консоль MinIO"
@@ -163,6 +165,41 @@ logs:
 
 psql:
 	docker compose exec postgres psql -U $(DB_USER) -d $(DB_NAME)
+
+# Два именованных сеанса для ручного воспроизведения гонок.
+#
+#   терминал 1:  make psql-a
+#   терминал 2:  make psql-b
+#
+# Отличаются только приглашением. В двух одинаковых окнах команды путаются
+# местами, и потом непонятно, какая транзакция что видела; с «A>» и «B>»
+# лог сеанса можно приложить к отчёту как есть.
+#
+# Транзакцией psql управляешь сам: begin/commit/rollback руками, иначе
+# каждая команда уедет в свою автокоммитную транзакцию и наблюдать будет
+# нечего.
+psql-a:
+	docker compose exec postgres psql -U $(DB_USER) -d $(DB_NAME) -v PROMPT1='A> ' -v PROMPT2='A- '
+
+psql-b:
+	docker compose exec postgres psql -U $(DB_USER) -d $(DB_NAME) -v PROMPT1='B> ' -v PROMPT2='B- '
+
+# Кто кого ждёт прямо сейчас. Третий терминал к паре выше: пока A и B
+# сидят в открытых транзакциях, здесь видно, висит ли кто-то на блокировке
+# и на ком именно.
+locks:
+	@docker compose exec -T postgres psql -U $(DB_USER) -d $(DB_NAME) -X -q -c "\
+	  select a.pid, \
+	         a.state, \
+	         a.wait_event_type || ':' || coalesce(a.wait_event, '-') as waiting, \
+	         pg_blocking_pids(a.pid)                                 as blocked_by, \
+	         now() - a.xact_start                                    as xact_age, \
+	         left(regexp_replace(a.query, '\\s+', ' ', 'g'), 60)      as query \
+	    from pg_stat_activity a \
+	   where a.datname = current_database() \
+	     and a.pid <> pg_backend_pid() \
+	     and a.backend_type = 'client backend' \
+	   order by a.pid"
 
 redis-cli:
 	docker compose exec redis redis-cli

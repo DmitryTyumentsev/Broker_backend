@@ -48,16 +48,12 @@ func (h *FixationHandler) Validate() error {
 }
 
 type FixationClient interface {
-	NewFixation(ctx context.Context, req *fixationv1.NewFixationRequest, meta *fixationdto.Meta) (
+	NewFixation(ctx context.Context, req *fixationv1.NewFixationRequest) (
 		*fixationv1.NewFixationResponse, error)
 }
 
 func (h *FixationHandler) NewFixation(c *fiber.Ctx) error {
 	dtoReq, ok := middleware.ValidatedBody[fixationdto.FixationRequest](c)
-	if !ok {
-		return httperr.WriteBadRequest(c, "invalid request")
-	}
-	principal, ok := middleware.CurrentPrincipal(c)
 	if !ok {
 		return httperr.WriteBadRequest(c, "invalid request")
 	}
@@ -68,11 +64,7 @@ func (h *FixationHandler) NewFixation(c *fiber.Ctx) error {
 		Phone:     dtoReq.Phone,
 		ProjectId: dtoReq.ProjectID.String(),
 	}
-	meta := &fixationdto.Meta{
-		AgencyID: principal.AgencyID,
-		FixBy:    principal.UserID,
-	}
-	protoResp, err := h.fixation.NewFixation(ctx, protoReq, meta)
+	protoResp, err := h.fixation.NewFixation(ctx, protoReq)
 	if err != nil {
 		return grpcerr.WriteGRPCToHTTPError(c, err)
 	}
