@@ -3,13 +3,13 @@ package integrationtest
 import (
 	"Broker_backend/services/integration/fixationservice/internal/config"
 	"Broker_backend/services/integration/fixationservice/internal/domain"
-	"Broker_backend/services/integration/fixationservice/internal/domain/entity"
 	"Broker_backend/services/integration/fixationservice/internal/repository/postgres"
 	"Broker_backend/services/integration/fixationservice/internal/usecase"
+	"Broker_backend/shared/pkg/authz"
+	"Broker_backend/shared/pkg/authz/roles"
 	"Broker_backend/shared/pkg/clock"
 	"context"
 	"errors"
-	"sync"
 	"testing"
 	"time"
 
@@ -18,8 +18,13 @@ import (
 )
 
 const (
-	projectIDFixUUID = "a347f9bf-7a54-4a4a-b7c0-c3163c730977"
 	goroutines       = 50
+	randomPhone      = "8(999)999-99-99"
+	fixationDuration = 24 * time.Hour * 60
+	mockHashSecret   = "mock-hash-secret"
+	fixFor           = "22222222-2222-2222-2222-222222222222"
+	deviceID         = "22222222-2222-2222-2222-222222222222"
+	fixationID       = "11111111-1111-1111-1111-111111111111"
 )
 
 //const (
@@ -165,55 +170,62 @@ const (
 //	}
 //}
 
-func TestNewFixation_RaceFixations_ActiveFixationNoRows_OneOfFixationsSuccess(t *testing.T) {
-	projectID, err := uuid.Parse(projectIDFixUUID)
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestNewFixation_RaceFixations_OneOfFixationsSuccessful(t *testing.T) {
+	agencyID, projectID, userID := seedAgencyProjectUser(t)
+
 	req := &usecase.FixationRequest{
-		AgencyID:  uuid.New(),
-		FixFor:    uuid.New(),
-		FixBy:     uuid.New(),
-		Phone:     "+7(999)999-99-99",
+		AgencyID:  agencyID,
+		FixFor:    userID,
+		FixBy:     userID,
+		Phone:     randomPhone,
 		ProjectID: projectID,
 	}
 	svc := newTestService(t)
-	chRes := make(chan *res, goroutines)
-	var wg sync.WaitGroup
+	results := make(chan error, goroutines)
+	//var wg sync.WaitGroup
 	start := make(chan struct{})
 	for i := 0; i < 50; i++ {
-		wg.Add(1)
+		//wg.Add(1)
 		go func() {
-			defer wg.Done()
+			//defer wg.Done()
 			<-start
-			f, err := svc.NewFixation(context.Background(), req)
-			chRes <- &res{f: f, err: err}
+			_, err := svc.NewFixation(contextWithMockPrincipal(agencyID, userID), req)
+			results <- err
 		}()
 	}
 	close(start)
-	// что в result будет если я отпустил 50 горутин? как это прочитать вообще?
+
+	var ok, conflict, other int
 	for i := 0; i < goroutines; i++ {
-		result := <-chRes
-		if result.f != nil {
-			t.Log(*result.f)
-		}
-		if !errors.Is(result.err, domain.ErrConflict) {
-			t.Error(result.err)
+		switch err := <-results; {
+		case err == nil:
+			ok++
+			t.Logf("i: %d, ok = %d, conflict = %d, other = %d", i, ok, conflict, other)
+		case errors.Is(err, domain.ErrNotUnique) || errors.Is(err, domain.ErrFixationAlreadyExist):
+			conflict++
+			t.Logf("i: %d, err: %v, ok = %d, conflict = %d, other = %d", i, err, ok, conflict, other)
+		case !errors.Is(err, domain.ErrNotUnique), !errors.Is(err, domain.ErrFixationAlreadyExist):
+			other++
+			t.Logf("i: %d, err: %v, ok = %d, conflict = %d, other = %d", i, err, ok, conflict, other)
 		}
 	}
-
-}
-
-type res struct {
-	f   *entity.Fixation
-	err error
+	if ok != 1 {
+		t.Fatalf("ok = %d, expected 1, conflict = %d, other = %d", ok, conflict, other)
+	}
+	if conflict != 49 {
+		t.Fatalf("conflict = %d, expected 49, ok = %d, other = %d", conflict, ok, other)
+	}
+	if other != 0 {
+		t.Fatalf("other = %d, expected 0, ok = %d, conflict = %d", other, ok, conflict)
+	}
+	t.Log("success")
 }
 
 func newTestService(t *testing.T) *usecase.Service {
 	t.Helper()
 	cfg := &config.Config{
 		Business: config.BusinessConfig{
-			HashSecret:       "text-text-text-text",
+			HashSecret:       mockHashSecret,
 			FixationDuration: 24 * 30 * time.Hour,
 		},
 	}
@@ -222,4 +234,14 @@ func newTestService(t *testing.T) *usecase.Service {
 	cl := clock.NewRealClock()
 
 	return usecase.NewService(cfg, zap.NewNop(), cl, repo, tx)
+}
+
+func contextWithMockPrincipal(agencyID, userID uuid.UUID) context.Context {
+	return authz.WithPrincipal(context.Background(), authz.Principal{
+		AgencyID: agencyID,
+		UserID:   userID,
+		DeviceID: deviceID,
+		Role:     roles.SalesManager,
+	},
+	)
 }

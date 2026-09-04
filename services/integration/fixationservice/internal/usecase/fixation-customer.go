@@ -6,6 +6,7 @@ import (
 	"Broker_backend/services/integration/fixationservice/internal/infra/security"
 	"Broker_backend/shared/pkg/helpers"
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -14,20 +15,20 @@ import (
 func (s *Service) NewFixation(ctx context.Context, req *FixationRequest) (*entity.Fixation, error) {
 	status, err := s.fixations.StatusByProjectID(ctx, req.ProjectID)
 	if err != nil {
-		if status == "" {
+		if errors.Is(err, domain.ErrNotFound) {
 			return nil, domain.ErrProjectNotExist
 		}
-		return nil, err
+		return nil, fmt.Errorf("статус проекта: %s, %w", status, err)
 	}
 	if status == entity.StatusProjectArchived {
 		return nil, domain.ErrProjectArchived
 	}
-	b, err := s.fixations.IsUserIDInAgencyID(ctx, req.AgencyID, req.FixFor)
-	if b == false {
-		return nil, domain.ErrEmployeeNotInAgency
-	}
+	inAgency, err := s.fixations.IsUserIDInAgencyID(ctx, req.AgencyID, req.FixFor)
 	if err != nil {
 		return nil, err
+	}
+	if inAgency == false {
+		return nil, domain.ErrEmployeeNotInAgency
 	}
 
 	phoneHash, err := s.HashPhone(req.Phone)
@@ -62,7 +63,7 @@ func (s *Service) NewFixation(ctx context.Context, req *FixationRequest) (*entit
 		case entity.StatusConverted:
 			return domain.ErrFixationAlreadyExist
 		case entity.StatusActive:
-			if fixationFromDB.ExpiresAt.Before(now) == true || fixationFromDB.ExpiresAt.Equal(now) == true {
+			if !fixationFromDB.ExpiresAt.After(now) {
 				err = s.fixations.UpdateFixationStatusExpired(txCtx, entity.StatusExpired, fixationFromDB.FixationID)
 				if err != nil {
 					return err

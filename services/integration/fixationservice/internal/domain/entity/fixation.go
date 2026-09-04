@@ -9,12 +9,11 @@ import (
 type Status string
 
 const (
-	StatusActive          Status = "active"
-	StatusConverted       Status = "converted"
-	StatusExpired         Status = "expired"
-	StatusRemoved         Status = "removed"
-	StatusNoRows          Status = ""
-	StatusProjectArchived        = "archived"
+	StatusActive    Status = "active"
+	StatusConverted Status = "converted"
+	StatusExpired   Status = "expired"
+	StatusRemoved   Status = "removed"
+	StatusNoRows    Status = ""
 )
 
 type Fixation struct {

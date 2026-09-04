@@ -58,7 +58,7 @@ func (h *FixationHandler) NewFixation(c *fiber.Ctx) error {
 		return httperr.WriteBadRequest(c, "invalid request")
 	}
 
-	ctx := c.UserContext() //зачем перекладываем из fiber.Ctx в context.Context? разве нельзя fiber.Ctx дальше передавать?
+	ctx := c.UserContext()
 	protoReq := &fixationv1.NewFixationRequest{
 		FixFor:    dtoReq.FixFor.String(),
 		Phone:     dtoReq.Phone,
