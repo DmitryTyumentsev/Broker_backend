@@ -5,11 +5,12 @@ import (
 	"context"
 )
 
-func (r *Repository) BatchFixationsByPublishedNull(ctx context.Context) ([]entity.Outbox, error) {
-	const op = "postgres/fixations.BatchFixationsByPublishedNull"
-	query := `select o.id, o.aggregate_id, o.aggregate_type, o.event_type, o.payload, o.created_at from integration.outbox o where published_at is null`
+func (r *Repository) FetchUnpublished(ctx context.Context, limit int) ([]entity.Outbox, error) {
+	const op = "postgres.FetchUnpublished"
+	query := `select o.id, o.aggregate_id, o.aggregate_type, o.event_type, o.payload, o.created_at from integration.outbox o 
+    where published_at is null limit $1`
 
-	rows, err := r.Tx.pool.Query(ctx, query)
+	rows, err := r.Tx.pool.Query(ctx, query, limit)
 	if err != nil {
 		return nil, MapError(op, err)
 	}

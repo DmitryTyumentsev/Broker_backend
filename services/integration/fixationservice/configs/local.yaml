@@ -57,3 +57,11 @@ database:
     connect_timeout: 5s
     read_timeout: 3s
     write_timeout: 3s
+
+integrations:
+  amo_crm:
+    host: localhost
+    port: 9101
+    read_timeout: 3s
+    write_timeout: 3s
+    idle_timeout: 1m

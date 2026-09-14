@@ -1,4 +1,4 @@
-package client
+package amocrm
 
 import (
 	"Broker_backend/services/integration/fixationservice/internal/domain/entity"

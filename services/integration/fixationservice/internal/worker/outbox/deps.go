@@ -1,4 +1,4 @@
-package workers
+package outbox
 
 import (
 	"Broker_backend/services/integration/fixationservice/internal/config"
@@ -10,8 +10,11 @@ import (
 	"go.uber.org/zap"
 )
 
-type FixationRepository interface {
-	BatchFixationsByPublishedNull(ctx context.Context) ([]entity.Outbox, error)
+type Repository interface {
+	FetchUnpublished(ctx context.Context, limit int) ([]entity.Outbox, error)
+}
+
+type EventSender interface {
 }
 
 type TxManager interface {
@@ -22,45 +25,45 @@ type Clock interface {
 	Now() time.Time
 }
 
-type Service struct {
-	cfg       *config.Config
-	logger    *zap.Logger
-	clock     Clock
-	fixations FixationRepository
-	tx        TxManager
+type Worker struct {
+	cfg        *config.Config
+	logger     *zap.Logger
+	clock      Clock
+	repository Repository
+	tx         TxManager
 }
 
-func NewService(
+func NewWorker(
 	cfg *config.Config,
 	logger *zap.Logger,
 	clock Clock,
-	fixation FixationRepository,
+	repository Repository,
 	tx TxManager,
-) *Service {
+) *Worker {
 	if logger == nil {
 		logger = zap.NewNop()
 	}
 
-	return &Service{
-		cfg:       cfg,
-		logger:    logger,
-		clock:     clock,
-		fixations: fixation,
-		tx:        tx,
+	return &Worker{
+		cfg:        cfg,
+		logger:     logger,
+		clock:      clock,
+		repository: repository,
+		tx:         tx,
 	}
 }
 
-func (s *Service) ensureDeps() error {
+func (w *Worker) ensureDeps() error {
 	switch {
-	case s == nil:
-		return fmt.Errorf("service is nil")
-	case s.cfg == nil:
+	case w == nil:
+		return fmt.Errorf("worker is nil")
+	case w.cfg == nil:
 		return fmt.Errorf("config is nil")
-	case s.clock == nil:
+	case w.clock == nil:
 		return fmt.Errorf("clock is nil")
-	case s.fixations == nil:
+	case w.repository == nil:
 		return fmt.Errorf("postgres is nil")
-	case s.tx == nil:
+	case w.tx == nil:
 		return fmt.Errorf("tx is nil")
 	default:
 		return nil

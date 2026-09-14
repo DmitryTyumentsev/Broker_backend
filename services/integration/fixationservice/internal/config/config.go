@@ -20,6 +20,7 @@ type Config struct {
 	Business      BusinessConfig      `mapstructure:"business"`
 	Observability ObservabilityConfig `mapstructure:"observability"`
 	Database      DatabaseConfig      `mapstructure:"database"`
+	Integrations  Integrations        `mapstructure:"integrations"`
 }
 
 type ServerConfig struct {
@@ -96,6 +97,18 @@ type RedisConfig struct {
 	WriteTimeout time.Duration `mapstructure:"write_timeout"`
 	PoolSize     int           `mapstructure:"pool_size"`
 	MinIdleConns int           `mapstructure:"min_idle_conns"`
+}
+
+type Integrations struct {
+	AmoCRM AmoCRM `mapstructure:"amo_crm"`
+}
+
+type AmoCRM struct {
+	Host         string        `mapstructure:"host"`
+	Port         int           `mapstructure:"port"`
+	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout time.Duration `mapstructure:"write_timeout"`
+	IdleTimeout  time.Duration `mapstructure:"idle_timeout"`
 }
 
 func LoadConfig() (*Config, error) {
