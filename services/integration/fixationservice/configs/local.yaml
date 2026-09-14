@@ -62,6 +62,5 @@ integrations:
   amo_crm:
     host: localhost
     port: 9101
-    read_timeout: 3s
-    write_timeout: 3s
-    idle_timeout: 1m
+    timeout: 10s
+    endpoint_send_leads: "localhost:9101"

@@ -7,6 +7,7 @@ import (
 )
 
 type Outbox struct {
+	ID          int
 	ObjectID    uuid.UUID
 	ObjectType  string
 	EventType   string

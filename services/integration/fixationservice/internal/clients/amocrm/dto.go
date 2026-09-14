@@ -1,6 +1,6 @@
 package amocrm
 
-type fixationPayload struct {
+type fixationPayload struct { //надо нормальный мок а не как щас, не надо чтоб в апи одно а мок другой сильно
 	FixationID string `json:"fixation_id"`
 	AgencyID   string `json:"agency_id"`
 	ExpiresAt  string `json:"expires_at"`

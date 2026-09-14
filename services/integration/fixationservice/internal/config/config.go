@@ -104,11 +104,11 @@ type Integrations struct {
 }
 
 type AmoCRM struct {
-	Host         string        `mapstructure:"host"`
-	Port         int           `mapstructure:"port"`
-	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
-	WriteTimeout time.Duration `mapstructure:"write_timeout"`
-	IdleTimeout  time.Duration `mapstructure:"idle_timeout"`
+	Host              string        `mapstructure:"host"`
+	Port              int           `mapstructure:"port"`
+	Timeout           time.Duration `mapstructure:"timeout"`
+	Token             string        `mapstructure:"token"`
+	EndpointSendLeads string        `mapstructure:"endpoint_send_leads"`
 }
 
 func LoadConfig() (*Config, error) {

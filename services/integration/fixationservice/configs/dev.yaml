@@ -49,6 +49,5 @@ integrations:
   amo_crm:
     host: mock-amocrm
     port: 9101
-    read_timeout: 3s
-    write_timeout: 3s
-    idle_timeout: 1m
+    timeout: 10s
+    endpoint_send_leads: "mock-amocrm:9101"
